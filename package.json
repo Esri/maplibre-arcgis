@@ -1,0 +1,28 @@
+{
+  "name": "esri-maplibre",
+  "description": "Wrapper for integrating Esri data sources with MapLibre GL JS",
+  "version": "1.0.0-beta.1",
+  "author": "George Owen (https://gowen.dev/)",
+  "license": "Apache-2.0",
+  "keywords": [
+    "maplibre",
+    "arcgis",
+    "esri",
+    "feature",
+    "vector",
+    "tile",
+    "styles"
+  ],
+  "peerDependencies": {
+    "maplibre-gl": "^5.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.24.0",
+    "gh-release": "^7.0.2",
+    "karma": "^6.4.4"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run lint && karma start"
+  }
+}
