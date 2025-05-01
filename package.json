@@ -17,9 +17,12 @@
     "maplibre-gl": "^5.0.0"
   },
   "devDependencies": {
-    "eslint": "^9.24.0",
     "gh-release": "^7.0.2",
-    "karma": "^6.4.4"
+    "karma": "^6.4.4",
+    "eslint": "^9.24.0",
+    "eslint-config-semistandard": "^15.0.1",
+    "eslint-config-standard": "^15.0.1",
+    "semistandard": "^16.0.0"
   },
   "main": "index.js",
   "scripts": {
