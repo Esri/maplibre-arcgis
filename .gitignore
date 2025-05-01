@@ -33,8 +33,6 @@ node_modules
 .node_repl_history
 
 dist/
-debug/*.html
-!debug/edge-of-the-world.html
-!debug/sample.html
+debug/
 
 *.code-workspace
