@@ -1,4 +1,4 @@
-interface BasemapStyle {
+export interface BasemapStyle {
     styleEnum: string;
     accessToken: string;
     language: string | null;
@@ -15,14 +15,16 @@ type IBasemapStyleOptions = {
     version: 1 | 2 | null;
 }
 
-class BasemapStyle {
+export class BasemapStyle {
     constructor (styleEnum : string, options : IBasemapStyleOptions) {
 
         this.styleEnum = styleEnum; // arcgis/outdoor
         // TODO remove forward slash if passed
 
-        // access token parsing
-        // TODO
+        // access token parsing TODO
+        if (options.token) this.accessToken = options.token;
+        else this.accessToken = 'undefined';
+
         // TODO support for REST JS authentication objects as well
 
         // optional support for legacy basemap styles URL
