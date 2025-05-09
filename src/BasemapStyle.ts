@@ -35,7 +35,7 @@ export class BasemapStyle {
     get styleUrl () {
 
         const v1BaseUrl = 'https://basemaps-api.arcgis.com/arcgis/rest/services/styles';
-        const v2BaseUrl = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2';
+        const v2BaseUrl = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
         const baseUrl = (this.version == 2) ? v2BaseUrl : v1BaseUrl;
 
         // TODO worldview, language, etc

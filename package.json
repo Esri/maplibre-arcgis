@@ -17,15 +17,19 @@
     "maplibre-gl": "^5.0.0"
   },
   "devDependencies": {
-    "gh-release": "^7.0.2",
-    "karma": "^6.4.4",
+    "esbuild": "^0.25.4",
+    "mkdirp": "^3.0.1",
     "eslint": "^9.24.0",
     "eslint-config-semistandard": "^15.0.1",
     "eslint-config-standard": "^15.0.1",
+    "gh-release": "^7.0.2",
+    "karma": "^6.4.4",
     "semistandard": "^16.0.0"
   },
   "main": "index.js",
   "scripts": {
-    "test": "npm run lint && karma start"
+    "prebuild": "mkdirp dist",
+    "build": "node build.mjs prod",
+    "build-dev": "node build.mjs dev"
   }
 }
