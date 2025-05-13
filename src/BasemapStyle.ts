@@ -1,48 +1,88 @@
-export interface BasemapStyle {
-    styleEnum: string;
+type IBasemapStyleOptions = {
     accessToken: string;
     language: string | null;
     worldview: string | null;
-    version: 1 | 2;
-    options: IBasemapStyleOptions
+    places: string | null;
 }
 
-type IBasemapStyleOptions = {
-    token: string | null;
-    apiKey: string | null;
-    language: string | null;
-    worldview: string | null;
-    version: 1 | 2 | null;
-}
+type StyleFamily = 'arcgis' | 'open' | 'osm';
+type StyleEnum = `${StyleFamily}/${string}`;
+type BasemapServiceUrl = string;
 
 export class BasemapStyle {
-    constructor (styleEnum : string, options : IBasemapStyleOptions) {
+    // Type declarations
+    style: StyleEnum;
+    accessToken: string;
+    _baseUrl: BasemapServiceUrl;
+    language: string | null;
+    worldview: string | null;
+    places: string | null;
+    options: IBasemapStyleOptions
 
-        this.styleEnum = styleEnum; // arcgis/outdoor
-        // TODO remove forward slash if passed
+    /**
+     * 
+     * @param {StyleEnum} style - The basemap style enumeration
+     * @param {IBasemapStyleOptions} options
+     */
+    constructor (style : StyleEnum, options : IBasemapStyleOptions) {
 
-        // access token parsing TODO
-        if (options.token) this.accessToken = options.token;
-        else this.accessToken = 'undefined';
+        // Validate style family
+        this.style = style; // arcgis/outdoor
 
-        // TODO support for REST JS authentication objects as well
+        // Access token validation
 
-        // optional support for legacy basemap styles URL
-        this.version = (options.version && options.version == 1) ? 1 : 2;
+        if (options.accessToken) this.accessToken = options.accessToken;
+        else throw new Error(
+            'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
+        )
+        // TODO add support for REST JS authentication objects
 
+        this._baseUrl = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
+        let isItemId = false;
+        if (!(this.style.startsWith('osm/') || this.style.startsWith('arcgis/')) && this.style.length === 32) {
+            // Check if style is an item ID
+            this._baseUrl += `/items/${this.style}`;
+            isItemId = true;
+        }
+        else this._baseUrl += `/${this.style}`;
+
+        // Language param
+        if (options.language) {
+            if (isItemId) console.warn('The \'language\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+            else this.language = options.language;
+        }
+
+        // Worldview param
+        if (options.worldview) {
+            if (isItemId) console.warn('The \'worldview\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+            else this.worldview = options.worldview;
+        }
+
+        // Places param
+        if (options.places) {
+            if (isItemId) console.warn('The \'places\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+            else this.places = options.places;
+        }
     }
 
     get styleUrl () {
 
-        const v1BaseUrl = 'https://basemaps-api.arcgis.com/arcgis/rest/services/styles';
-        const v2BaseUrl = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
-        const baseUrl = (this.version == 2) ? v2BaseUrl : v1BaseUrl;
+        let styleUrl = this._baseUrl;
+        styleUrl += `?token=${this.accessToken}`;
+        
+        if (this.language) {
+            styleUrl += `&language=${this.language}`;
+        }
+        if (this.worldview) {
+            styleUrl += `&worldview=${this.worldview}`;
+        }
+        if (this.places) {
+            styleUrl += `&places=${this.places}`;
+        }
 
-        // TODO worldview, language, etc
-        return `${baseUrl}/${this.styleEnum}?token=${this.accessToken}`;
+        return styleUrl;
     }
 
-    // TODO method to update style, refresh style object -> how to update map with new style url?
 }
 
 export default BasemapStyle;
@@ -54,7 +94,6 @@ const basemapStyle = (styleEnum, options) => {
 }
 export default basemapStyle;
 */
-
 /*
 maplibregl.Esri.basemapStyle('arcgis/outdoor',{
     style: 'arcgis/outdoor',
