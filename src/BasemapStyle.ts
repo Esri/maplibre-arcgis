@@ -87,18 +87,12 @@ export class BasemapStyle {
 
 export default BasemapStyle;
 
-/*
-// Esri Leaflet style constructor
-const basemapStyle = (styleEnum, options) => {
-    return new BasemapStyle(styleEnum,options);
+/**
+ * Helper method that returns a basemap style URL directly without the instantiated object.
+ * @param {StyleEnum} style The basemap style enumeration being requested
+ * @param {IBasemapStyleOptions} options Additional parameters including an ArcGIS access token
+ * @returns {BasemapServiceUrl} The URL of the specified ArcGIS basemap style with all included parameters
+ */
+export const basemapStyleUrl = (style : StyleEnum, options :IBasemapStyleOptions) => {
+    return new BasemapStyle(style,options).styleUrl;
 }
-export default basemapStyle;
-*/
-/*
-maplibregl.Esri.basemapStyle('arcgis/outdoor',{
-    style: 'arcgis/outdoor',
-    worldview: 'unitedStatesOfAmerica',
-    language: 'es',
-    accessToken: '...'
-});
-*/
