@@ -24,6 +24,7 @@ const LIVE_RELOAD = process.argv.length > 3 && process.argv[3] == 'watch';
 
 const buildOptions = {
     entryPoints: ['./src/EsriMapLibre.ts'],
+    bundle:true,
     banner: {
         js:copyright
     },
@@ -43,7 +44,6 @@ if (BUILD_MODE == 'prod') {
     const prodOptions = {
         //prod only
         outfile: 'dist/esri-maplibre.js',
-        bundle: true,
         minify: true, //minify output
         platform:'browser',
         format:'iife',
