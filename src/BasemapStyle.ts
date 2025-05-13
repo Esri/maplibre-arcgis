@@ -1,8 +1,8 @@
 type IBasemapStyleOptions = {
     accessToken: string;
-    language: string | null;
-    worldview: string | null;
-    places: string | null;
+    language?: string;
+    worldview?: string;
+    places?: string;
 }
 
 type StyleFamily = 'arcgis' | 'open' | 'osm';
@@ -14,9 +14,9 @@ export class BasemapStyle {
     style: StyleEnum;
     accessToken: string;
     _baseUrl: BasemapServiceUrl;
-    language: string | null;
-    worldview: string | null;
-    places: string | null;
+    language?: string;
+    worldview?: string;
+    places?: string;
     options: IBasemapStyleOptions
 
     /**

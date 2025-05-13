@@ -21,7 +21,7 @@ import packageInfo from '../package.json';
 const version = packageInfo.version;
 export { version as VERSION };
 
-export { BasemapStyle } from './BasemapStyle';
+export { BasemapStyle, basemapStyleUrl } from './BasemapStyle';
 export { EsriAttributionControl } from './EsriAttributionControl';
 
 if (window.TEST_ENVIRONMENT) {
