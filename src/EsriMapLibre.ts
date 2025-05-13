@@ -12,8 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+interface CustomWindow extends Window {
+    TEST_ENVIRONMENT: string | null;
+}
+declare let window: CustomWindow;
+
 import packageInfo from '../package.json';
 const version = packageInfo.version;
 export { version as VERSION };
 
 export { BasemapStyle } from './BasemapStyle';
+
+if (window.TEST_ENVIRONMENT) {
+    new EventSource('/esbuild').addEventListener('change', () => location.reload())
+}

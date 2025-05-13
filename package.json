@@ -30,6 +30,8 @@
   "scripts": {
     "prebuild": "mkdirp dist",
     "build": "node build.mjs prod",
-    "build-dev": "node build.mjs dev"
+    "build-dev": "node build.mjs dev",
+    "start": "node build.mjs prod watch",
+    "start-dev": "node build.mjs dev watch"
   }
 }

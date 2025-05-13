@@ -20,7 +20,7 @@ var copyright = '/* ' + pkg.name + ' - v' + pkg.version + ' - ' + new Date().toS
                 ' * ' + pkg.license + ' */';
 
 const BUILD_MODE = process.argv[2];
-//const LIVE_RELOAD = process.argv.length > 3 && process.argv[3] == 'watch';
+const LIVE_RELOAD = process.argv.length > 3 && process.argv[3] == 'watch';
 
 const buildOptions = {
     entryPoints: ['./src/EsriMapLibre.ts'],
@@ -32,10 +32,9 @@ const buildOptions = {
 
 if (BUILD_MODE == 'dev') {
     const debugOptions = {
-        //debug only
+        //debug only - build sourcemap
         sourcemap:true,
         outfile: 'dist/esri-maplibre-debug.js',
-        // TODO live reload
     };
 
     Object.assign(buildOptions,debugOptions);
@@ -45,7 +44,7 @@ if (BUILD_MODE == 'prod') {
         //prod only
         outfile: 'dist/esri-maplibre.js',
         bundle: true,
-        minify: true,
+        minify: true, //minify output
         platform:'browser',
         format:'iife',
         target: ['chrome132','firefox130'] //list of supported browsers
@@ -56,4 +55,24 @@ if (BUILD_MODE == 'prod') {
 
 
 console.log(buildOptions);
-await esbuild.build(buildOptions);
+
+if (LIVE_RELOAD) {
+
+    buildOptions.define = {
+        TEST_ENVIRONMENT:'yes'
+    };
+
+    console.log(`Starting live reload of ${buildOptions.outfile}...`);
+    let app = await esbuild.context(buildOptions);
+
+    await app.watch();
+
+    let {host,port} = app.serve({
+        servedir:'dist'
+    })
+}
+else {
+    await esbuild.build(buildOptions);
+}
+
+
