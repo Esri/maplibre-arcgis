@@ -19,6 +19,8 @@ export class BasemapStyle {
     places?: string;
     options: IBasemapStyleOptions
 
+
+    static _baseUrl: BasemapServiceUrl = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
     /**
      * 
      * @param {StyleEnum} style - The basemap style enumeration
@@ -28,7 +30,7 @@ export class BasemapStyle {
 
         // Validate style family
         this.style = style; // arcgis/outdoor
-
+        this._baseUrl = BasemapStyle._baseUrl;
         // Access token validation
 
         if (options.accessToken) this.accessToken = options.accessToken;
@@ -36,8 +38,6 @@ export class BasemapStyle {
             'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
         )
         // TODO add support for REST JS authentication objects
-
-        this._baseUrl = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
         let isItemId = false;
         if (!(this.style.startsWith('osm/') || this.style.startsWith('arcgis/')) && this.style.length === 32) {
             // Check if style is an item ID
@@ -83,6 +83,32 @@ export class BasemapStyle {
         return styleUrl;
     }
 
+    /**
+     * Makes a \'/self\' request to the basemap styles service endpoint
+     * @param accessToken An ArcGIS access token
+     */
+    static getSelf (options:{accessToken?:string}) {
+
+        const selfUrl = `${BasemapStyle._baseUrl}/self`;
+
+        const headers = {};
+        if (options?.accessToken) {
+            headers["X-Esri-Authorization"] = `Bearer ${options?.accessToken}`;
+        }
+        return new Promise(async (resolve, reject) => {
+            const response = await fetch(selfUrl,{
+                headers
+            });
+            if (!response.ok) reject(`Error: ${response.status}`);
+
+            const json = await response.json();
+            resolve(json);
+        });
+    }
+
+    static url (style : StyleEnum, options :IBasemapStyleOptions) {
+        return new BasemapStyle(style,options).styleUrl;
+    }
 }
 
 export default BasemapStyle;
