@@ -12,7 +12,7 @@
         <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet"/>
         <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
         <!-- Esri Maplibre -->
-        <script src="../dist/esri-maplibre-debug.js"></script>
+        <script src="../dist/maplibre-arcgis-debug.js"></script>
 
     </head>
     <body>
@@ -20,14 +20,14 @@
         <script src="../debug/apikey.js"></script>
         <script type="module">
 
-            const selfResponse = await maplibregl.esri.BasemapStyle.getSelf();
+            const selfResponse = await maplibreArcGIS.BasemapStyle.getSelf();
             console.log(selfResponse);
 
             const style = selfResponse.styles[0].path;
 
             const map = new maplibregl.Map({
                 container: "map", // the id of the div element
-                style: maplibregl.esri.BasemapStyle.url(style,{
+                style: maplibreArcGIS.BasemapStyle.url(style,{
                     accessToken: apiKey,
                 }),
                 zoom: 14, // starting zoom

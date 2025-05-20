@@ -1,4 +1,5 @@
 import type {SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
+import { Source } from 'maplibre-gl';
 /*
 map.addSource
 map.addLayer
@@ -9,18 +10,16 @@ needs to handle:
 source-layer property
 source property
 */
-export interface Source {
-    readonly type: string;
+export interface VectorTileSource {
+    readonly type: "vector";
 
     id: string;
 
     minzoom: number;
     maxzoom: number;
+    attribution: string;
 }
 
+export class VectorTileSource implements Source {
 
-interface VectorTileSource {
-    attribution: string;
-    type: "vector";
-    
 }

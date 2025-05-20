@@ -1,18 +1,18 @@
-import { AttributionControl, AttributionControlOptions, Map } from "maplibre-gl";
+import { AttributionControl as MaplibreAttributionControl, AttributionControlOptions as MaplibreAttributionControlOptions, Map } from "maplibre-gl";
 
-interface EsriAttributionControlOptions {
+interface AttributionControlOptions {
     compact?:boolean;
     minimize?: boolean;
 }
 
-export class EsriAttributionControl extends AttributionControl {
+export class AttributionControl extends MaplibreAttributionControl {
     _minimized?:boolean;
-    constructor (options : EsriAttributionControlOptions) {
+    constructor (options : AttributionControlOptions) {
         
         const esriAttribution = "Powered by <a href=\"https://www.esri.com/\" target=\"_blank\">Esri</a>";
         const maplibreAttribution = "<a href=\"https://maplibre.org/\" target=\"_blank\">MapLibre</a>";
 
-        const attributionOptions : AttributionControlOptions = {
+        const attributionOptions : MaplibreAttributionControlOptions = {
             compact: (options?.compact !== undefined) ? options.compact : true,
             customAttribution: esriAttribution //`${maplibreAttribution} | ${esriAttribution}`
         }
@@ -30,4 +30,4 @@ export class EsriAttributionControl extends AttributionControl {
     }
 }
 
-export default EsriAttributionControl;
+export default AttributionControl;

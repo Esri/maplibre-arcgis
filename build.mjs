@@ -23,19 +23,19 @@ const BUILD_MODE = process.argv[2];
 const LIVE_RELOAD = process.argv.length > 3 && process.argv[3] == 'watch';
 
 const buildOptions = {
-    entryPoints: ['./src/EsriMapLibre.ts'],
+    entryPoints: ['./src/MaplibreArcGIS.ts'],
     bundle:true,
     banner: {
         js:copyright
     },
-    globalName: 'maplibregl.esri',
+    globalName: 'maplibreArcGIS',
 }
 
 if (BUILD_MODE == 'dev') {
     const debugOptions = {
         //debug only - build sourcemap
         sourcemap:true,
-        outfile: 'dist/esri-maplibre-debug.js',
+        outfile: 'dist/maplibre-arcgis-debug.js',
     };
 
     Object.assign(buildOptions,debugOptions);
@@ -43,7 +43,7 @@ if (BUILD_MODE == 'dev') {
 if (BUILD_MODE == 'prod') {
     const prodOptions = {
         //prod only
-        outfile: 'dist/esri-maplibre.js',
+        outfile: 'dist/maplibre-arcgis.js',
         minify: true, //minify output
         platform:'browser',
         format:'iife',

@@ -12,7 +12,7 @@
         <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet"/>
         <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
         <!-- Esri Maplibre -->
-        <script src="../dist/esri-maplibre-debug.js"></script>
+        <script src="../dist/maplibre-arcgis-debug.js"></script>
 
     </head>
     <body>
@@ -22,7 +22,7 @@
             
             const map = new maplibregl.Map({
                 container: "map", // the id of the div element
-                style: maplibregl.esri.BasemapStyle.url('arcgis/streets', {
+                style: maplibreArcGIS.BasemapStyle.url('arcgis/streets', {
                         accessToken: apiKey,
                 }),
                 zoom: 8, // starting zoom
@@ -30,10 +30,10 @@
                 attributionControl:false
             });
 
-            map.addControl(new maplibregl.esri.EsriAttributionControl({compact:true,minimize:true}));
+            map.addControl(new maplibreArcGIS.AttributionControl({compact:true,minimize:true}));
 
-            // OPTION TWO: set attribution control in map constructor using options...
-            // attributionControl: AttributionControlOptions ...
+            // OPTION TWO: set attribution control in map constructor using static Options method...
+            // attributionControl: maplibregl.esri.AttributionControlOptions({compact:true}) ...
         </script>
     </body>
 </html>

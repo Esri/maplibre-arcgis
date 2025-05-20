@@ -22,7 +22,7 @@ const version = packageInfo.version;
 export { version as VERSION };
 
 export { BasemapStyle, basemapStyleUrl } from './BasemapStyle';
-export { EsriAttributionControl } from './EsriAttributionControl';
+export { AttributionControl } from './AttributionControl';
 
 if (window.TEST_ENVIRONMENT) {
     new EventSource('/esbuild').addEventListener('change', () => location.reload())
