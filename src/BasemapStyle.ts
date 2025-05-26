@@ -1,67 +1,63 @@
+import { Map } from "maplibre-gl";
+
 type IBasemapStyleOptions = {
     accessToken: string;
     language?: string;
     worldview?: string;
-    places?: string;
+    places?: PlacesOptions;
 }
 
 type StyleFamily = 'arcgis' | 'open' | 'osm';
 type StyleEnum = `${StyleFamily}/${string}`;
+type ItemId = string;
+type StyleOptions = StyleEnum | ItemId;
 type BasemapServiceUrl = string;
+type PlacesOptions = 'all' | 'attributed' | 'none';
 
 export class BasemapStyle {
     // Type declarations
-    style: StyleEnum;
+    style: StyleOptions;
     accessToken: string;
     _baseUrl: BasemapServiceUrl;
     language?: string;
     worldview?: string;
-    places?: string;
+    places?: PlacesOptions;
     options: IBasemapStyleOptions
+    _isItemId: boolean;
+    // map: Map; for updating
+
+    // TODO setStyle, setPlaces, setLanguage
 
 
     static _baseUrl: BasemapServiceUrl = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
     /**
      * 
-     * @param {StyleEnum} style - The basemap style enumeration
+     * @param {StyleOptions} style - The basemap style enumeration
      * @param {IBasemapStyleOptions} options
      */
-    constructor (style : StyleEnum, options : IBasemapStyleOptions) {
+    constructor (style : StyleOptions, options : IBasemapStyleOptions) {
 
-        // Validate style family
-        this.style = style; // arcgis/outdoor
-        this._baseUrl = BasemapStyle._baseUrl;
         // Access token validation
-
         if (options.accessToken) this.accessToken = options.accessToken;
         else throw new Error(
             'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
         )
         // TODO add support for REST JS authentication objects
-        let isItemId = false;
-        if (!(this.style.startsWith('osm/') || this.style.startsWith('arcgis/')) && this.style.length === 32) {
-            // Check if style is an item ID
-            this._baseUrl += `/items/${this.style}`;
-            isItemId = true;
-        }
-        else this._baseUrl += `/${this.style}`;
+
+        // Configure style and base URL
+        this.setStyle(style);
 
         // Language param
         if (options.language) {
-            if (isItemId) console.warn('The \'language\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-            else this.language = options.language;
+            this.setLanguage(options.language);
         }
-
         // Worldview param
         if (options.worldview) {
-            if (isItemId) console.warn('The \'worldview\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-            else this.worldview = options.worldview;
+            this.setWorldview(options.worldview);
         }
-
         // Places param
         if (options.places) {
-            if (isItemId) console.warn('The \'places\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-            else this.places = options.places;
+            this.setPlaces(options.places);
         }
     }
 
@@ -81,6 +77,41 @@ export class BasemapStyle {
         }
 
         return styleUrl;
+    }
+
+    setStyle (style : StyleOptions) {
+        this.style = style; // arcgis/outdoor
+        if (!(this.style.startsWith('arcgis/') || this.style.startsWith('open/') || this.style.startsWith('osm/')) && this.style.length === 32) {
+            // Style is an ItemId
+            this._baseUrl = `${BasemapStyle._baseUrl}/items/${this.style}`;
+            this._isItemId = true;
+        }
+        else {
+            // Style is a StyleEnum
+            this._baseUrl = `${BasemapStyle._baseUrl}/${this.style}`;        
+            this._isItemId = false;
+        }
+    }
+
+    setPlaces (placesOption : PlacesOptions | null) {
+        if (!placesOption) return;
+        
+        if (this._isItemId) console.warn('The \'places\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+        else this.places = placesOption;
+    }
+
+    setLanguage (languageOption : string | null) {
+        if (!languageOption) return;
+        
+        if (this._isItemId) console.warn('The \'language\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+        else this.language = languageOption;
+    }
+
+    setWorldview (worldviewOption : string | null) {
+        if (!worldviewOption) return;
+        
+        if (this._isItemId) console.warn('The \'worldview\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+        else this.worldview = worldviewOption;
     }
 
     /**
