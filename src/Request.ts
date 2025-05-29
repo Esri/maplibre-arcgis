@@ -77,26 +77,30 @@ export function fetchRequest(requestUrl : string, params : CommonRequestParams |
     }
 
     return new Promise((resolve,reject)=>{
-        fetch(requestUrl,requestOptions).then(response => {
-            if (!response.ok) {
-                reject(`${response.status}: ${response.body}`);
-            }
-            response.json().then(result => resolve(result))
-        })
+        makeRequest(requestUrl,requestOptions,resolve,reject)
         .catch(error => {
             // Could be CORS access token error, move token out of header and try again
             if (requestOptions.headers && requestOptions.headers['X-Esri-Authorization']) {
                 delete requestOptions.headers['X-Esri-Authorization'];
                 if (requestOptions.method == 'GET') requestUrl += `&token=${accessToken}`;
                 else if (requestOptions.method == 'POST') requestOptions.body += `&token=${accessToken}`;
-            }
 
-            fetch(requestUrl,requestOptions).then(response => {
-                if (!response.ok) {
-                    reject(`${response.status}: ${response.body}`);
-                }
-                response.json().then(result => resolve(result))
-            })
+                makeRequest(requestUrl,requestOptions,resolve,reject);
+            }
+        })
+    })
+}
+
+const makeRequest = async (requestUrl, requestOptions, resolve,reject) => {
+    return fetch(requestUrl,requestOptions).then(response => {
+        if (!response.ok) {
+            reject(`${response.url} ${response.status} (${response.statusText})`);
+        }
+        response.json().then(result => {
+            if (result.error) {
+                reject(`${requestUrl} ${result.error.code}: ${result.error.message}  `);
+            }
+            resolve(result);
         })
     })
 }
