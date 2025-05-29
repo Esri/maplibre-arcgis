@@ -34,7 +34,7 @@ function serialize(params : Record<string,any>) {
     return data.replaceAll("'", APOSTROPHE_URL_ENCODE);
 }
 
-export async function fetchRequest(requestUrl : string, params : Record<string,any> = {}, context : any) {
+export function fetchRequest(requestUrl : string, params : Record<string,any> = {}, context : any) {
 
     const requestOptions : RequestInit = {};
     requestOptions.headers = {}
