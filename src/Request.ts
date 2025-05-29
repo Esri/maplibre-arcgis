@@ -8,6 +8,8 @@ function serialize(params : Record<string,any>) {
     for (const key in params) {
       if (Object.hasOwn(params, key)) {
         const param = params[key];
+        if (param === null || param === undefined) continue;
+
         const type = Object.prototype.toString.call(param);
   
         let value : string | number;
@@ -43,7 +45,7 @@ export function fetchRequest(requestUrl : string, params : CommonRequestParams |
 
     // Try setting access token as authorization header if included
     let accessToken : string;
-    if (Object.keys(params).includes('token') && authorizationHeaderSupported(requestUrl)) {
+    if (Object.keys(params).includes('token') && params.token && authorizationHeaderSupported(requestUrl)) {
         accessToken = params.token;
         delete params.token;
 
