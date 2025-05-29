@@ -27,7 +27,7 @@ export const checkServiceUrlOrItemId = (idOrUrl : ServiceUrlOrItemId) : 'service
     else throw new Error('Input must be a valid ArcGIS service URL or item ID.');
 }
 
-export const loadItemInfo = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) => {
+export const loadItemInfo = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) : Promise<any> => {
 
     console.log('Item request:',itemId,options);
    

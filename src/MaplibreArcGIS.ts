@@ -23,6 +23,8 @@ export { version as VERSION };
 
 export { BasemapStyle, basemapStyleUrl } from './BasemapStyle';
 export { AttributionControl } from './AttributionControl';
+export { VectorTileService } from './VectorTileService';
+export { request } from './Request';
 
 if (window.TEST_ENVIRONMENT) {
     new EventSource('/esbuild').addEventListener('change', () => location.reload())
