@@ -1,17 +1,17 @@
+import { request } from "./Request";
+
 type ServiceUrl = string;
 export type ItemId = string;
 export type ServiceUrlOrItemId = ServiceUrl | ItemId;
+type AccessToken = string;
 
-// what does loadService do?
-// 1. load item info
-// 2. load service info
-// 3. load style info
+export type CommonRequestParams = {
+    token?: AccessToken;
+    f?: 'html' | 'json' | 'pjson'
+}
 
-// loadItemInfo
-// loadServiceInfo
-// loadStyleInfo
 export const vectorTileServiceRegex = /\/VectorTileServer\/?$/;
-// loadServiceMetadata
+
 export const checkServiceUrlOrItemId = (idOrUrl : ServiceUrlOrItemId) : 'serviceUrl' | 'itemId' => {
 
     const httpRegex = /^https?:\/\//;
@@ -19,32 +19,25 @@ export const checkServiceUrlOrItemId = (idOrUrl : ServiceUrlOrItemId) : 'service
     // Check other service types here eventually
     
     if (httpRegex.test(idOrUrl) && vectorTileServiceRegex.test(idOrUrl)) {
-        // Vector tile service URL
         return 'serviceUrl';
     }
     else if (idOrUrl.length == 32) {
-        // Item ID
         return 'itemId';
     }
     else throw new Error('Input must be a valid ArcGIS service URL or item ID.');
 }
 
+export const loadItemInfo = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) => {
 
+    console.log('Item request:',itemId,options);
+   
+    const itemUrl = `${options.portalUrl ? options.portalUrl : 'https://www.arcgis.com'}/sharing/rest/content/items/${itemId}${options.endpoint ? options.endpoint : ''}`;
 
-export const loadItemInfo = async (itemId, options) => {
+    const params = (({portalUrl,endpoint,...params})=>params)(options);
 
+    return request(itemUrl, params);
 }
+export const loadServiceInfo = async (serviceUrl : ServiceUrl, options : CommonRequestParams, endpoint : string|null = null) => {
 
-export const loadStyleFromItem = async (itemId, options) => {
-
-}
-
-export const loadServiceInfo = async (serviceUrl, options) => {
-    // item ID
-    // default style URL
-    // tile URL
-}
-
-export const loadStyleFromService = async (serviceUrl, options) => {
-
+    return request(serviceUrl,options);
 }
