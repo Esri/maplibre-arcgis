@@ -1,4 +1,5 @@
 import {vectorTileServiceRegex} from './Util';
+import type { CommonRequestParams } from './Util';
 function serialize(params : Record<string,any>) {
     let data = "";
     
@@ -34,7 +35,7 @@ function serialize(params : Record<string,any>) {
     return data.replaceAll("'", APOSTROPHE_URL_ENCODE);
 }
 
-export function fetchRequest(requestUrl : string, params : Record<string,any> = {}, context : any) {
+export function fetchRequest(requestUrl : string, params : CommonRequestParams | Record<string,any> = {}, context? : any) {
 
     const requestOptions : RequestInit = {};
     requestOptions.headers = {}
@@ -109,7 +110,7 @@ const authorizationHeaderSupported = (serviceUrl : string) => {
     return true;
 }
 
-export function warn(...args) {
+export function warn(...args : any) {
   if (console && console.warn) {
     console.warn.apply(console, args);
   }
