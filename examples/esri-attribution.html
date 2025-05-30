@@ -11,7 +11,7 @@
         </style>
         <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet"/>
         <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
-        <!-- Esri Maplibre -->
+        <!-- MapLibre ArcGIS -->
         <script src="../dist/maplibre-arcgis-debug.js"></script>
 
     </head>
@@ -32,8 +32,6 @@
 
             map.addControl(new maplibreArcGIS.AttributionControl({compact:true,minimize:true}));
 
-            // OPTION TWO: set attribution control in map constructor using static Options method...
-            // attributionControl: maplibregl.esri.AttributionControlOptions({compact:true}) ...
         </script>
     </body>
 </html>

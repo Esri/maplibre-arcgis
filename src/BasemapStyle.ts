@@ -1,4 +1,5 @@
-import { Map } from "maplibre-gl";
+import { request } from "./Request";
+import { ItemId } from "./Util";
 
 type IBasemapStyleOptions = {
     accessToken: string;
@@ -9,7 +10,6 @@ type IBasemapStyleOptions = {
 
 type StyleFamily = 'arcgis' | 'open' | 'osm';
 type StyleEnum = `${StyleFamily}/${string}`;
-type ItemId = string;
 type StyleOptions = StyleEnum | ItemId;
 type BasemapServiceUrl = string;
 type PlacesOptions = 'all' | 'attributed' | 'none';
@@ -22,7 +22,7 @@ export class BasemapStyle {
     language?: string;
     worldview?: string;
     places?: PlacesOptions;
-    options: IBasemapStyleOptions
+    options: IBasemapStyleOptions;
     _isItemId: boolean;
     // map: Map; for updating
 
@@ -118,23 +118,8 @@ export class BasemapStyle {
      * Makes a \'/self\' request to the basemap styles service endpoint
      * @param accessToken An ArcGIS access token
      */
-    static getSelf (options:{accessToken?:string}) {
-
-        const selfUrl = `${BasemapStyle._baseUrl}/self`;
-
-        const headers = {};
-        if (options?.accessToken) {
-            headers["X-Esri-Authorization"] = `Bearer ${options?.accessToken}`;
-        }
-        return new Promise(async (resolve, reject) => {
-            const response = await fetch(selfUrl,{
-                headers
-            });
-            if (!response.ok) reject(`Error: ${response.status}`);
-
-            const json = await response.json();
-            resolve(json);
-        });
+    static async getSelf (options:{accessToken?:string}) {
+        return await request(`${BasemapStyle._baseUrl}/self`,{token:options?.accessToken});
     }
 
     static url (style : StyleEnum, options :IBasemapStyleOptions) {

@@ -11,7 +11,7 @@
         </style>
         <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet"/>
         <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
-        <!-- Esri Maplibre -->
+        <!-- Maplibre ArcGIS -->
         <script src="../dist/maplibre-arcgis-debug.js"></script>
 
     </head>
@@ -35,30 +35,12 @@
                 container: "map", // the id of the div element
                 style: basemapStyle.styleUrl,
                 zoom: 14, // starting zoom
-                center: [-117.805, 34.027] // starting location
+                center: [-117.805, 34.027], // starting location
+                attributionControl:false
             });
-            /*
-            // Alternate invocation: static url() method
-            const map = new maplibregl.Map({
-                container: "map", // the id of the div element
-                style: maplibreArcGIS.BasemapStyle.url(basemapEnum, {
-                    accessToken: apiKey,
-                }),
-                zoom: 4, // starting zoom
-                center: [-79.805, 34.027] // starting location
-            });
-            */
-            // Alternate 2: standalone basemapStyleUrl method
-            /*
-            const map = new maplibregl.Map({
-                container: "map", // the id of the div element
-                style: maplibreArcGIS.basemapStyleUrl(basemapEnum, {
-                    accessToken: apiKey,
-                }),
-                zoom: 4, // starting zoom
-                center: [-79.805, 34.027] // starting location
-            });
-            */
+
+            map.addControl(new maplibreArcGIS.AttributionControl());
+
         </script>
     </body>
 </html>
