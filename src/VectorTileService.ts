@@ -1,19 +1,6 @@
-import type {SourceSpecification, LayerSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
-import { VectorTileSource } from 'maplibre-gl';
-import type { AddLayerObject } from 'maplibre-gl';
+import type {LayerSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import { ItemId, ServiceUrlOrItemId, checkServiceUrlOrItemId, loadItemInfo, loadServiceInfo } from './Util';
 import { warn } from './Request';
-/*
-map.addSource
-map.addLayer
-
-maplibregl.Esri.vectorTileSource(itemId/URL)
-
-needs to handle:
-source-layer property
-source property
-*/
-
 
 type VectorTileServiceOptions = {
     accessToken?: string;
@@ -103,73 +90,100 @@ export class VectorTileService {
         this._styleLoaded = false;
         this._itemInfoLoaded = false;
 
-        if (this._itemInfo) {
-            // get info from item id url
+        let setupMethod = this._itemInfo ? 'itemId' : 'serviceUrl';
 
-            // TODO are there typescript types for rest api objects?
-            // this initial request is ONLY necessary for attribution, and potentially service url if no style is saved to the item
-            const itemResponse : any = await loadItemInfo(this._itemInfo.itemId,{
-                token:this.accessToken,
-                portalUrl:this._itemInfo.portalUrl
-            });
-            console.log(itemResponse);
-            if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
-
-            this._serviceInfo = {
-                serviceUrl: itemResponse.url
-            }
-            this._itemInfo = {
-                ...this._itemInfo,
-                accessInformation: itemResponse.accessInformation,
-                title: itemResponse.title,
-                type: itemResponse.type
-            }
-
-
-            // Check for style resources associated with the item
-            const itemResources : any = await loadItemInfo(this._itemInfo.itemId,{
-                token:this.accessToken,
-                portalUrl:this._itemInfo.portalUrl,
-                endpoint:'/resources'
-            });
-            let styleFile : string | null = null;
-            if (itemResources.total > 0) {
-                itemResources.resources.forEach(entry => {
-                    if (entry.resource.startsWith('styles')) {
-                        styleFile = entry.resource;
-                    }
-                });
-            }
-            if (styleFile) {
-                const styleInfo : StyleSpec = await loadItemInfo(this._itemInfo.itemId,{
+        switch (setupMethod) {
+            case 'itemId': {
+                const params = {
                     token:this.accessToken,
-                    portalUrl:this._itemInfo.portalUrl,
-                    endpoint:`/resources/${styleFile}`
-                })
-                this._setStyle(styleInfo);
+                    portalUrl:this._itemInfo.portalUrl
+                }
+                // --- Get metadata and attribution from item ---
+                const itemResponse : any = await loadItemInfo(this._itemInfo.itemId,params);
+            console.log('Item request:',itemResponse);
+
+                if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
+                // in feature collections, there is still data at the /data endpoint ...... just a heads up
+
+                this._serviceInfo = {
+                    serviceUrl: itemResponse.url
+                }
+                this._itemInfo = {
+                    ...this._itemInfo,
+                    accessInformation: itemResponse.accessInformation,
+                    title: itemResponse.title,
+                    type: itemResponse.type
+                }
+
+                // --- vector-tile-specific info below here ---
+
+                // Load style info
+                let styleInfo : StyleSpec | null = null;
+                // Try loading default style name first
+                try {
+                    const rootStyle : any = await loadItemInfo(this._itemInfo.itemId,{
+                        ...params,
+                        endpoint:'/resources/styles/root.json'
+                    });
+            console.log('Item style request:',rootStyle);
+                    styleInfo = rootStyle;
+                // Check for other style resources associated with the item
+                } catch (e) {
+                    const itemResources : any = await loadItemInfo(this._itemInfo.itemId,{
+                        ...params,
+                        endpoint:'/resources'
+                    });
+            console.log('Item resource request:',itemResources);
+                    let styleFile : string | null = null;
+                    if (itemResources.total > 0) {
+                        itemResources.resources.forEach(entry => {
+                            if (entry.resource.startsWith('styles')) {
+                                styleFile = entry.resource;
+                            }
+                        });
+                    }
+                    if (styleFile) {
+                        const customStyle : StyleSpec = await loadItemInfo(this._itemInfo.itemId,{
+                            ...params,
+                            endpoint:`/resources/${styleFile}`
+                        })
+            console.log('Item style request:',customStyle);
+                        styleInfo = customStyle
+                    }
+                }
+
+                if (styleInfo) {
+                    this._setStyle(styleInfo);
+                    break;
+                }
+                else {
+                    // TODO load style from service url here instead
+                    warn('Could not find a style resource associated with the provided item ID. Checking service URL instead...');
+                    setupMethod = 'serviceUrl';
+                }
             }
-            else {
-                // TODO load style from service url here instead
-                warn('Could not find a style resource associated with the provided item ID. Checking service URL instead...')
+            case 'serviceUrl': {
+                console.log(setupMethod);
+                console.log('now we here');
+
             }
+        }
+
+            
+
+
             /*
                 // 2. if error, load style from service url
                 loadServiceInfo()
                 loadStyleFromService()
             */
-        }
-
-        /*
-        else if (this._serviceInfo.serviceUrl) {
+        // Service URL provided
             // item ID
             // default style URL
             // title URL
-            loadServiceInfo()
-            loadStyleFromService()
-            
-            loadItemInfo()
-        }
-        */
+            //loadServiceInfo() - to find the style file. it will almost always be default, ok to try with default first then continue
+            //loadStyleFromService()
+            //loadItemInfo() - for attribution
         // create maplibre style source
 
         // create maplibre style layers...
@@ -179,30 +193,31 @@ export class VectorTileService {
     _setStyle(styleInfoResponse : StyleSpec) {
         this._style = styleInfoResponse;
 
+        // Finish creating sources
+        Object.keys(this._style.sources).forEach(id => {
+            const source = this._style.sources[id];
+
+            // Provide authentication
+            if (this.accessToken) {
+                if (source.url) source.url = `${source.url}?token=${this.accessToken}`;
+                if (source.tiles) source.tiles = source.tiles.map((tileUrl) => `${tileUrl}?token=${this.accessToken}`);
+            }
+            // Provide attribution
+            if (this._itemInfo.accessInformation) {
+                source.attribution = this._itemInfo.accessInformation;
+            }
+        })
+
+
         // Public API
         this.sources = this._style.sources;
         this.layers = this._style.layers;
-
-        // Sanitize sources
-        if (this._itemInfo.accessInformation) {
-            Object.keys(this.sources).forEach(id => {
-
-                if (this.accessToken) {
-                    if (this.sources[id].url) this.sources[id].url = `${this.sources[id].url}?token=${this.accessToken}`;
-                    if (this.sources[id].tiles) this.sources[id].tiles = this.sources[id].tiles.map((tileUrl) => `${tileUrl}?token=${this.accessToken}`);
-                }
-
-                this.sources[id].attribution = this._itemInfo.accessInformation;
-            })
-        }
-
         // Common case: only one source
-        if (Object.keys(this._style.sources).length == 1) {
-            const id = Object.keys(this._style.sources)[0];
+        if (Object.keys(this.sources).length == 1) {
+            const id = Object.keys(this.sources)[0];
             this.id = id;
-            this.source = this._style.sources[id];
+            this.source = this.sources[id];
         }
-
     }
     createLayer() {
     }
