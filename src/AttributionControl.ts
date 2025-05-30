@@ -9,12 +9,12 @@ export class AttributionControl extends MaplibreAttributionControl {
     _minimized?:boolean;
     constructor (options : AttributionControlOptions) {
         
-        const esriAttribution = "Powered by <a href=\"https://www.esri.com/\" target=\"_blank\">Esri</a>";
-        const maplibreAttribution = "<a href=\"https://maplibre.org/\" target=\"_blank\">MapLibre</a>";
+        const esriAttribution = "Powered by <a href=\"https://www.esri.com/\">Esri</a>";
+        const maplibreAttribution = "<a href=\"https://maplibre.org/\" >MapLibre</a>";
 
         const attributionOptions : MaplibreAttributionControlOptions = {
             compact: (options?.compact !== undefined) ? options.compact : true,
-            customAttribution: esriAttribution //`${maplibreAttribution} | ${esriAttribution}`
+            customAttribution: `${maplibreAttribution} | ${esriAttribution}`
         }
 
         super(attributionOptions);
