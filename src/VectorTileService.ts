@@ -1,6 +1,7 @@
 import type {LayerSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import { ItemId, ServiceUrlOrItemId, checkServiceUrlOrItemId, loadItemInfo, loadServiceInfo } from './Util';
 import { warn } from './Request';
+import { Map } from 'maplibre-gl';
 
 type VectorTileServiceOptions = {
     accessToken?: string;
@@ -57,9 +58,11 @@ export class VectorTileService {
 
     _style: StyleSpec
 
+    _created: boolean;
     _itemInfoLoaded: boolean;
     _styleLoaded: boolean;
-
+    _map?:Map;
+    
     constructor(urlOrId : ServiceUrlOrItemId, options? : VectorTileServiceOptions) {
 
         if (options?.accessToken) {
@@ -83,6 +86,7 @@ export class VectorTileService {
                 portalUrl:options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com'
             };
         }
+        this._created = false;
     }
     // actually creates the thing from an existing instance
     async createService() {
@@ -180,6 +184,7 @@ export class VectorTileService {
                 //throw new Error('Unable to load style information from service URL or item ID.')
             }
         }
+        this._created = true;
         return this;
     }
     
@@ -244,6 +249,19 @@ export class VectorTileService {
     _loadServiceMetadata = async () => {
         // TODO
         // /metadata.json
+    }
+
+    addTo(map : Map) {
+        if (!this._created) throw new Error('Service must be created first with createService() method.');
+        this._map = map;
+
+        Object.keys(this.sources).forEach(sourceId => {
+            map.addSource(sourceId,this.sources[sourceId])
+        })
+
+        this.layers.forEach(layer => {
+            map.addLayer(layer);
+        })
     }
 
     // creates a vector tile service and returns its instance

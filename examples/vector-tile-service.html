@@ -34,19 +34,21 @@
             });
             map.addControl(new maplibreArcGIS.AttributionControl());
 
-            map.on('load',()=>{
+            map.on('load',async ()=>{
                 // Service URLs are also supported. Try:
                 // https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_Mountains_Parcels_VTL/VectorTileServer/
-                maplibreArcGIS.VectorTileService.create('f0298e881b5b4743bbdf2c7d378acc84')
-                .then(vectorService => {
-
-                    map.addSource(vectorService.id,vectorService.source);
-                    vectorService.layers.forEach(layer => {
-                        map.addLayer(layer);
-                    })
-
-                })
+                const vectorService = await maplibreArcGIS.VectorTileService.create('f0298e881b5b4743bbdf2c7d378acc84');
+                vectorService.addTo(map);
             })
+
+
+            // Alternatively, add sources and layers the 'maplibre way':
+            /*
+            map.addSource(vectorService.id,vectorService.source);
+            vectorService.layers.forEach(layer => {
+                map.addLayer(layer);
+            })
+            */
         </script>
     </body>
 </html>

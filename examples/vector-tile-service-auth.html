@@ -45,18 +45,11 @@
 
             map.on('load',async () => {
 
-                const vectorTileService = await maplibreArcGIS.VectorTileService.create(vectorTileServiceAuth.itemId,{
+                const vectorService = await maplibreArcGIS.VectorTileService.create('f0298e881b5b4743bbdf2c7d378acc84',{
                     accessToken:vectorTileKey
                 });
-                
-                map.addSource(vectorTileService.id,vectorTileService.source);
-                vectorTileService.layers.forEach(layer => {
-                        map.addLayer(layer);
-                });
+                vectorService.addTo(map);
             });
-
-            // Item ID: 5f819bf99d7c4a9da521405dab53b084
-            // Service URL also works: 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/USA_States_Population_st_(vector_tile)/VectorTileServer'
 
         </script>
     </body>
