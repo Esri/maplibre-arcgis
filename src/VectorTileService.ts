@@ -29,7 +29,7 @@ type ServiceInfo = {
     serviceUrl: string;
     serviceItemId?: string;  
     styleEndpoint?: string; // Usually "/resources/styles"
-    tiles?: string; // Usually "tile/{z}/{y}/{x}.pbf"
+    tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
 
 type StyleSpec = {
@@ -94,29 +94,14 @@ export class VectorTileService {
 
         switch (setupMethod) {
             case 'itemId': {
+
+                await this._getItemProperties();
+                // --- vector-tile-specific info below here ---
+
                 const params = {
                     token:this.accessToken,
                     portalUrl:this._itemInfo.portalUrl
                 }
-                // --- Get metadata and attribution from item ---
-                const itemResponse : any = await loadItemInfo(this._itemInfo.itemId,params);
-            console.log('Item request:',itemResponse);
-
-                if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
-                // in feature collections, there is still data at the /data endpoint ...... just a heads up
-
-                this._serviceInfo = {
-                    serviceUrl: itemResponse.url
-                }
-                this._itemInfo = {
-                    ...this._itemInfo,
-                    accessInformation: itemResponse.accessInformation,
-                    title: itemResponse.title,
-                    type: itemResponse.type
-                }
-
-                // --- vector-tile-specific info below here ---
-
                 // Load style info
                 let styleInfo : StyleSpec | null = null;
                 // Try loading default style name first
@@ -125,7 +110,7 @@ export class VectorTileService {
                         ...params,
                         endpoint:'/resources/styles/root.json'
                     });
-            console.log('Item style request:',rootStyle);
+                    //console.log('Item style request:',rootStyle);
                     styleInfo = rootStyle;
                 // Check for other style resources associated with the item
                 } catch (e) {
@@ -133,7 +118,7 @@ export class VectorTileService {
                         ...params,
                         endpoint:'/resources'
                     });
-            console.log('Item resource request:',itemResources);
+                    //console.log('Item resource request:',itemResources);
                     let styleFile : string | null = null;
                     if (itemResources.total > 0) {
                         itemResources.resources.forEach(entry => {
@@ -147,8 +132,8 @@ export class VectorTileService {
                             ...params,
                             endpoint:`/resources/${styleFile}`
                         })
-            console.log('Item style request:',customStyle);
-                        styleInfo = customStyle
+                         //console.log('Item style request:',customStyle);
+                        styleInfo = customStyle;
                     }
                 }
 
@@ -157,45 +142,82 @@ export class VectorTileService {
                     break;
                 }
                 else {
-                    // TODO load style from service url here instead
                     warn('Could not find a style resource associated with the provided item ID. Checking service URL instead...');
                     setupMethod = 'serviceUrl';
                 }
             }
             case 'serviceUrl': {
-                console.log(setupMethod);
-                console.log('now we here');
+                if (!this._serviceInfo.serviceUrl) throw new Error('No data service provided')
 
+                const params = {
+                    token:this.accessToken
+                }
+
+                // if we always need to get attribution then there's no point in requesting the default style first
+                const serviceResponse : any = await loadServiceInfo(this._serviceInfo.serviceUrl,params);
+                //console.log('Service request:',serviceResponse);
+                if (!this._itemInfo) {
+                    this._itemInfo = {
+                        itemId:serviceResponse.serviceItemId,
+                        portalUrl: 'https://www.arcgis.com' // TODO how on earth do we find the correct Enterprise URL here?
+                    }
+                }
+                await this._getItemProperties();
+
+                this._serviceInfo.tiles = serviceResponse.tiles;
+                this._serviceInfo.styleEndpoint = serviceResponse.defaultStyles;
+
+                const styleInfo : StyleSpec = await loadServiceInfo(this._serviceInfo.serviceUrl,{
+                    ...params,
+                    endpoint:`/${serviceResponse.defaultStyles}`
+                });
+                //console.log('Service style request:',styleInfo)
+
+                if (!styleInfo) throw new Error('Failed to fetch style')
+
+                this._setStyle(styleInfo);
+
+                //throw new Error('Unable to load style information from service URL or item ID.')
             }
         }
-
-            
-
-
-            /*
-                // 2. if error, load style from service url
-                loadServiceInfo()
-                loadStyleFromService()
-            */
-        // Service URL provided
-            // item ID
-            // default style URL
-            // title URL
-            //loadServiceInfo() - to find the style file. it will almost always be default, ok to try with default first then continue
-            //loadStyleFromService()
-            //loadItemInfo() - for attribution
-        // create maplibre style source
-
-        // create maplibre style layers...
-
         return this;
     }
+    
+    async _getItemProperties() {
+
+        // --- Get metadata and attribution from item ---
+        const itemResponse : any = await loadItemInfo(this._itemInfo.itemId,{
+            token:this.accessToken,
+            portalUrl:this._itemInfo.portalUrl
+        });
+        //console.log('Item request:',itemResponse);
+
+        if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
+        // in feature collections, there is still data at the /data endpoint ...... just a heads up
+
+        this._serviceInfo = {
+            serviceUrl: itemResponse.url
+        }
+        this._itemInfo = {
+            ...this._itemInfo,
+            accessInformation: itemResponse.accessInformation,
+            title: itemResponse.title,
+            type: itemResponse.type
+        }
+    }
+
     _setStyle(styleInfoResponse : StyleSpec) {
         this._style = styleInfoResponse;
 
         // Finish creating sources
         Object.keys(this._style.sources).forEach(id => {
             const source = this._style.sources[id];
+
+            if (source.url == '../../') source.url = this._serviceInfo.serviceUrl;
+            if (!source.tiles) {
+                if (this._serviceInfo.tiles) source.tiles = [`${source.url}/${this._serviceInfo.tiles[0]}`];
+                else source.tiles = [`${source.url}/tile/{z}/{y}/{x}.pbf`]; // Just take our best guess
+            }
 
             // Provide authentication
             if (this.accessToken) {
@@ -208,7 +230,6 @@ export class VectorTileService {
             }
         })
 
-
         // Public API
         this.sources = this._style.sources;
         this.layers = this._style.layers;
@@ -219,20 +240,9 @@ export class VectorTileService {
             this.source = this.sources[id];
         }
     }
-    createLayer() {
-    }
 
-    createSource() {
-    }
-    
-    loadStyleFromItem = async (itemId, options) => {
-    }
-
-    loadStyleFromService = async (serviceUrl, options) => {
-        // default: /resources/styles
-    }
-
-    loadServiceMetadata = async (serviceUrl, options) => {
+    _loadServiceMetadata = async () => {
+        // TODO
         // /metadata.json
     }
 
@@ -242,28 +252,7 @@ export class VectorTileService {
         await vectorService.createService();
         return vectorService;
     }
-    
-    // what does loadService do?
-    // 1. load item info
-    // 2. load service info
-    // 3. load style info
-
-    // loadItemInfo
-    // loadServiceInfo
-    // loadStyleInfo
-    // loadServiceMetadata
-
-    // create source and layers
-
 }
-/*
-Case 1: single Source, single Layer
-
-Case 2: single Source, multiple Layers
-
-Case 3: multiple Source, multiple Layers -> handle later
-*/
-
 
 /*
 constructor(url)

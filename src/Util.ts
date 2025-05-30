@@ -10,7 +10,7 @@ export type CommonRequestParams = {
     f?: 'html' | 'json' | 'pjson'
 }
 
-export const vectorTileServiceRegex = /\/VectorTileServer\/?$/;
+export const vectorTileServiceRegex = /\/VectorTileServer\/?.*$/;
 
 export const checkServiceUrlOrItemId = (idOrUrl : ServiceUrlOrItemId) : 'serviceUrl' | 'itemId' => {
 
@@ -29,15 +29,13 @@ export const checkServiceUrlOrItemId = (idOrUrl : ServiceUrlOrItemId) : 'service
 
 export const loadItemInfo = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) : Promise<any> => {
 
-    console.log('Item request:',itemId,options);
-   
     const itemUrl = `${options.portalUrl ? options.portalUrl : 'https://www.arcgis.com'}/sharing/rest/content/items/${itemId}${options.endpoint ? options.endpoint : ''}`;
-
     const params = (({portalUrl,endpoint,...params})=>params)(options);
-
     return request(itemUrl, params);
 }
-export const loadServiceInfo = async (serviceUrl : ServiceUrl, options : CommonRequestParams, endpoint : string|null = null) => {
+export const loadServiceInfo = async (serviceUrl : ServiceUrl, options : CommonRequestParams & {endpoint?:string}) : Promise<any> => {
 
-    return request(serviceUrl,options);
+    const url = `${serviceUrl}${options.endpoint ? options.endpoint : ''}`;
+    const params = (({endpoint, ...params})=>params)(options);
+    return request(url,params);
 }
