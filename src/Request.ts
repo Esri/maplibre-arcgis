@@ -37,7 +37,7 @@ function serialize(params : Record<string,any>) {
     return data.replaceAll("'", APOSTROPHE_URL_ENCODE);
 }
 
-export function fetchRequest(requestUrl : string, params : CommonRequestParams | Record<string,any> = {}, context? : any) {
+export function fetchRequest(requestUrl : string, params : CommonRequestParams | Record<string,any> = {}, context? : any) : Promise<any> {
 
     const requestOptions : RequestInit = {};
     requestOptions.headers = {}
@@ -93,7 +93,7 @@ export function fetchRequest(requestUrl : string, params : CommonRequestParams |
     })
 }
 
-const makeRequest = async (requestUrl, requestOptions, resolve,reject) => {
+const makeRequest = async (requestUrl, requestOptions, resolve,reject) : Promise<any> => {
     return fetch(requestUrl,requestOptions).then(response => {
         if (!response.ok) {
             reject(`${response.url} ${response.status} (${response.statusText})`);

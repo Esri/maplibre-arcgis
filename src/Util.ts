@@ -17,7 +17,6 @@ export const checkServiceUrlOrItemId = (idOrUrl : ServiceUrlOrItemId) : 'service
     const httpRegex = /^https?:\/\//;
 
     // Check other service types here eventually
-    
     if (httpRegex.test(idOrUrl) && vectorTileServiceRegex.test(idOrUrl)) {
         return 'serviceUrl';
     }
@@ -27,15 +26,8 @@ export const checkServiceUrlOrItemId = (idOrUrl : ServiceUrlOrItemId) : 'service
     else throw new Error('Input must be a valid ArcGIS service URL or item ID.');
 }
 
-export const loadItemInfo = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) : Promise<any> => {
-
+export const itemRequest = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) : Promise<any> => {
     const itemUrl = `${options.portalUrl ? options.portalUrl : 'https://www.arcgis.com'}/sharing/rest/content/items/${itemId}${options.endpoint ? options.endpoint : ''}`;
     const params = (({portalUrl,endpoint,...params})=>params)(options);
     return request(itemUrl, params);
-}
-export const loadServiceInfo = async (serviceUrl : ServiceUrl, options : CommonRequestParams & {endpoint?:string}) : Promise<any> => {
-
-    const url = `${serviceUrl}${options.endpoint ? options.endpoint : ''}`;
-    const params = (({endpoint, ...params})=>params)(options);
-    return request(url,params);
 }
