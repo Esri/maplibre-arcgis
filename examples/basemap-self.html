@@ -20,19 +20,19 @@
         <script src="../debug/apikey.js"></script>
         <script type="module">
 
-            const selfResponse = await maplibreArcGIS.BasemapStyle.getSelf();
-            console.log(selfResponse);
-
-            const style = selfResponse.styles[0].path;
-
             const map = new maplibregl.Map({
                 container: "map", // the id of the div element
-                style: maplibreArcGIS.BasemapStyle.url(style,{
-                    accessToken: apiKey,
-                }),
                 zoom: 14, // starting zoom
                 center: [-117.805, 34.027] // starting location [longitude, latitude]
             });
+
+            const selfResponse = await maplibreArcGIS.BasemapStyle.getSelf();
+            console.log(selfResponse);
+            const style = selfResponse.styles[0].path;
+
+            new maplibreArcGIS.BasemapStyle(style,{
+                    accessToken: apiKey,
+            }).addTo(map);
 
         </script>
     </body>

@@ -25,14 +25,17 @@
                 zoom: 14, // starting zoom
                 center: [-117.805, 34.027], // starting location
             });
-
-            // Also supports item IDs for custom basemap styles
-            // Try: '9d94a890b76a417cad8a748df4f97336'
-            const style = new maplibreArcGIS.BasemapStyle('arcgis/navigation', {
+            const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
                 accessToken: apiKey
-            });
-            style.addTo(map);
+            }).addTo(map);
 
-        </script>
+            // These options are also accepted in the constructor
+            style.setPreferences({
+                places:'all',
+                worldview:'unitedStatesOfAmerica',
+                language:'zh-tw'
+            })
+
+            </script>
     </body>
 </html>
