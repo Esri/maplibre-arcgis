@@ -13,22 +13,15 @@ type ItemInfo = {
     itemId: string;
     title?: string;
     accessInformation?: string; // Attribution information
-    type?: string;
+    //spatialReference?: string,
+    //access?: string,
+    //type?: string;
 }
-type ItemInfoResponse = {
-    id: ItemId,
-    url: string,
-    title: string,
-    type: string,
-    accessInformation?:string,
-    //spatialReference: string,
-
-    //access: string, // TODO public || private || etc
-} | any;
 
 type ServiceInfo = {
     serviceUrl: string;
-    serviceItemId?: string;  
+    serviceItemId?: string;
+    serviceItemPortalUrl?: string;  
     styleEndpoint?: string; // Usually "/resources/styles"
     tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
@@ -55,14 +48,13 @@ export class VectorTileService {
     sources: {[sourceName:string]:VectorSourceSpecification};
     layers: LayerSpecification[];
 
-
     _style: StyleSpec
-
-    _created: boolean;
-    _itemInfoLoaded: boolean;
     _styleLoaded: boolean;
+    _itemInfoLoaded: boolean;
+    _serviceInfoLoaded: boolean;
+
     _map?:Map;
-    
+
     constructor(urlOrId : ServiceUrlOrItemId, options? : VectorTileServiceOptions) {
 
         if (options?.accessToken) {
@@ -73,34 +65,33 @@ export class VectorTileService {
             throw new Error('A service URL or Item ID is required for VectorTileService.');
         }
 
+        this._styleLoaded = false;
+        this._itemInfoLoaded = false;
+        this._serviceInfoLoaded = false;
+        
         const inputType = checkServiceUrlOrItemId(urlOrId);
-
         if (inputType === 'serviceUrl') {
             this._serviceInfo = {
-                serviceUrl:urlOrId
-            };
+                serviceUrl: urlOrId,
+                serviceItemPortalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com',
+            }
         }
         else if (inputType === 'itemId') {
             this._itemInfo = {
-                itemId:urlOrId,
-                portalUrl:options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com'
+                itemId: urlOrId,
+                portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com'
             };
         }
-        this._created = false;
-    }
-    // actually creates the thing from an existing instance
-    async createService() {
+        console.log(this,inputType);
 
-        this._styleLoaded = false;
-        this._itemInfoLoaded = false;
+    }
+    // Loads the style from ArcGIS
+    async loadStyle() {
 
         let setupMethod = this._itemInfo ? 'itemId' : 'serviceUrl';
 
         switch (setupMethod) {
             case 'itemId': {
-
-                await this._getItemProperties();
-                // --- vector-tile-specific info below here ---
 
                 const params = {
                     token:this.accessToken,
@@ -141,6 +132,8 @@ export class VectorTileService {
                     }
                 }
 
+                await this._getItemProperties();
+
                 if (styleInfo) {
                     this._setStyle(styleInfo);
                     break;
@@ -160,16 +153,20 @@ export class VectorTileService {
                 // if we always need to get attribution then there's no point in requesting the default style first
                 const serviceResponse : any = await loadServiceInfo(this._serviceInfo.serviceUrl,params);
                 //console.log('Service request:',serviceResponse);
-                if (!this._itemInfo) {
+                this._serviceInfo = {
+                    ...this._serviceInfo,
+                    tiles: serviceResponse.tiles,
+                    styleEndpoint: serviceResponse.defaultStyles
+                }
+                this._serviceInfoLoaded = true;
+
+                if (!this._itemInfoLoaded) {
                     this._itemInfo = {
                         itemId:serviceResponse.serviceItemId,
                         portalUrl: 'https://www.arcgis.com' // TODO how on earth do we find the correct Enterprise URL here?
                     }
                 }
                 await this._getItemProperties();
-
-                this._serviceInfo.tiles = serviceResponse.tiles;
-                this._serviceInfo.styleEndpoint = serviceResponse.defaultStyles;
 
                 const styleInfo : StyleSpec = await loadServiceInfo(this._serviceInfo.serviceUrl,{
                     ...params,
@@ -179,12 +176,13 @@ export class VectorTileService {
 
                 if (!styleInfo) throw new Error('Failed to fetch style')
 
+                
                 this._setStyle(styleInfo);
 
                 //throw new Error('Unable to load style information from service URL or item ID.')
             }
         }
-        this._created = true;
+        this._styleLoaded = true;
         return this;
     }
     
@@ -200,15 +198,20 @@ export class VectorTileService {
         if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
         // in feature collections, there is still data at the /data endpoint ...... just a heads up
 
-        this._serviceInfo = {
-            serviceUrl: itemResponse.url
+        if (!this._serviceInfoLoaded) {
+            this._serviceInfo = {
+                serviceUrl: itemResponse.url
+            }
         }
+
         this._itemInfo = {
             ...this._itemInfo,
             accessInformation: itemResponse.accessInformation,
             title: itemResponse.title,
-            type: itemResponse.type
+            //type: itemResponse.type
         }
+        this._itemInfoLoaded = true;
+        console.log(this._serviceInfo,this._itemInfo)
     }
 
     _setStyle(styleInfoResponse : StyleSpec) {
@@ -246,13 +249,11 @@ export class VectorTileService {
         }
     }
 
-    _loadServiceMetadata = async () => {
-        // TODO
-        // /metadata.json
-    }
+    async addTo(map : Map) {
 
-    addTo(map : Map) {
-        if (!this._created) throw new Error('Service must be created first with createService() method.');
+        await this.loadStyle();
+        if (!this._styleLoaded) throw new Error('Error loading style from ArcGIS.');
+
         this._map = map;
 
         Object.keys(this.sources).forEach(sourceId => {
@@ -264,12 +265,19 @@ export class VectorTileService {
         })
     }
 
+    //_loadServiceMetadata = async () => {
+        // TODO
+        // /metadata.json
+    //}
+
+    /*
     // creates a vector tile service and returns its instance
     static async create(portalUrlOrId : ServiceUrlOrItemId, options : VectorTileServiceOptions) {
         const vectorService = new VectorTileService(portalUrlOrId,options);
-        await vectorService.createService();
+        await vectorService.loadStyle();
         return vectorService;
     }
+    */
 }
 
 /*
