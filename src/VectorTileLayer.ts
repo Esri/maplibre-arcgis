@@ -3,7 +3,7 @@ import { ItemId, ServiceUrlOrItemId, checkServiceUrlOrItemId, itemRequest } from
 import { request, warn } from './Request';
 import { Map } from 'maplibre-gl';
 
-type VectorTileServiceOptions = {
+type VectorTileLayerOptions = {
     accessToken?: string;
     portalUrl?: string;
 }
@@ -35,7 +35,7 @@ type StyleSpec = {
     "layers":LayerSpecification[]
 }
 
-export class VectorTileService {
+export class VectorTileLayer {
 
     accessToken: string;
     _serviceInfo : ServiceInfo;
@@ -56,9 +56,9 @@ export class VectorTileService {
 
     _map?:Map;
 
-    constructor (urlOrId : ServiceUrlOrItemId, options? : VectorTileServiceOptions) {
+    constructor (urlOrId : ServiceUrlOrItemId, options? : VectorTileLayerOptions) {
 
-        if (!urlOrId) throw new Error('A service URL or Item ID is required for VectorTileService.');
+        if (!urlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
         if (options?.accessToken) this.accessToken = options.accessToken;
         
         this._styleLoaded = false;
@@ -81,7 +81,7 @@ export class VectorTileService {
         console.log(this,this._inputType);
     }
     // Loads the style from ArcGIS
-    async loadStyle() : Promise<VectorTileService> {
+    async loadStyle() : Promise<VectorTileLayer> {
         let styleInfo : StyleSpec | null = null;
 
         if (this._inputType == 'itemId') {
@@ -94,8 +94,8 @@ export class VectorTileService {
             }
         } else {
             await this._loadServiceInfo();
-            await this._loadItemInfo();
             styleInfo = await this._loadStyleFromServiceUrl();
+            await this._loadItemInfo();
         }
 
         if (!styleInfo) throw new Error('Unable to load style information from service URL or item ID.')
@@ -232,7 +232,7 @@ export class VectorTileService {
         }
     }
 
-    async addTo(map : Map) : Promise<VectorTileService> {
+    async addTo(map : Map) : Promise<VectorTileLayer> {
         
         await this.loadStyle();
         if (!this._styleLoaded) throw new Error('Error loading style from ArcGIS.');
@@ -254,9 +254,9 @@ export class VectorTileService {
     //}
     // creates a vector tile service and returns its instance
     // static async create(portalUrlOrId : ServiceUrlOrItemId, options : VectorTileServiceOptions) {
-    //    const vectorService = new VectorTileService(portalUrlOrId,options);
+    //    const vectorService = new VectorTileLayer(portalUrlOrId,options);
     //    await vectorService.loadStyle();
     //    return vectorService;
     //}
 }
-export default VectorTileService;
+export default VectorTileLayer;
