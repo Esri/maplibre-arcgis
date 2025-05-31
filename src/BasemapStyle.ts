@@ -59,7 +59,7 @@ export class BasemapStyle {
         });
     }
 
-    get styleUrl () {
+    get styleUrl () : string {
 
         let styleUrl = this._baseUrl;
         styleUrl += `?token=${this.accessToken}`;
@@ -86,7 +86,7 @@ export class BasemapStyle {
         return this;
     }
 
-    _updateAttribution () {
+    _updateAttribution () : void {
         if (!this._map) return;
 
         // Remove existing attribution controls
@@ -107,7 +107,7 @@ export class BasemapStyle {
         this._map.addControl(new AttributionControl())
     }
 
-    setStyle (style : StyleOptions) {
+    setStyle (style : StyleOptions) : BasemapStyle {
         this.style = style; // arcgis/outdoor
         if (!(this.style.startsWith('arcgis/') || this.style.startsWith('open/') || this.style.startsWith('osm/')) && this.style.length === 32) {
             // Style is an ItemId
@@ -120,9 +120,11 @@ export class BasemapStyle {
             this._isItemId = false;
         }
         if (this._map) this._map.setStyle(this.styleUrl);
+
+        return this;
     }
 
-    setPreferences (preferences : BasemapPreferences) {
+    setPreferences (preferences : BasemapPreferences) : BasemapStyle {
         if (!this.preferences) this.preferences = {};
 
         if (preferences.language) {
@@ -140,13 +142,13 @@ export class BasemapStyle {
 
         if (this._map) this._map.setStyle(this.styleUrl);
 
-        return this.styleUrl;
+        return this;
     }
     /**
      * Makes a \'/self\' request to the basemap styles service endpoint
      * @param accessToken An ArcGIS access token
      */
-    static async getSelf (options:{accessToken?:string}) {
+    static async getSelf (options:{accessToken?:string}) : Promise<any> {
         return await request(`${BasemapStyle._baseUrl}/self`,{token:options?.accessToken});
     }
     /**
@@ -155,7 +157,7 @@ export class BasemapStyle {
      * @param {IBasemapStyleOptions} options Additional parameters including an ArcGIS access token
      * @returns {string} The URL of the specified ArcGIS basemap style with all included parameters
      */
-    static url (style : StyleEnum, options :IBasemapStyleOptions) {
+    static url (style : StyleEnum, options :IBasemapStyleOptions) : string {
         return new BasemapStyle(style,options).styleUrl;
     }
 }
