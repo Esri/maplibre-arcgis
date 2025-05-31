@@ -78,7 +78,6 @@ export class VectorTileLayer {
                 portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com'
             };
         }
-        console.log(this,this._inputType);
     }
     // Loads the style from ArcGIS
     async loadStyle() : Promise<VectorTileLayer> {
@@ -102,7 +101,7 @@ export class VectorTileLayer {
 
         this._setStyle(styleInfo);
         this._styleLoaded = true;
-
+        
         return this;
     }
     async _loadStyleFromItemId() : Promise<StyleSpec | null> {
@@ -118,7 +117,6 @@ export class VectorTileLayer {
                 ...params,
                 endpoint:'/resources/styles/root.json'
             });
-            //console.log('Item style request:',rootStyle);
             styleInfo = rootStyle;
         // Check for other style resources associated with the item
         } catch (e) {
@@ -126,7 +124,7 @@ export class VectorTileLayer {
                 ...params,
                 endpoint:'/resources'
             });
-            //console.log('Item resource request:',itemResources);
+
             let styleFile : string | null = null;
             if (itemResources.total > 0) {
                 itemResources.resources.forEach(entry => {
@@ -140,7 +138,6 @@ export class VectorTileLayer {
                     ...params,
                     endpoint:`/resources/${styleFile}`
                 })
-                 //console.log('Item style request:',customStyle);
                 styleInfo = customStyle;
             }
         }
@@ -166,7 +163,6 @@ export class VectorTileLayer {
                 portalUrl: this._serviceInfo.serviceItemPortalUrl
             }
         }
-        //console.log('Service request:',serviceResponse);
         this._serviceInfo = {
             ...this._serviceInfo,
             tiles: serviceResponse.tiles,

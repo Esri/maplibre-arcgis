@@ -91,14 +91,12 @@ export class BasemapStyle {
 
         // Remove existing attribution controls
         if (this._map._controls.length > 0) {
-            console.log(this._map._controls);
 
             const controlIsAttribution = (control : any) : control is MaplibreAttributionControl => {
                 return control.options.customAttribution !== undefined;
             }
             this._map._controls.forEach(control => {            
                 if (controlIsAttribution(control)) {
-                    console.log('to remove:',control)
                     this._map?.removeControl(control);
                 }
             })
