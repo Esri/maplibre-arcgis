@@ -1,5 +1,8 @@
+import { IControl, Map } from "maplibre-gl";
 import { request } from "./Request";
 import { ItemId } from "./Util";
+import { AttributionControl } from './AttributionControl';
+import { AttributionControl as MaplibreAttributionControl } from "maplibre-gl";
 
 type IBasemapStyleOptions = {
     accessToken: string;
@@ -8,28 +11,29 @@ type IBasemapStyleOptions = {
     places?: PlacesOptions;
 }
 
+type BasemapPreferences = {
+    places?: PlacesOptions;
+    worldview?: string;
+    language?: string;
+}
+
+type PlacesOptions = 'all' | 'attributed' | 'none';
 type StyleFamily = 'arcgis' | 'open' | 'osm';
 type StyleEnum = `${StyleFamily}/${string}`;
 type StyleOptions = StyleEnum | ItemId;
-type BasemapServiceUrl = string;
-type PlacesOptions = 'all' | 'attributed' | 'none';
 
 export class BasemapStyle {
     // Type declarations
     style: StyleOptions;
     accessToken: string;
-    _baseUrl: BasemapServiceUrl;
-    language?: string;
-    worldview?: string;
-    places?: PlacesOptions;
+    
+    preferences: BasemapPreferences;
+
     options: IBasemapStyleOptions;
     _isItemId: boolean;
-    // map: Map; for updating
-
-    // TODO setStyle, setPlaces, setLanguage
-
-
-    static _baseUrl: BasemapServiceUrl = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
+    _map?: Map;
+    _baseUrl: string;
+    static _baseUrl: string = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
     /**
      * 
      * @param {StyleOptions} style - The basemap style enumeration
@@ -48,17 +52,11 @@ export class BasemapStyle {
         this.setStyle(style);
 
         // Language param
-        if (options.language) {
-            this.setLanguage(options.language);
-        }
-        // Worldview param
-        if (options.worldview) {
-            this.setWorldview(options.worldview);
-        }
-        // Places param
-        if (options.places) {
-            this.setPlaces(options.places);
-        }
+        this.setPreferences({
+            language:options?.language,
+            worldview:options?.worldview,
+            places:options?.places
+        });
     }
 
     get styleUrl () {
@@ -66,17 +64,47 @@ export class BasemapStyle {
         let styleUrl = this._baseUrl;
         styleUrl += `?token=${this.accessToken}`;
         
-        if (this.language) {
-            styleUrl += `&language=${this.language}`;
+        if (this.preferences.language) {
+            styleUrl += `&language=${this.preferences.language}`;
         }
-        if (this.worldview) {
-            styleUrl += `&worldview=${this.worldview}`;
+        if (this.preferences.worldview) {
+            styleUrl += `&worldview=${this.preferences.worldview}`;
         }
-        if (this.places) {
-            styleUrl += `&places=${this.places}`;
+        if (this.preferences.places) {
+            styleUrl += `&places=${this.preferences.places}`;
         }
 
         return styleUrl;
+    }
+
+    addTo (map : Map) : BasemapStyle {
+        this._map = map;
+        map.setStyle(this.styleUrl);
+
+        this._updateAttribution();
+
+        return this;
+    }
+
+    _updateAttribution () {
+        if (!this._map) return;
+
+        // Remove existing attribution controls
+        if (this._map._controls.length > 0) {
+            console.log(this._map._controls);
+
+            const controlIsAttribution = (control : any) : control is MaplibreAttributionControl => {
+                return control.options.customAttribution !== undefined;
+            }
+            this._map._controls.forEach(control => {            
+                if (controlIsAttribution(control)) {
+                    console.log('to remove:',control)
+                    this._map?.removeControl(control);
+                }
+            })
+        }
+        // Add Esri attribution
+        this._map.addControl(new AttributionControl())
     }
 
     setStyle (style : StyleOptions) {
@@ -91,29 +119,29 @@ export class BasemapStyle {
             this._baseUrl = `${BasemapStyle._baseUrl}/${this.style}`;        
             this._isItemId = false;
         }
+        if (this._map) this._map.setStyle(this.styleUrl);
     }
 
-    setPlaces (placesOption : PlacesOptions | null) {
-        if (!placesOption) return;
-        
-        if (this._isItemId) console.warn('The \'places\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-        else this.places = placesOption;
-    }
+    setPreferences (preferences : BasemapPreferences) {
+        if (!this.preferences) this.preferences = {};
 
-    setLanguage (languageOption : string | null) {
-        if (!languageOption) return;
-        
-        if (this._isItemId) console.warn('The \'language\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-        else this.language = languageOption;
-    }
+        if (preferences.language) {
+            if (this._isItemId) console.warn('The \'language\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+            else this.preferences.language = preferences.language;
+        }
+        if (preferences.places) {
+            if (this._isItemId) console.warn('The \'places\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+            else this.preferences.places = preferences.places;
+        }
+        if (preferences.worldview) {
+            if (this._isItemId) console.warn('The \'worldview\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
+            else this.preferences.worldview = preferences.worldview;
+        }
 
-    setWorldview (worldviewOption : string | null) {
-        if (!worldviewOption) return;
-        
-        if (this._isItemId) console.warn('The \'worldview\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-        else this.worldview = worldviewOption;
-    }
+        if (this._map) this._map.setStyle(this.styleUrl);
 
+        return this.styleUrl;
+    }
     /**
      * Makes a \'/self\' request to the basemap styles service endpoint
      * @param accessToken An ArcGIS access token
@@ -121,7 +149,12 @@ export class BasemapStyle {
     static async getSelf (options:{accessToken?:string}) {
         return await request(`${BasemapStyle._baseUrl}/self`,{token:options?.accessToken});
     }
-
+    /**
+     * Static method that returns a basemap style URL. Does not add a basemap style to the map.
+     * @param {StyleEnum} style The basemap style enumeration being requested
+     * @param {IBasemapStyleOptions} options Additional parameters including an ArcGIS access token
+     * @returns {string} The URL of the specified ArcGIS basemap style with all included parameters
+     */
     static url (style : StyleEnum, options :IBasemapStyleOptions) {
         return new BasemapStyle(style,options).styleUrl;
     }
@@ -129,12 +162,4 @@ export class BasemapStyle {
 
 export default BasemapStyle;
 
-/**
- * Helper method that returns a basemap style URL directly without the instantiated object.
- * @param {StyleEnum} style The basemap style enumeration being requested
- * @param {IBasemapStyleOptions} options Additional parameters including an ArcGIS access token
- * @returns {BasemapServiceUrl} The URL of the specified ArcGIS basemap style with all included parameters
- */
-export const basemapStyleUrl = (style : StyleEnum, options :IBasemapStyleOptions) => {
-    return new BasemapStyle(style,options).styleUrl;
-}
+

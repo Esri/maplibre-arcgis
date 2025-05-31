@@ -7,7 +7,7 @@ interface AttributionControlOptions {
 
 export class AttributionControl extends MaplibreAttributionControl {
     _minimized?:boolean;
-    constructor (options : AttributionControlOptions) {
+    constructor (options : AttributionControlOptions = {}) {
         
         const esriAttribution = "Powered by <a href=\"https://www.esri.com/\">Esri</a>";
         const maplibreAttribution = "<a href=\"https://maplibre.org/\" >MapLibre</a>";
