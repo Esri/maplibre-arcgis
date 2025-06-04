@@ -77,7 +77,7 @@ export class BasemapStyle {
         return styleUrl;
     }
 
-    addTo (map : Map) : BasemapStyle {
+    applyStyleTo (map : Map) : BasemapStyle {
         this._map = map;
         map.setStyle(this.styleUrl);
 

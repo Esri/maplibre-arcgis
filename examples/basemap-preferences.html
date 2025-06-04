@@ -27,7 +27,7 @@
             });
             const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
                 accessToken: apiKey
-            }).addTo(map);
+            }).applyStyleTo(map);
 
             // These options are also accepted in the constructor
             style.setPreferences({

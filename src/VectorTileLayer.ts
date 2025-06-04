@@ -24,6 +24,7 @@ type ServiceInfo = {
     serviceItemPortalUrl: string;  
     styleEndpoint?: string; // Usually "/resources/styles"
     tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
+    //copyrightText?:string;
 }
 
 type StyleSpec = {
@@ -42,8 +43,7 @@ export class VectorTileLayer {
     _itemInfo : ItemInfo;
     
     // For when there is only one source
-    id?: string;
-    source?: VectorSourceSpecification;
+    sourceId?: string;
 
     sources: {[sourceName:string]:VectorSourceSpecification};
     layers: LayerSpecification[];
@@ -220,39 +220,47 @@ export class VectorTileLayer {
         // Public API
         this.sources = this._style.sources;
         this.layers = this._style.layers;
-        // Common case: only one source
+        /* Common case: only one source
         if (Object.keys(this.sources).length == 1) {
             const id = Object.keys(this.sources)[0];
-            this.id = id;
+            this.sourceId = id;
             this.source = this.sources[id];
+        }*/
+    }
+    setCustomSourceId(oldId:string, newId:string) {
+        // TODO
+    }
+
+    get source () : VectorSourceSpecification {
+        const sourceIds = Object.keys(this.sources)
+        if (sourceIds.length == 1) {
+            //...
+            return this.sources[sourceIds[0]];
+        }
+        else {
+            throw new Error('Style contains multiple sources. Use \'sources\' instead of \'source\'.');
         }
     }
 
-    async addTo(map : Map) : Promise<VectorTileLayer> {
+    async addSourcesAndLayersTo(map : Map) : Promise<VectorTileLayer> {
         
         await this.loadStyle();
         if (!this._styleLoaded) throw new Error('Error loading style from ArcGIS.');
 
         this._map = map;
-
+        // TODO ensure each sourceId is unique
         Object.keys(this.sources).forEach(sourceId => {
             map.addSource(sourceId,this.sources[sourceId])
-        })
+        });
         this.layers.forEach(layer => {
             map.addLayer(layer);
-        })
+        });
 
         return this;
     }
     //_loadServiceMetadata = async () => {
         // TODO
         // /metadata.json
-    //}
-    // creates a vector tile service and returns its instance
-    // static async create(portalUrlOrId : ServiceUrlOrItemId, options : VectorTileServiceOptions) {
-    //    const vectorService = new VectorTileLayer(portalUrlOrId,options);
-    //    await vectorService.loadStyle();
-    //    return vectorService;
     //}
 }
 export default VectorTileLayer;
