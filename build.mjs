@@ -29,6 +29,7 @@ const buildOptions = {
         js:copyright
     },
     globalName: 'maplibreArcGIS',
+    //external:['maplibre-gl']
 }
 
 if (BUILD_MODE == 'dev') {

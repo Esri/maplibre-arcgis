@@ -1,8 +1,8 @@
 {
   "name": "@esri/maplibre-arcgis",
-  "description": "Wrapper for integrating Esri data sources with MapLibre GL JS",
+  "description": "Wrapper for integrating ArcGIS data sources with MapLibre GL JS",
   "version": "1.0.0-beta.1",
-  "author": "George Owen (https://gowen.dev/)",
+  "author": "George Owen (https://github.com/gowin20)",
   "license": "Apache-2.0",
   "keywords": [
     "maplibre",
@@ -18,15 +18,16 @@
   },
   "devDependencies": {
     "esbuild": "^0.25.4",
-    "mkdirp": "^3.0.1",
     "eslint": "^9.24.0",
     "eslint-config-semistandard": "^15.0.1",
     "eslint-config-standard": "^15.0.1",
     "gh-release": "^7.0.2",
     "karma": "^6.4.4",
-    "semistandard": "^16.0.0"
+    "mkdirp": "^3.0.1",
+    "semistandard": "^16.0.0",
+    "typedoc": "^0.28.5"
   },
-  "main": "index.js",
+  "main": "src/MaplibreArcGIS.ts",
   "scripts": {
     "prebuild": "mkdirp dist",
     "build": "node build.mjs prod",
