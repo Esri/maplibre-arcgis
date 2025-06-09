@@ -6,6 +6,7 @@ import { Map } from 'maplibre-gl';
 type VectorTileLayerOptions = {
     accessToken?: string;
     portalUrl?: string;
+    customStyle?:(style:StyleSpec) => StyleSpec
 }
 
 type ItemInfo = {
@@ -49,11 +50,11 @@ export class VectorTileLayer {
     layers: LayerSpecification[];
     _inputType: 'itemId' | 'serviceUrl';
 
-    _style: StyleSpec
+    _style: StyleSpec;
     _styleLoaded: boolean;
     _itemInfoLoaded: boolean;
     _serviceInfoLoaded: boolean;
-
+    _customStyleFn?:(style:StyleSpec) => StyleSpec;
     _map?:Map;
 
     constructor (urlOrId : ServiceUrlOrItemId, options? : VectorTileLayerOptions) {
@@ -77,6 +78,10 @@ export class VectorTileLayer {
                 itemId: urlOrId,
                 portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com'
             };
+        }
+
+        if (options.customStyle) {
+            this._customStyleFn = options.customStyle;
         }
     }
     // Loads the style from ArcGIS
@@ -217,6 +222,8 @@ export class VectorTileLayer {
                 source.attribution = this._itemInfo.accessInformation;
             }
         })
+
+        if (this._customStyleFn) this._style = this._customStyleFn(this._style);
         // Public API
         this.sources = this._style.sources;
         this.layers = this._style.layers;
@@ -245,6 +252,7 @@ export class VectorTileLayer {
     async addSourcesAndLayersTo(map : Map) : Promise<VectorTileLayer> {
         
         await this.loadStyle();
+        
         if (!this._styleLoaded) throw new Error('Error loading style from ArcGIS.');
 
         this._map = map;
