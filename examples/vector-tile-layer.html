@@ -31,11 +31,11 @@
             const style = new maplibreArcGIS.BasemapStyle('arcgis/light-gray', {
                 accessToken: basemapsKey
             });
-            style.addTo(map);
+            style.applyStyleTo(map);
 
             const vectorLayer = new maplibreArcGIS.VectorTileLayer('f0298e881b5b4743bbdf2c7d378acc84',{
                 accessToken:vectorTileKey
-            })
+            });
             
             map.on('load', () => {
                 vectorLayer.addSourcesAndLayersTo(map);

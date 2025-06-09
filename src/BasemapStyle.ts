@@ -9,6 +9,7 @@ type IBasemapStyleOptions = {
     language?: string;
     worldview?: string;
     places?: PlacesOptions;
+    //transformStyle?:TransformStyleFunction;
 }
 
 type BasemapPreferences = {
@@ -31,6 +32,7 @@ export class BasemapStyle {
 
     options: IBasemapStyleOptions;
     _isItemId: boolean;
+    //_transformStyleFn?:TransformStyleFunction;
     _map?: Map;
     _baseUrl: string;
     static _baseUrl: string = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
