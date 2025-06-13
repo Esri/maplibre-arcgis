@@ -1,8 +1,7 @@
-import { IControl, Map } from "maplibre-gl";
+import { Map,  AttributionControl as MaplibreAttributionControl } from "maplibre-gl";
 import { request } from "./Request";
 import { ItemId } from "./Util";
 import { AttributionControl } from './AttributionControl';
-import { AttributionControl as MaplibreAttributionControl } from "maplibre-gl";
 
 type IBasemapStyleOptions = {
     accessToken: string;

@@ -1,5 +1,7 @@
 import type {LayerSpecification, SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import { Map } from 'maplibre-gl';
+import type { ItemId } from './Util';
+import VectorTileLayer from './VectorTileLayer';
 
 export type ItemInfo = {
     portalUrl: string;
@@ -47,23 +49,19 @@ export interface HostedLayer {
     // The associated maplibre map
     _map?:Map;
 
+    _ready:boolean;
+
+    _createSourcesAndLayers() : void;
     // Method used to load information about the ArcGIS data service
     _loadServiceInfo() : Promise<void>;
     
     // Method used to load information about the ArcGIS item
     _loadItemInfo() : Promise<void>;
 
+    initialize() : Promise<HostedLayer>;
     // Convenience method used to add the maplibre sources and layers to a map
-    addSourcesAndLayersTo(map : Map) : Promise<HostedLayer>;
+    addSourcesAndLayersTo(map : Map) : HostedLayer;
 
     //setCustomSourceId(oldId:string, newId:string) : string;
-    /*
-    _style: StyleSpecification;
-    _styleLoaded: boolean;
-    loadStyle() : Promise<HostedLayer>;
-    _loadStyleFromItemId() : Promise<StyleSpecification | null>;
-    _loadStyleFromServiceUrl() : Promise<StyleSpecification | null>;
-    _setStyle(styleInfoResponse : StyleSpecification) : void;
-    */
 }
 export default HostedLayer;
