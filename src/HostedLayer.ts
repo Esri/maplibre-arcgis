@@ -1,7 +1,5 @@
 import type {LayerSpecification, SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import { Map } from 'maplibre-gl';
-import type { ItemId } from './Util';
-import VectorTileLayer from './VectorTileLayer';
 
 export type ItemInfo = {
     portalUrl: string;

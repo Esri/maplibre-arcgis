@@ -1,5 +1,5 @@
 import { LayerSpecification, Map, SourceSpecification } from "maplibre-gl";
-import type {HostedLayer,ServiceInfo,ItemInfo} from "./HostedLayer";
+import {HostedLayer,ServiceInfo,ItemInfo} from "./HostedLayer";
 import { queryFeatures } from "@esri/arcgis-rest-feature-service";
 
 type GeoJSONLayerOptions = {
@@ -26,12 +26,17 @@ const defaultGeometryStyleMap = {
 export class GeoJSONLayer implements HostedLayer {
 
     accessToken?:string;
+    _inputType: "itemId" | "serviceUrl";
 
     _serviceInfo:ServiceInfo;
     _serviceInfoLoaded:boolean;
+    
+    _itemInfo: ItemInfo;
+    _itemInfoLoaded: boolean;
 
     _data: any;
     _dataLoaded: boolean;
+    _ready: boolean;
 
     sources: { [_: string]: SourceSpecification; };
     layers: LayerSpecification[];
@@ -47,19 +52,19 @@ export class GeoJSONLayer implements HostedLayer {
             serviceItemPortalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com',
         }
         this._serviceInfoLoaded = false;
+        this._ready = false;
 
         if (options.accessToken) this.accessToken = options.accessToken;
         if (options.type) this._geometryType = options.type;
         else throw new Error('Must provide a valid GeoJSON type in current implementation.');
     }
 
-    async loadData() : Promise<void> {
+    async _loadData() : Promise<void> {
         this._data = await queryFeatures({
             url:this._serviceInfo.serviceUrl,
             f: "geojson"
         });
         this._dataLoaded = true;
-        //console.log(this._data);
     }
 
     _createSourceId() {
@@ -84,6 +89,36 @@ export class GeoJSONLayer implements HostedLayer {
             type:defaultGeometryStyleMap[this._geometryType]
         }];
     }
+
+    async _loadServiceInfo(): Promise<void> {}
+    async _loadItemInfo(): Promise<void> {}
+    
+    _createSourcesAndLayers(): void {
+        this._createDefaultStyle();
+    }
+
+    async initialize() : Promise<GeoJSONLayer> {
+        await this._loadData();
+        this._createSourcesAndLayers();
+        this._ready = true;
+        return this;
+    }
+
+    addSourcesAndLayersTo(map : Map, index: number = 0) : GeoJSONLayer {
+        if (!this._ready) throw new Error('Hosted layer has not finished loading.');
+
+        this._map = map;
+
+        Object.keys(this.sources).forEach(sourceId => {
+            map.addSource(sourceId,this.sources[sourceId])
+        });
+        this.layers.forEach(layer => {
+            map.addLayer(layer);
+        });
+
+        return this;
+    }
+
     get source () : SourceSpecification {
         const sourceIds = Object.keys(this.sources)
         if (sourceIds.length == 1) return this.sources[sourceIds[0]];
@@ -99,36 +134,18 @@ export class GeoJSONLayer implements HostedLayer {
         else throw new Error('Hosted layer contains multiple style layers. Use property \'layers\' instead of \'layer\'.');
     }
 
-    async addSourceAndLayerTo(map : Map, index: number = 0) {
-        if (!this._dataLoaded) await this.loadData();
-        this._createDefaultStyle();
-
-        map.addSource(this.sourceId,this.source);
-
-        this.layers.forEach(layer=>{
-            map.addLayer(layer);
-        });
-
-        return this;
+    /*
+    static async fromItemId (itemId: ItemId, options : GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
+        const vtl = new GeoJSONLayer(itemId,options);
+        await vtl.initialize();
+        return vtl;
     }
-
-    async addSourcesAndLayersTo(map: Map): Promise<HostedLayer> {
-        return this;
+    */
+    static async fromServiceUrl (serviceUrl: string, options : GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
+        const vtl = new GeoJSONLayer(serviceUrl,options);
+        await vtl.initialize();
+        return vtl;
     }
-
-
-
-
-    async _loadServiceInfo(): Promise<void> {}
-    _itemInfo: ItemInfo;
-    _itemInfoLoaded: boolean;
-    _inputType: "itemId" | "serviceUrl";
-    async _loadItemInfo(): Promise<void> {}
-
-    //loadStyle() {
-        // request to URL
-        // https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0
-    //}
 }
 
 export default GeoJSONLayer;
