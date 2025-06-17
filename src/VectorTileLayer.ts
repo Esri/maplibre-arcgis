@@ -2,17 +2,19 @@ import type {LayerSpecification, VectorSourceSpecification, StyleSpecification} 
 import { ItemId, ServiceUrlOrItemId, checkServiceUrlOrItemId, itemRequest } from './Util';
 import { request, warn } from './Request';
 import { Map } from 'maplibre-gl';
-import {HostedLayer,ItemInfo,ServiceInfo} from './HostedLayer';
+import {HostedLayer,HostedLayerOptions,ItemInfo,DataServiceInfo} from './HostedLayer';
 
-type VectorTileLayerOptions = {
-    accessToken?: string;
-    portalUrl?: string;
+type VectorTileLayerOptions = HostedLayerOptions;
+
+type VectorTileServiceInfo = DataServiceInfo & {
+    styleEndpoint?: string; // Usually "/resources/styles"
+    tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
 
 export class VectorTileLayer implements HostedLayer {
 
     accessToken: string;
-    _serviceInfo : ServiceInfo;
+    _serviceInfo : VectorTileServiceInfo;
     _itemInfo : ItemInfo;
     
     sources: {[_:string]:VectorSourceSpecification};
@@ -230,17 +232,35 @@ export class VectorTileLayer implements HostedLayer {
         if (sourceIds.length == 1) return sourceIds[0];
         else throw new Error('Style contains multiple sources. Use \'sources\' instead of \'sourceId\'.');
     }
+    get layer () : LayerSpecification {
+        if (this.layers.length == 1) return this.layers[0];
+        else throw new Error('Hosted layer contains multiple style layers. Use property \'layers\' instead of \'layer\'.');
+    }
+
     getSources () {
 
     }
     getLayers () {
         // structuredClone of layers
     }
-    setSourceId(oldId:string, newId:string) {
-        // TODO
-    }
-    setAttribution(sourceId: string, attribution: string) {
 
+    setSourceId(oldId:string, newId:string) : void {
+        Object.keys(this.sources).forEach(source => {
+            if (source == oldId) {
+                this.sources[newId] = this.sources[oldId];
+                delete this.sources[oldId];
+            }
+        });
+        this.layers.forEach(lyr => {
+            if (lyr.id == oldId) lyr.id = newId; 
+        });
+
+        return;
+    }
+    setAttribution(sourceId: string, attribution: string) : void {
+        this.sources[sourceId].attribution = attribution;
+
+        return;
     }
 
 
