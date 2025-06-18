@@ -11,7 +11,7 @@ type VectorTileServiceInfo = DataServiceInfo & {
     tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
 
-export class VectorTileLayer implements HostedLayer {
+export class VectorTileLayer extends HostedLayer {
 
     accessToken: string;
     _serviceInfo : VectorTileServiceInfo;
@@ -31,13 +31,12 @@ export class VectorTileLayer implements HostedLayer {
 
     constructor (urlOrId : ServiceUrlOrItemId, options? : VectorTileLayerOptions) {
 
+        super();
+        
         if (!urlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
         if (options?.accessToken) this.accessToken = options.accessToken;
         
         this._styleLoaded = false;
-        this._itemInfoLoaded = false;
-        this._serviceInfoLoaded = false;
-        this._ready = false;
 
         this._inputType = checkServiceUrlOrItemId(urlOrId);
         if (this._inputType === 'serviceUrl') {
@@ -52,6 +51,7 @@ export class VectorTileLayer implements HostedLayer {
                 portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com'
             };
         }
+        
     }
     // Loads the style from ArcGIS
     async _loadStyle() : Promise<void> {
@@ -204,44 +204,6 @@ export class VectorTileLayer implements HostedLayer {
         this._createSourcesAndLayers();
         this._ready = true;
         return this;
-    }
-
-    addSourcesAndLayersTo(map : Map) : VectorTileLayer {
-        if (!this._ready) throw new Error('Vector tile layer has not finished loading.');
-
-        this._map = map;
-        // TODO ensure each sourceId is unique
-        Object.keys(this.sources).forEach(sourceId => {
-            map.addSource(sourceId,this.sources[sourceId])
-        });
-        this.layers.forEach(layer => {
-            map.addLayer(layer);
-        });
-
-        return this;
-    }
-
-    // Getters and setters
-    get source () : VectorSourceSpecification {
-        const sourceIds = Object.keys(this.sources)
-        if (sourceIds.length == 1) return this.sources[sourceIds[0]];
-        else throw new Error('Style contains multiple sources. Use \'sources\' instead of \'source\'.');
-    }
-    get sourceId () : string {
-        const sourceIds = Object.keys(this.sources);
-        if (sourceIds.length == 1) return sourceIds[0];
-        else throw new Error('Style contains multiple sources. Use \'sources\' instead of \'sourceId\'.');
-    }
-    get layer () : LayerSpecification {
-        if (this.layers.length == 1) return this.layers[0];
-        else throw new Error('Hosted layer contains multiple style layers. Use property \'layers\' instead of \'layer\'.');
-    }
-
-    getSources () {
-
-    }
-    getLayers () {
-        // structuredClone of layers
     }
 
     setSourceId(oldId:string, newId:string) : void {

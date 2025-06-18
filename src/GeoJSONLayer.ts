@@ -1,5 +1,5 @@
 import { LayerSpecification, Map, SourceSpecification } from "maplibre-gl";
-import {HostedLayer,ServiceInfo,ItemInfo} from "./HostedLayer";
+import {HostedLayer,DataServiceInfo,ItemInfo} from "./HostedLayer";
 import { queryFeatures } from "@esri/arcgis-rest-feature-service";
 
 type GeoJSONLayerOptions = {
@@ -23,19 +23,17 @@ const defaultGeometryStyleMap = {
     "Polygon":"fill"
 }
 
-export class GeoJSONLayer implements HostedLayer {
+export class GeoJSONLayer extends HostedLayer {
 
     accessToken?:string;
     _inputType: "itemId" | "serviceUrl";
 
-    _serviceInfo:ServiceInfo;
+    _serviceInfo:DataServiceInfo;
     _serviceInfoLoaded:boolean;
     
     _itemInfo: ItemInfo;
     _itemInfoLoaded: boolean;
 
-    _data: any;
-    _dataLoaded: boolean;
     _ready: boolean;
 
     sources: { [_: string]: SourceSpecification; };
@@ -45,14 +43,18 @@ export class GeoJSONLayer implements HostedLayer {
 
     // -------- properties unique to GeoJSONLayer
     _geometryType: GeometryTypes;
+    _data: any;
+    _dataLoaded: boolean;
 
     constructor (serviceUrl : string,options: GeoJSONLayerOptions) {
+        super();
+
         this._serviceInfo = {
             serviceUrl: serviceUrl,
             serviceItemPortalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com',
         }
-        this._serviceInfoLoaded = false;
-        this._ready = false;
+
+        this._dataLoaded = false;
 
         if (options.accessToken) this.accessToken = options.accessToken;
         if (options.type) this._geometryType = options.type;
@@ -98,40 +100,15 @@ export class GeoJSONLayer implements HostedLayer {
     }
 
     async initialize() : Promise<GeoJSONLayer> {
+        await this._loadItemInfo();
+        await this._loadServiceInfo();
+
         await this._loadData();
+
         this._createSourcesAndLayers();
+
         this._ready = true;
         return this;
-    }
-
-    addSourcesAndLayersTo(map : Map, index: number = 0) : GeoJSONLayer {
-        if (!this._ready) throw new Error('Hosted layer has not finished loading.');
-
-        this._map = map;
-
-        Object.keys(this.sources).forEach(sourceId => {
-            map.addSource(sourceId,this.sources[sourceId])
-        });
-        this.layers.forEach(layer => {
-            map.addLayer(layer);
-        });
-
-        return this;
-    }
-
-    get source () : SourceSpecification {
-        const sourceIds = Object.keys(this.sources)
-        if (sourceIds.length == 1) return this.sources[sourceIds[0]];
-        else throw new Error('Hosted layer contains multiple sources. Use property \'sources\' instead of \'source\'.');
-    }
-    get sourceId () : string {
-        const sourceIds = Object.keys(this.sources);
-        if (sourceIds.length == 1) return sourceIds[0];
-        else throw new Error('Hosted layer contains multiple sources. Use property \'sources\' instead of \'sourceId\'.');
-    }
-    get layer () : LayerSpecification {
-        if (this.layers.length == 1) return this.layers[0];
-        else throw new Error('Hosted layer contains multiple style layers. Use property \'layers\' instead of \'layer\'.');
     }
 
     /*
