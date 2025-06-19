@@ -4,15 +4,10 @@ import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from "./HostedLayer"
 import { queryFeatures } from "@esri/arcgis-rest-feature-service";
 
 type GeoJSONLayerOptions = HostedLayerOptions & {
-    type: GeometryTypes;
+    type?: GeometryTypes;
     query?: Object;
-    layer: {
-        layout?:any;
-        paint:any;
-    };
-    source: {
-        id:string;
-    }
+    sourceId?:string;
+    layer?:LayerSpecification;
 }
 type GeometryTypes = "Point" | "LineString" | "Polygon" | "MultiPoint" | "MultiLineString" | "MultiPolygon";
 
@@ -34,13 +29,14 @@ export class GeoJSONLayer extends HostedLayer {
     _itemInfoLoaded: boolean;
 
     _ready: boolean;
-
-    sources: { [_: string]: GeoJSONSourceSpecification };
-    layers: LayerSpecification[];
-    
     _map?: Map;
 
     // -------- properties unique to GeoJSONLayer
+    _sources: { [_: string]: GeoJSONSourceSpecification };
+    _layers: LayerSpecification[];
+
+    options?:GeoJSONLayerOptions;
+
     _geometryType: GeometryTypes;
     _data: any;
     _dataLoaded: boolean;
@@ -54,9 +50,10 @@ export class GeoJSONLayer extends HostedLayer {
         }
 
         this._dataLoaded = false;
-        console.log(this);
+
+        if (options) this.options = options;
         if (options?.accessToken) this.accessToken = options.accessToken;
-        if (options?.type) this._geometryType = options.type;
+
         else throw new Error('Must provide a valid GeoJSON type in current implementation.');
     }
 
@@ -69,6 +66,9 @@ export class GeoJSONLayer extends HostedLayer {
     }
 
     _createSourceId() {
+
+        if (this.options.sourceId) return this.options.sourceId;
+
         const end = (this._serviceInfo.serviceUrl.indexOf('FeatureServer'))-1;
         if (end == -2) throw new Error('invalid URL');
         let i=end;
@@ -77,37 +77,40 @@ export class GeoJSONLayer extends HostedLayer {
         return this._serviceInfo.serviceUrl.substring(i,end);
     }
 
-    _createDefaultStyle() {
-        const sourceId = this._createSourceId();
-        const defaultSources = {};
-        defaultSources[sourceId] = {
-            type:'geojson',
-            data:this._data
-        };
-        const defaultLayers = [{
-            id:`${sourceId}-layer`,
-            source:sourceId,
-            type:defaultGeometryStyleMap[this._geometryType]
-        }];
-
-        return {
-            sources:defaultSources,
-            layers:defaultLayers
-        }
-    }
-
     async _loadServiceInfo(): Promise<void> {}
     async _loadItemInfo(): Promise<void> {}
     
     _createSourcesAndLayers(): void {
         if (!this._dataLoaded) throw new Error('Cannot create style without data.');
         
+        const sourceId = this._createSourceId();
+        const sources = {};
+        sources[sourceId] = {
+            type:'geojson',
+            data:this._data
+        };
 
-        const style = this._createDefaultStyle();
+        const layers = [];
+        if (this.options.layer) {
+            const customLayer = {
+                source:sourceId,
+                ...this.options.layer
+            }
+            layers.push(customLayer);
+        }
+        else {
+            const defaultLayer = {
+                source:sourceId,
+                id:`${sourceId}-layer`,
+                type:defaultGeometryStyleMap[this._geometryType]
+            }
+            layers.push(defaultLayer);
+        }
 
+        this._sources = sources;
+        this._layers = layers;
         // Public API is read-only
-        this._createFrozenProperty('sources',style.sources);
-        this._createFrozenProperty('layers',style.layers);
+        this._definePublicApi();
     }
 
     async initialize() : Promise<GeoJSONLayer> {

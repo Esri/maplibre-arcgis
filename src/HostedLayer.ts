@@ -1,6 +1,8 @@
-import type {LayerSpecification, SourceSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type {GeoJSONSourceSpecification, LayerSpecification, SourceSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import { Map } from 'maplibre-gl';
 import { request } from './Request';
+
+type SupportedSourceSpecifications = VectorSourceSpecification | GeoJSONSourceSpecification;
 
 export type HostedLayerOptions = {
     accessToken?: string;
@@ -48,40 +50,103 @@ export abstract class HostedLayer {
     /**
      * Contains formatted maplibre sources for adding to map.
      */
-    sources: {[_:string]:SourceSpecification};
-    get source () : SourceSpecification {
-        const sourceIds = Object.keys(this.sources)
-        if (sourceIds.length == 1) return this.sources[sourceIds[0]];
-        else throw new Error('Style contains multiple sources. Use \'sources\' instead of \'source\'.');
+    _sources: {[_:string]:SupportedSourceSpecifications};
+    _layers: LayerSpecification[];
+    
+    /**
+     * Internal method that formats data into Maplibre-style sources and data layers
+     */
+    abstract _createSourcesAndLayers() : void;
+
+    /**
+     * Defines the following properties:
+     * sources
+     * source
+     * sourceId
+     * layers
+     * layer
+     */
+    _definePublicApi() : void {
+        const readOnlyPropError = (propertyName : string) => {throw new Error(`${propertyName} is a read-only property.`)};
+        
+        Object.defineProperty(this,'sources',{
+            get () : SupportedSourceSpecifications {
+                return this._sources;
+            },
+            set (val) {readOnlyPropError('sources')}
+        });
+        //Object.seal(this['sources']);
+
+        Object.defineProperty(this,'source',{
+            get () : SupportedSourceSpecifications {
+                const sourceIds = Object.keys(this._sources)
+                if (sourceIds.length == 1) return this._sources[sourceIds[0]];
+                else throw new Error('Hosted layer contains multiple sources. Use \'sources\' instead of \'source\'.');
+            },
+            set (val) {readOnlyPropError('source')}
+        });
+        Object.seal(this['source']);
+
+        Object.defineProperty(this,'sourceId',{
+            get () : string {
+                const sourceIds = Object.keys(this._sources);
+                if (sourceIds.length == 1) return sourceIds[0];
+                else throw new Error('Hosted layer contains multiple sources. Use \'sources\' instead of \'sourceId\'.');
+            },
+            set (val) {readOnlyPropError('sourceId')}
+        });
+        Object.seal(this['sourceId']);
+
+        Object.defineProperty(this,'layers',{
+            get () : LayerSpecification[] {
+                return this._layers;
+            },
+            set (val) {readOnlyPropError('layers')}
+        });
+        Object.seal(this['layers']);
+
+        Object.defineProperty(this,'layer',{
+            get () : LayerSpecification {
+                if (this._layers.length == 1) return this._layers[0];
+                else throw new Error('Hosted layer contains multiple style layers. Use property \'layers\' instead of \'layer\'.');
+            },
+            set (val) {readOnlyPropError('layer')}
+        });
+        Object.seal(this['layer']);
     }
-    get sourceId () : string {
-        const sourceIds = Object.keys(this.sources);
-        if (sourceIds.length == 1) return sourceIds[0];
-        else throw new Error('Style contains multiple sources. Use \'sources\' instead of \'sourceId\'.');
+
+   setSourceId(oldId:string, newId:string) : void {
+        // Update ID of source
+        Object.keys(this._sources).forEach(source => {
+            if (source == oldId) {
+                this._sources[newId] = this._sources[oldId];
+                delete this._sources[oldId];
+            }
+        });
+        // Update source ID property of all layers
+        this._layers.forEach(lyr => {
+            if (lyr['source'] == oldId) lyr['source'] = newId; 
+        });
+        return;
+    }
+    
+    setAttribution(sourceId : string, attribution : string) : void {
+        this._sources[sourceId].attribution = attribution;
     }
 
     /**
-     * Creates a deep copy of the HostedLayer.sources object
+     * Creates a mutable copy of the specified source
      */
-    getSources () {
+    getSourceCopy (sourceId : string) {
         // TODO structuredClone of sources
     }
 
     /**
-     * Creates a deep copy of the HostedLayer.layers object
+     * Creates a mutable copy of the specified layer
      */
-    getLayers () {
+    getLayerCopy (layerId : string) {
         // TODO structuredClone of layers
-    }
-
-    /**
-     * Contains formatted maplibre layers for adding to map.
-     */
-    layers: LayerSpecification[];
-    get layer () : LayerSpecification {
-        if (this.layers.length == 1) return this.layers[0];
-        else throw new Error('Hosted layer contains multiple style layers. Use property \'layers\' instead of \'layer\'.');
-    }
+    }        // this.sources
     
     /**
      * Hosted layers are typically loaded via item ID, but service URLs are also supported.
@@ -99,24 +164,6 @@ export abstract class HostedLayer {
     _ready:boolean;
 
     /**
-     * Internal method that formats data into Maplibre-style sources and data layers
-     */
-    abstract _createSourcesAndLayers() : void;
-
-    /**
-     * Creates a read-only property attached to the object.
-     * @param name The name of the property
-     * @param value The value of the property
-     */
-    _createFrozenProperty(name:string, value:any) : void {
-        Object.defineProperty(this, name, {
-            value: value,
-            writable:false,
-            configurable:false
-        });
-        Object.freeze(this[name]);
-    }
-    /**
      * Initializes the layer with data from ArcGIS. Called to instantiate a class.
      */
     abstract initialize() : Promise<HostedLayer>;
@@ -130,17 +177,17 @@ export abstract class HostedLayer {
 
         this._map = map;
         // TODO ensure each sourceId is unique
-        Object.keys(this.sources).forEach(sourceId => {
-            map.addSource(sourceId,this.sources[sourceId])
+        Object.keys(this._sources).forEach(sourceId => {
+            map.addSource(sourceId,this._sources[sourceId])
         });
-        this.layers.forEach(layer => {
+        this._layers.forEach(layer => {
             map.addLayer(layer);
         });
 
         return this;
     }
     // --- could be implemented in an abstract class...:
-    //setCustomSourceId(oldId:string, newId:string) : string;
+    
     //setAttribution
 
     constructor() {

@@ -17,8 +17,8 @@ export class VectorTileLayer extends HostedLayer {
     _serviceInfo : VectorTileServiceInfo;
     _itemInfo : ItemInfo;
     
-    sources: {[_:string]:VectorSourceSpecification};
-    layers: LayerSpecification[];
+    _sources: {[_:string]:VectorSourceSpecification};
+    _layers: LayerSpecification[];
 
     _inputType: 'itemId' | 'serviceUrl';
 
@@ -188,8 +188,10 @@ export class VectorTileLayer extends HostedLayer {
             }
         })
         // Public API is read-only
-        this._createFrozenProperty('sources',this._style.sources);
-        this._createFrozenProperty('layers',this._style.layers);
+        this._sources = this._style.sources as {[_:string]:VectorSourceSpecification};
+        this._layers = this._style.layers as LayerSpecification[];
+
+        this._definePublicApi();
     }
 
     // Public API
@@ -200,21 +202,8 @@ export class VectorTileLayer extends HostedLayer {
         return this;
     }
 
-    setSourceId(oldId:string, newId:string) : void {
-        Object.keys(this.sources).forEach(source => {
-            if (source == oldId) {
-                this.sources[newId] = this.sources[oldId];
-                delete this.sources[oldId];
-            }
-        });
-        this.layers.forEach(lyr => {
-            if (lyr.id == oldId) lyr.id = newId; 
-        });
-
-        return;
-    }
     setAttribution(sourceId: string, attribution: string) : void {
-        this.sources[sourceId].attribution = attribution;
+        this._sources[sourceId].attribution = attribution;
 
         return;
     }
