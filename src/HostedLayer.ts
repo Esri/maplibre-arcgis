@@ -129,24 +129,33 @@ export abstract class HostedLayer {
         });
         return;
     }
-    
+    /**
+     * Sets the data attribution of the specified source
+     * @param sourceId The ID of the maplibre style source.
+     * @param attribution Custom attribution text.
+     */
     setAttribution(sourceId : string, attribution : string) : void {
         this._sources[sourceId].attribution = attribution;
     }
 
     /**
-     * Creates a mutable copy of the specified source
+     * Creates a mutable copy of the specified source.
+     * @param sourceId The ID of the maplibre style source to copy.
      */
-    getSourceCopy (sourceId : string) {
-        // TODO structuredClone of sources
+    copySource (sourceId : string) {
+        return structuredClone(this._sources[sourceId]);
     }
 
     /**
      * Creates a mutable copy of the specified layer
+     * @param layerId The ID of the maplibre style layer to copy
      */
-    getLayerCopy (layerId : string) {
-        // TODO structuredClone of layers
-    }        // this.sources
+    copyLayer (layerId : string) {
+        for (let i=0;i<this._layers.length;i++) {
+            if (this._layers[i].id == layerId) return structuredClone(this._layers[i]);
+        }
+        throw new Error(`No layer with ID ${layerId} exists.`)
+    }
     
     /**
      * Hosted layers are typically loaded via item ID, but service URLs are also supported.
