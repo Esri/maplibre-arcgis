@@ -2,8 +2,8 @@ import type {LayerSpecification, VectorSourceSpecification, StyleSpecification} 
 import { ItemId, ServiceUrlOrItemId, checkServiceUrlOrItemId, itemRequest } from './Util';
 import { request, warn } from './Request';
 import { Map } from 'maplibre-gl';
-import {HostedLayer,HostedLayerOptions,ItemInfo,DataServiceInfo} from './HostedLayer';
-
+import { HostedLayer } from './HostedLayer';
+import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from './HostedLayer';
 type VectorTileLayerOptions = HostedLayerOptions;
 
 type VectorTileServiceInfo = DataServiceInfo & {
@@ -188,14 +188,8 @@ export class VectorTileLayer extends HostedLayer {
             }
         })
         // Public API is read-only
-        Object.defineProperty(this, "sources", {
-            value: this._style.sources as {[_:string]:VectorSourceSpecification},
-            writable:false
-        });
-        Object.defineProperty(this, "layers", {
-            value: this._style.layers,
-            writable:false
-        });
+        this._createFrozenProperty('sources',this._style.sources);
+        this._createFrozenProperty('layers',this._style.layers);
     }
 
     // Public API

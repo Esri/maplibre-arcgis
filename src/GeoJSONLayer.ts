@@ -1,10 +1,9 @@
-import { LayerSpecification, Map, SourceSpecification } from "maplibre-gl";
-import {HostedLayer,DataServiceInfo,ItemInfo} from "./HostedLayer";
+import { LayerSpecification, Map, GeoJSONSourceSpecification} from "maplibre-gl";
+import { HostedLayer } from "./HostedLayer";
+import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from "./HostedLayer";
 import { queryFeatures } from "@esri/arcgis-rest-feature-service";
 
-type GeoJSONLayerOptions = {
-    accessToken?: string;
-    portalUrl?:string;
+type GeoJSONLayerOptions = HostedLayerOptions & {
     type: GeometryTypes;
     query?: Object;
     layer: {
@@ -36,7 +35,7 @@ export class GeoJSONLayer extends HostedLayer {
 
     _ready: boolean;
 
-    sources: { [_: string]: SourceSpecification; };
+    sources: { [_: string]: GeoJSONSourceSpecification };
     layers: LayerSpecification[];
     
     _map?: Map;
@@ -55,9 +54,9 @@ export class GeoJSONLayer extends HostedLayer {
         }
 
         this._dataLoaded = false;
-
-        if (options.accessToken) this.accessToken = options.accessToken;
-        if (options.type) this._geometryType = options.type;
+        console.log(this);
+        if (options?.accessToken) this.accessToken = options.accessToken;
+        if (options?.type) this._geometryType = options.type;
         else throw new Error('Must provide a valid GeoJSON type in current implementation.');
     }
 
@@ -79,24 +78,36 @@ export class GeoJSONLayer extends HostedLayer {
     }
 
     _createDefaultStyle() {
-        if (!this._dataLoaded) throw new Error('Cannot create style without data.');
-        this.sources = {};
-        this.sources[this._createSourceId()] = {
+        const sourceId = this._createSourceId();
+        const defaultSources = {};
+        defaultSources[sourceId] = {
             type:'geojson',
             data:this._data
         };
-        this.layers = [{
-            id:`${this.sourceId}-layer`,
-            source:this.sourceId,
+        const defaultLayers = [{
+            id:`${sourceId}-layer`,
+            source:sourceId,
             type:defaultGeometryStyleMap[this._geometryType]
         }];
+
+        return {
+            sources:defaultSources,
+            layers:defaultLayers
+        }
     }
 
     async _loadServiceInfo(): Promise<void> {}
     async _loadItemInfo(): Promise<void> {}
     
     _createSourcesAndLayers(): void {
-        this._createDefaultStyle();
+        if (!this._dataLoaded) throw new Error('Cannot create style without data.');
+        
+
+        const style = this._createDefaultStyle();
+
+        // Public API is read-only
+        this._createFrozenProperty('sources',style.sources);
+        this._createFrozenProperty('layers',style.layers);
     }
 
     async initialize() : Promise<GeoJSONLayer> {

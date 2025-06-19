@@ -104,6 +104,19 @@ export abstract class HostedLayer {
     abstract _createSourcesAndLayers() : void;
 
     /**
+     * Creates a read-only property attached to the object.
+     * @param name The name of the property
+     * @param value The value of the property
+     */
+    _createFrozenProperty(name:string, value:any) : void {
+        Object.defineProperty(this, name, {
+            value: value,
+            writable:false,
+            configurable:false
+        });
+        Object.freeze(this[name]);
+    }
+    /**
      * Initializes the layer with data from ArcGIS. Called to instantiate a class.
      */
     abstract initialize() : Promise<HostedLayer>;
