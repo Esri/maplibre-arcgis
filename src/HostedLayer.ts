@@ -48,11 +48,21 @@ export abstract class HostedLayer {
      */
     _sources: {[_:string]:SupportedSourceSpecifications};
     _layers: LayerSpecification[];
-    
+
     /**
-     * Internal method that formats data into Maplibre-style sources and data layers
+     * Hosted layers are typically loaded via item ID, but service URLs are also supported.
      */
-    abstract _createSourcesAndLayers() : void;
+    _inputType: 'itemId' | 'serviceUrl';
+
+    /**
+     * Internal flag to track layer loading.
+     */
+    _ready:boolean;
+
+    /**
+     * A MapLibre GL JS map.
+     */
+    _map?:Map;
 
     /**
      * Defines the following properties:
@@ -71,27 +81,28 @@ export abstract class HostedLayer {
             },
             set (_) {throwReadOnlyError('sources')}
         });
-        //Object.seal(this['sources']);
+        Object.seal(this['sources']);
 
-        Object.defineProperty(this,'source',{
-            get () : SupportedSourceSpecifications {
-                const sourceIds = Object.keys(this._sources);
-                if (sourceIds.length == 1) return this._sources[sourceIds[0]];
-                else throw new Error('Hosted layer contains multiple sources. Use \'sources\' instead of \'source\'.');
-            },
-            set (_) {throwReadOnlyError('source')}
-        });
-        Object.seal(this['source']);
+        const sourceIds = Object.keys(this._sources);
+        if (sourceIds.length == 1) {
+            Object.defineProperty(this,'source',{
+                get () : SupportedSourceSpecifications {
+                    const sourceIds = Object.keys(this._sources);
+                    return this._sources[sourceIds[0]];
+                },
+                set (_) {throwReadOnlyError('source')}
+            });
+            Object.seal(this['source']);
 
-        Object.defineProperty(this,'sourceId',{
-            get () : string {
-                const sourceIds = Object.keys(this._sources);
-                if (sourceIds.length == 1) return sourceIds[0];
-                else throw new Error('Hosted layer contains multiple sources. Use \'sources\' instead of \'sourceId\'.');
-            },
-            set (_) {throwReadOnlyError('sourceId')}
-        });
-        Object.seal(this['sourceId']);
+            Object.defineProperty(this,'sourceId',{
+                get () : string {
+                    const sourceIds = Object.keys(this._sources);
+                    return sourceIds[0];
+                },
+                set (_) {throwReadOnlyError('sourceId')}
+            });
+            Object.seal(this['sourceId']);
+        }
 
         Object.defineProperty(this,'layers',{
             get () : LayerSpecification[] {
@@ -101,14 +112,15 @@ export abstract class HostedLayer {
         });
         Object.seal(this['layers']);
 
-        Object.defineProperty(this,'layer',{
-            get () : LayerSpecification {
-                if (this._layers.length == 1) return this._layers[0];
-                else throw new Error('Hosted layer contains multiple style layers. Use property \'layers\' instead of \'layer\'.');
-            },
-            set (_) {throwReadOnlyError('layer')}
-        });
-        Object.seal(this['layer']);
+        if (this._layers.length == 1) {
+            Object.defineProperty(this,'layer',{
+                get () : LayerSpecification {
+                    return this._layers[0];
+                },
+                set (_) {throwReadOnlyError('layer')}
+            });
+            Object.seal(this['layer']);
+        }
     }
 
     /**
@@ -118,12 +130,13 @@ export abstract class HostedLayer {
      */
     setSourceId(oldId:string, newId:string) : void {
         // Update ID of source
-        Object.keys(this._sources).forEach(source => {
-            if (source == oldId) {
-                this._sources[newId] = this._sources[oldId];
-                delete this._sources[oldId];
-            }
-        });
+        const newSources = structuredClone(this._sources);
+        newSources[newId] = newSources[oldId];
+        delete newSources[oldId];
+
+        this._sources = newSources;
+        Object.seal(this['sources']);
+
         // Update source ID property of all layers
         this._layers.forEach(lyr => {
             if (lyr['source'] == oldId) lyr['source'] = newId; 
@@ -136,14 +149,17 @@ export abstract class HostedLayer {
      * @param attribution Custom attribution text.
      */
     setAttribution(sourceId : string, attribution : string) : void {
-        this._sources[sourceId].attribution = attribution;
+        const newSources = structuredClone(this._sources);
+        newSources[sourceId].attribution = attribution;
+        this._sources = newSources;
+        Object.seal(this['sources']);
     }
 
     /**
      * Creates a mutable copy of the specified source.
      * @param sourceId The ID of the maplibre style source to copy.
      */
-    copySource (sourceId : string) {
+    copySource (sourceId : string) : SupportedSourceSpecifications {
         return structuredClone(this._sources[sourceId]);
     }
 
@@ -151,32 +167,12 @@ export abstract class HostedLayer {
      * Creates a mutable copy of the specified layer
      * @param layerId The ID of the maplibre style layer to copy
      */
-    copyLayer (layerId : string) {
+    copyLayer (layerId : string) : LayerSpecification {
         for (let i=0;i<this._layers.length;i++) {
             if (this._layers[i].id == layerId) return structuredClone(this._layers[i]);
         }
         throw new Error(`No layer with ID ${layerId} exists.`)
     }
-    
-    /**
-     * Hosted layers are typically loaded via item ID, but service URLs are also supported.
-     */
-    _inputType: 'itemId' | 'serviceUrl';
-    
-    /**
-     * A MapLibre GL JS map.
-     */
-    _map?:Map;
-
-    /**
-     * Internal flag to track layer loading.
-     */
-    _ready:boolean;
-
-    /**
-     * Initializes the layer with data from ArcGIS. Called to instantiate a class.
-     */
-    abstract initialize() : Promise<HostedLayer>;
 
     /**
      * Convenience method that adds all associated Maplibre sources and data layers to a map.
@@ -195,6 +191,11 @@ export abstract class HostedLayer {
         });
 
         return this;
-    }    
+    }
+
+    /**
+     * Initializes the layer with data from ArcGIS. Called to instantiate a class.
+     */
+    abstract initialize() : Promise<HostedLayer>;
 }
 export default HostedLayer;
