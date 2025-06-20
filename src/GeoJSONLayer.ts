@@ -1,20 +1,36 @@
 import { LayerSpecification, Map, GeoJSONSourceSpecification} from "maplibre-gl";
 import { HostedLayer } from "./HostedLayer";
-import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from "./HostedLayer";
-import { queryFeatures } from "@esri/arcgis-rest-feature-service";
+import type { DataServiceInfo, HostedLayerOptions, ItemInfo } from "./HostedLayer";
+import { queryFeatures, getLayer, IQueryFeaturesResponse, GeometryType } from "@esri/arcgis-rest-feature-service";
 
-type GeoJSONLayerOptions = HostedLayerOptions & {
-    type?: GeometryTypes;
+/*
+const geoJSONDefaultStyleMap = {
+    "Point":"circle",
+    "MultiPoint":"circle",
+    "LineString":"line",
+    "MultiLineString":"line",
+    "Polygon":"fill",
+    "MultiPolygon":"fill"
+}
+*/
+
+const esriGeometryDefaultStyleMap = {
+    "esriGeometryPoint":"circle",
+    "esriGeometryMultipoint":"circle",
+    "esriGeometryPolyline":"line",
+    "esriGeometryPolygon":"fill",
+    "esriGeometryEnvelope":"fill",
+    "esriGeometryMultiPatch":"fill"
+}
+
+interface GeoJSONLayerOptions extends HostedLayerOptions {
     query?: Object;
     sourceId?:string;
     layer?:LayerSpecification;
 }
-type GeometryTypes = "Point" | "LineString" | "Polygon" | "MultiPoint" | "MultiLineString" | "MultiPolygon";
 
-const defaultGeometryStyleMap = {
-    "Point":"circle",
-    "LineString":"line",
-    "Polygon":"fill"
+interface GeoJSONServiceInfo extends DataServiceInfo {
+    geometryType?:GeometryType;
 }
 
 export class GeoJSONLayer extends HostedLayer {
@@ -22,22 +38,19 @@ export class GeoJSONLayer extends HostedLayer {
     accessToken?:string;
     _inputType: "itemId" | "serviceUrl";
 
-    _serviceInfo:DataServiceInfo;
-    _serviceInfoLoaded:boolean;
-    
-    _itemInfo: ItemInfo;
-    _itemInfoLoaded: boolean;
-
     _ready: boolean;
     _map?: Map;
 
-    // -------- properties unique to GeoJSONLayer
+    _serviceInfo: GeoJSONServiceInfo;
+    _serviceInfoLoaded: boolean;
+
+    _itemInfo: ItemInfo;
+
     _sources: { [_: string]: GeoJSONSourceSpecification };
     _layers: LayerSpecification[];
 
     options?:GeoJSONLayerOptions;
 
-    _geometryType: GeometryTypes;
     _data: any;
     _dataLoaded: boolean;
 
@@ -50,19 +63,73 @@ export class GeoJSONLayer extends HostedLayer {
         }
 
         this._dataLoaded = false;
+        this._serviceInfoLoaded = false;
+        this._ready = false;
 
-        if (options) this.options = options;
+        this.options = options ? options : {};
+
         if (options?.accessToken) this.accessToken = options.accessToken;
 
-        else throw new Error('Must provide a valid GeoJSON type in current implementation.');
     }
 
     async _loadData() : Promise<void> {
-        this._data = await queryFeatures({
+
+        const layerInfo = await getLayer({
             url:this._serviceInfo.serviceUrl,
-            f: "geojson"
+            httpMethod:'GET'
         });
-        this._dataLoaded = true;
+        this._serviceInfo = {
+            ...this._serviceInfo,
+            geometryType: layerInfo.geometryType,
+            copyrightText: layerInfo.copyrightText,
+            serviceItemId: layerInfo.serviceItemId
+        }
+        this._serviceInfoLoaded = true;
+
+        if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error("Feature service does not support GeoJSON format.");
+        if (!layerInfo.capabilities.includes("Query")) throw new Error("Feature service does not support queries.");
+        if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error("Feature service does not support pagination in queries");
+
+        if (layerInfo.supportsExceedsLimitStatistics) {
+            const exceedsLimitsResponse = await queryFeatures({
+                url: this._serviceInfo.serviceUrl,
+                outFields: [layerInfo.objectIdField],
+                outStatistics: [
+                    {
+                        maxPointCount: 2000,
+                        maxRecordCount: 2000,
+                        maxVertexCount: 250000,
+                        outStatisticFieldName: "exceedslimit",
+                        statisticType: "exceedslimit"
+                    }
+                ],
+                returnGeometry: false,
+                spatialRel: "esriSpatialRelIntersects", // no idea if this is neccessary
+                outSr: 102100, // no idea if this is neccessary
+                params: {
+                    cacheHint: true // I have no idea what this does
+                }
+            }) as IQueryFeaturesResponse;
+
+            if (exceedsLimitsResponse.features[0].attributes.exceedslimit === 0) { 
+                // TODO PAGINATE DATA HERE
+                this._data = await queryFeatures({
+                    url:this._serviceInfo.serviceUrl,
+                    f: "geojson"
+                });
+                this._dataLoaded = true;
+            }
+            else {
+                // TODO what do we actually do when the limit is exceeded?
+                throw new Error('Feature count exceeds the limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript.');
+            }
+        }
+        else {
+            // TODO how to request data for enterprise, etc where exceedsLimit queries don't work?
+            throw new Error('Layer does not support exceeds limit query');
+        }
+
+        return;
     }
 
     _createSourceId() {
@@ -76,13 +143,10 @@ export class GeoJSONLayer extends HostedLayer {
 
         return this._serviceInfo.serviceUrl.substring(i,end);
     }
-
-    async _loadServiceInfo(): Promise<void> {}
-    async _loadItemInfo(): Promise<void> {}
     
     _createSourcesAndLayers(): void {
         if (!this._dataLoaded) throw new Error('Cannot create style without data.');
-        
+
         const sourceId = this._createSourceId();
         const sources = {};
         sources[sourceId] = {
@@ -102,7 +166,8 @@ export class GeoJSONLayer extends HostedLayer {
             const defaultLayer = {
                 source:sourceId,
                 id:`${sourceId}-layer`,
-                type:defaultGeometryStyleMap[this._geometryType]
+                type:esriGeometryDefaultStyleMap[this._serviceInfo.geometryType],
+                // TODO default "esri blue" paint style for all layer types
             }
             layers.push(defaultLayer);
         }
@@ -114,9 +179,8 @@ export class GeoJSONLayer extends HostedLayer {
     }
 
     async initialize() : Promise<GeoJSONLayer> {
-        await this._loadItemInfo();
-        await this._loadServiceInfo();
 
+        // await this._loadAttribution();
         await this._loadData();
 
         this._createSourcesAndLayers();
@@ -125,6 +189,11 @@ export class GeoJSONLayer extends HostedLayer {
         return this;
     }
 
+    async _handleAttribution() : Promise<void> {
+        // 1. check item ID for information, prefer that
+        // 2. check service for copyrightText
+        // 3. check ..... ?
+    }
     /*
     static async fromItemId (itemId: ItemId, options : GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
         const vtl = new GeoJSONLayer(itemId,options);
@@ -132,8 +201,8 @@ export class GeoJSONLayer extends HostedLayer {
         return vtl;
     }
     */
-    static async fromServiceUrl (serviceUrl: string, options : GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
-        const vtl = new GeoJSONLayer(serviceUrl,options);
+    static async fromLayerUrl (layerUrl: string, options : GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
+        const vtl = new GeoJSONLayer(layerUrl,options);
         await vtl.initialize();
         return vtl;
     }

@@ -9,7 +9,7 @@ export type HostedLayerOptions = {
     portalUrl?: string;
 }
 
-export type ItemInfo = {
+export interface ItemInfo {
     portalUrl: string;
     itemId: string;
     title?: string;
@@ -19,11 +19,11 @@ export type ItemInfo = {
     //type?: string;
 }
 
-export type DataServiceInfo = {
+export interface DataServiceInfo {
     serviceUrl: string;
     serviceItemId?: string; // This may differ from itemInfo.itemId if the itemId provided in constructor represents a style, group layer, etc
     serviceItemPortalUrl: string;
-    //copyrightText?:string; // Attribution information from service JSON
+    copyrightText?:string; // Attribution information from service JSON
 }
 
 export abstract class HostedLayer {
@@ -36,16 +36,12 @@ export abstract class HostedLayer {
     /**
      * Retrieves information about the associated hosted data service in ArcGIS.
      */
-    abstract _loadServiceInfo() : Promise<void>;
     _serviceInfo : DataServiceInfo;
-    _serviceInfoLoaded: boolean;
     
     /**
      * Retrieves information about the associated ArcGIS item.
      */
-    abstract _loadItemInfo() : Promise<void>;
     _itemInfo : ItemInfo;
-    _itemInfoLoaded: boolean;
 
     /**
      * Contains formatted maplibre sources for adding to map.
@@ -67,23 +63,23 @@ export abstract class HostedLayer {
      * layer
      */
     _definePublicApi() : void {
-        const readOnlyPropError = (propertyName : string) => {throw new Error(`${propertyName} is a read-only property.`)};
+        const throwReadOnlyError = (propertyName : string) => {throw new Error(`${propertyName} is a read-only property.`)};
         
         Object.defineProperty(this,'sources',{
             get () : SupportedSourceSpecifications {
                 return this._sources;
             },
-            set (val) {readOnlyPropError('sources')}
+            set (_) {throwReadOnlyError('sources')}
         });
         //Object.seal(this['sources']);
 
         Object.defineProperty(this,'source',{
             get () : SupportedSourceSpecifications {
-                const sourceIds = Object.keys(this._sources)
+                const sourceIds = Object.keys(this._sources);
                 if (sourceIds.length == 1) return this._sources[sourceIds[0]];
                 else throw new Error('Hosted layer contains multiple sources. Use \'sources\' instead of \'source\'.');
             },
-            set (val) {readOnlyPropError('source')}
+            set (_) {throwReadOnlyError('source')}
         });
         Object.seal(this['source']);
 
@@ -93,7 +89,7 @@ export abstract class HostedLayer {
                 if (sourceIds.length == 1) return sourceIds[0];
                 else throw new Error('Hosted layer contains multiple sources. Use \'sources\' instead of \'sourceId\'.');
             },
-            set (val) {readOnlyPropError('sourceId')}
+            set (_) {throwReadOnlyError('sourceId')}
         });
         Object.seal(this['sourceId']);
 
@@ -101,7 +97,7 @@ export abstract class HostedLayer {
             get () : LayerSpecification[] {
                 return this._layers;
             },
-            set (val) {readOnlyPropError('layers')}
+            set (_) {throwReadOnlyError('layers')}
         });
         Object.seal(this['layers']);
 
@@ -110,12 +106,17 @@ export abstract class HostedLayer {
                 if (this._layers.length == 1) return this._layers[0];
                 else throw new Error('Hosted layer contains multiple style layers. Use property \'layers\' instead of \'layer\'.');
             },
-            set (val) {readOnlyPropError('layer')}
+            set (_) {throwReadOnlyError('layer')}
         });
         Object.seal(this['layer']);
     }
 
-   setSourceId(oldId:string, newId:string) : void {
+    /**
+     * Changes the ID of a maplibre style source, and updates all associated maplibre style layers.
+     * @param oldId The source ID to be changed.
+     * @param newId The new source ID.
+     */
+    setSourceId(oldId:string, newId:string) : void {
         // Update ID of source
         Object.keys(this._sources).forEach(source => {
             if (source == oldId) {
@@ -127,8 +128,8 @@ export abstract class HostedLayer {
         this._layers.forEach(lyr => {
             if (lyr['source'] == oldId) lyr['source'] = newId; 
         });
-        return;
     }
+
     /**
      * Sets the data attribution of the specified source
      * @param sourceId The ID of the maplibre style source.
@@ -194,16 +195,6 @@ export abstract class HostedLayer {
         });
 
         return this;
-    }
-    // --- could be implemented in an abstract class...:
-    
-    //setAttribution
-
-    constructor() {
-        this._serviceInfoLoaded = false;
-        this._itemInfoLoaded = false;
-        this._ready = false;
-    }
-    
+    }    
 }
 export default HostedLayer;

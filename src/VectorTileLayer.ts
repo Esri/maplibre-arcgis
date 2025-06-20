@@ -4,9 +4,10 @@ import { request, warn } from './Request';
 import { Map } from 'maplibre-gl';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from './HostedLayer';
-type VectorTileLayerOptions = HostedLayerOptions;
 
-type VectorTileServiceInfo = DataServiceInfo & {
+interface VectorTileLayerOptions extends HostedLayerOptions {};
+
+interface VectorTileServiceInfo extends DataServiceInfo {
     styleEndpoint?: string; // Usually "/resources/styles"
     tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
