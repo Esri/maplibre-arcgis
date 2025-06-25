@@ -77,36 +77,34 @@ export abstract class HostedLayer {
         
         Object.defineProperty(this,'sources',{
             get () : SupportedSourceSpecifications {
-                return this._sources;
+                return Object.freeze(this._sources);
             },
             set (_) {throwReadOnlyError('sources')}
-        });
-        Object.seal(this['sources']);
+        });      
 
         const sourceIds = Object.keys(this._sources);
+
         if (sourceIds.length == 1) {
             Object.defineProperty(this,'source',{
                 get () : SupportedSourceSpecifications {
                     const sourceIds = Object.keys(this._sources);
-                    return this._sources[sourceIds[0]];
+                    return Object.freeze(this._sources[sourceIds[0]]);
                 },
                 set (_) {throwReadOnlyError('source')}
             });
-            Object.seal(this['source']);
 
             Object.defineProperty(this,'sourceId',{
                 get () : string {
                     const sourceIds = Object.keys(this._sources);
-                    return sourceIds[0];
+                    return Object.freeze(sourceIds[0]);
                 },
                 set (_) {throwReadOnlyError('sourceId')}
             });
-            Object.seal(this['sourceId']);
         }
 
         Object.defineProperty(this,'layers',{
             get () : LayerSpecification[] {
-                return this._layers;
+                return Object.freeze(this._layers);
             },
             set (_) {throwReadOnlyError('layers')}
         });
@@ -115,11 +113,10 @@ export abstract class HostedLayer {
         if (this._layers.length == 1) {
             Object.defineProperty(this,'layer',{
                 get () : LayerSpecification {
-                    return this._layers[0];
+                    return Object.freeze(this._layers[0]);
                 },
                 set (_) {throwReadOnlyError('layer')}
             });
-            Object.seal(this['layer']);
         }
     }
 
@@ -135,7 +132,6 @@ export abstract class HostedLayer {
         delete newSources[oldId];
 
         this._sources = newSources;
-        Object.seal(this['sources']);
 
         // Update source ID property of all layers
         this._layers.forEach(lyr => {
@@ -149,14 +145,14 @@ export abstract class HostedLayer {
      * @param attribution Custom attribution text.
      */
     setAttribution(sourceId : string, attribution : string) : void {
+        if (!sourceId || !attribution) throw new Error('Must provide a source ID and attribution');
         const newSources = structuredClone(this._sources);
         newSources[sourceId].attribution = attribution;
         this._sources = newSources;
-        Object.seal(this['sources']);
     }
 
     /**
-     * Creates a mutable copy of the specified source.
+     * Returns a mutable copy of the specified source.
      * @param sourceId The ID of the maplibre style source to copy.
      */
     copySource (sourceId : string) : SupportedSourceSpecifications {
@@ -164,7 +160,7 @@ export abstract class HostedLayer {
     }
 
     /**
-     * Creates a mutable copy of the specified layer
+     * Returns a mutable copy of the specified layer
      * @param layerId The ID of the maplibre style layer to copy
      */
     copyLayer (layerId : string) : LayerSpecification {

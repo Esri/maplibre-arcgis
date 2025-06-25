@@ -1,7 +1,7 @@
 import { LayerSpecification, Map, GeoJSONSourceSpecification} from "maplibre-gl";
 import { HostedLayer } from "./HostedLayer";
 import type { DataServiceInfo, HostedLayerOptions, ItemInfo } from "./HostedLayer";
-import { queryFeatures, getLayer, IQueryFeaturesResponse, GeometryType } from "@esri/arcgis-rest-feature-service";
+import { queryFeatures, getLayer, IQueryFeaturesResponse, GeometryType, ILayerDefinition, IStatisticDefinition } from "@esri/arcgis-rest-feature-service";
 
 /*
 const geoJSONDefaultStyleMap = {
@@ -74,10 +74,15 @@ export class GeoJSONLayer extends HostedLayer {
 
     async _loadData() : Promise<void> {
 
+        type IFeatureLayerDefinition = ILayerDefinition & {
+            serviceItemId:string;
+            supportsExceedsLimitStatistics:boolean;
+        }
+
         const layerInfo = await getLayer({
             url:this._serviceInfo.serviceUrl,
             httpMethod:'GET'
-        });
+        }) as IFeatureLayerDefinition;
         this._serviceInfo = {
             ...this._serviceInfo,
             geometryType: layerInfo.geometryType,

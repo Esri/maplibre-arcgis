@@ -55,26 +55,33 @@ export class VectorTileLayer extends HostedLayer {
         
     }
     // Loads the style from ArcGIS
-    async _loadStyle() : Promise<void> {
+    async _loadStyle() : Promise<StyleSpecification> {
         let styleInfo : StyleSpecification | null = null;
 
-        if (this._inputType == 'itemId') {
-            styleInfo = await this._loadStyleFromItemId();
-            if (!styleInfo) {
-                warn('Could not find a style resource associated with the provided item ID. Checking service URL instead...');
-                await this._loadItemInfo(); // retrieve service URL                
+        let styleSource = this._inputType;
+        switch (styleSource) {
+            case 'itemId': {
+                await this._loadItemInfo();
+                styleInfo = await this._loadStyleFromItemId();
+                if (styleInfo) break;
+                else {
+                    warn('Could not find a style resource associated with the provided item ID. Checking service URL instead...');
+                    styleSource = 'serviceUrl';
+                }
+            }
+            case 'serviceUrl': {
+                console.log('loading service info')
                 await this._loadServiceInfo();
                 styleInfo = await this._loadStyleFromServiceUrl();
+                break;
             }
-        } else {
-            await this._loadServiceInfo();
-            styleInfo = await this._loadStyleFromServiceUrl();
-            await this._loadItemInfo();
         }
 
-        if (!styleInfo) throw new Error('Unable to load style information from service URL or item ID.')
-        this._style = styleInfo;
+        if (!styleInfo) throw new Error('Unable to load style information from service URL or item ID.');
+
         this._styleLoaded = true;
+        this._style = styleInfo;
+        return this._style;
     }
     async _loadStyleFromItemId() : Promise<StyleSpecification | null> {
         const params = {
@@ -123,7 +130,10 @@ export class VectorTileLayer extends HostedLayer {
         });
         return styleInfo;
     }
-    async _loadServiceInfo() : Promise<void> {
+    /**
+     * Retrieves information from the data service about data attribution, associated item IDs, and more.
+     */
+    async _loadServiceInfo() : Promise<VectorTileServiceInfo> {
         // if we always need to get attribution then there's no point in requesting the default style first
         const serviceResponse : any = await request(this._serviceInfo.serviceUrl,{
             token:this.accessToken
@@ -138,11 +148,17 @@ export class VectorTileLayer extends HostedLayer {
         this._serviceInfo = {
             ...this._serviceInfo,
             tiles: serviceResponse.tiles,
-            styleEndpoint: serviceResponse.defaultStyles
+            styleEndpoint: serviceResponse.defaultStyles,
+            copyrightText: serviceResponse.copyrightText
         }
         this._serviceInfoLoaded = true;
+        return this._serviceInfo;
     }
-    async _loadItemInfo() : Promise<void> {
+
+    /**
+     * Retrieves information from the portal about item attribution and associated service URLs
+     */
+    async _loadItemInfo() : Promise<ItemInfo> {
         const itemResponse : any = await itemRequest(this._itemInfo.itemId,{
             token:this.accessToken,
             portalUrl:this._itemInfo.portalUrl
@@ -165,12 +181,13 @@ export class VectorTileLayer extends HostedLayer {
             //type: itemResponse.type
         }
         this._itemInfoLoaded = true;
+        return this._itemInfo;
     }
-    _createSourcesAndLayers() : void {
-        if (!this._styleLoaded) throw new Error('Vector tile style has not been loaded from ArcGIS.')
+    _createSourcesAndLayers(style : StyleSpecification) : void {
+        if (!style) throw new Error('Vector tile style has not been loaded from ArcGIS.')
         // Finish creating sources
-        Object.keys(this._style.sources).forEach(id => {
-            const source = this._style.sources[id] as VectorSourceSpecification;
+        Object.keys(style.sources).forEach(id => {
+            const source = style.sources[id] as VectorSourceSpecification;
             // Fix service URL
             if (source.url == '../../') source.url = this._serviceInfo.serviceUrl;
             // Format tiles
@@ -184,31 +201,38 @@ export class VectorTileLayer extends HostedLayer {
                 if (source.tiles) source.tiles = source.tiles.map((tileUrl) => `${tileUrl}?token=${this.accessToken}`);
             }
             // Provide attribution
-            if (this._itemInfo.accessInformation) {
-                source.attribution = this._itemInfo.accessInformation;
-            }
+            source.attribution = this._getAttribution(id);
         })
         // Public API is read-only
-        this._sources = this._style.sources as {[_:string]:VectorSourceSpecification};
-        this._layers = this._style.layers as LayerSpecification[];
+        this._sources = style.sources as {[_:string]:VectorSourceSpecification};
+        this._layers = style.layers as LayerSpecification[];
 
         this._definePublicApi();
     }
 
+    _getAttribution(sourceId : string) : string|null {
+        // 1. Prefer attribution from item info if available
+        if (this._itemInfoLoaded && this._itemInfo.accessInformation) {
+            return this._itemInfo.accessInformation;
+        }
+        // 2. Next, check data service info
+        if (this._serviceInfoLoaded && this._serviceInfo.copyrightText) {
+            return this._serviceInfo.copyrightText;
+        }
+        // 3. Finally, check style info of the specific source
+        if (this._styleLoaded && sourceId && this._style.sources[sourceId] && (this._style.sources[sourceId] as VectorSourceSpecification).attribution) {
+            return (this._style.sources[sourceId] as VectorSourceSpecification).attribution;
+        }
+        return "";
+    }
+
     // Public API
     async initialize() : Promise<VectorTileLayer> {
-        await this._loadStyle();
-        this._createSourcesAndLayers();
+        const style = await this._loadStyle();
+        this._createSourcesAndLayers(style);
         this._ready = true;
         return this;
     }
-
-    setAttribution(sourceId: string, attribution: string) : void {
-        this._sources[sourceId].attribution = attribution;
-
-        return;
-    }
-
 
     // TODO validate inputs on fromItemId, fromServiceUrl
     static async fromItemId (itemId: ItemId, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
