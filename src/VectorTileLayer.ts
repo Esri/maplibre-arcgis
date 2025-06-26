@@ -1,11 +1,13 @@
 import type {LayerSpecification, VectorSourceSpecification, StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
-import { ItemId, ServiceUrlOrItemId, checkServiceUrlOrItemId, itemRequest } from './Util';
+import { ItemId, ServiceUrlOrItemId, checkServiceUrlType, checkItemId, itemRequest } from './Util';
 import { request, warn } from './Request';
 import { Map } from 'maplibre-gl';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from './HostedLayer';
 
-interface VectorTileLayerOptions extends HostedLayerOptions {};
+interface VectorTileLayerOptions extends HostedLayerOptions {
+    _inputType?: 'ItemId' | 'VectorTileService';
+};
 
 interface VectorTileServiceInfo extends DataServiceInfo {
     styleEndpoint?: string; // Usually "/resources/styles"
@@ -14,45 +16,51 @@ interface VectorTileServiceInfo extends DataServiceInfo {
 
 export class VectorTileLayer extends HostedLayer {
 
-    accessToken: string;
-    _serviceInfo : VectorTileServiceInfo;
-    _itemInfo : ItemInfo;
+    declare _serviceInfo : VectorTileServiceInfo;
+    declare _itemInfo : ItemInfo;
     
-    _sources: {[_:string]:VectorSourceSpecification};
-    _layers: LayerSpecification[];
+    declare _sources: {[_:string]:VectorSourceSpecification};
+    declare _layers: LayerSpecification[];
 
-    _inputType: 'itemId' | 'serviceUrl';
+    _inputType: 'ItemId' | 'VectorTileService';
 
     _style: StyleSpecification;
     _styleLoaded: boolean;
     _itemInfoLoaded: boolean;
     _serviceInfoLoaded: boolean;
-    _ready:boolean;
-    _map?:Map;
 
     constructor (urlOrId : ServiceUrlOrItemId, options? : VectorTileLayerOptions) {
 
         super();
+        this._ready = false;
+        this._styleLoaded = false;
+        this._serviceInfoLoaded = false;
+        this._itemInfoLoaded = false;
         
         if (!urlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
+        
         if (options?.accessToken) this.accessToken = options.accessToken;
         
-        this._styleLoaded = false;
-
-        this._inputType = checkServiceUrlOrItemId(urlOrId);
-        if (this._inputType === 'serviceUrl') {
-            this._serviceInfo = {
-                serviceUrl: urlOrId,
-                serviceItemPortalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com',
+        if (options?._inputType) this._inputType = options._inputType;
+        else {
+            let inputType : string;
+            if (!(inputType=checkItemId(urlOrId))) {
+                if (!(inputType=checkServiceUrlType(urlOrId)) || inputType !== 'VectorTileService') throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
             }
+            this._inputType = inputType as 'ItemId' | 'VectorTileService';
         }
-        else if (this._inputType === 'itemId') {
+
+        if (this._inputType === 'ItemId') {
             this._itemInfo = {
                 itemId: urlOrId,
                 portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com'
             };
         }
-        
+        else if (this._inputType === 'VectorTileService') {
+            this._serviceInfo = {
+                serviceUrl: urlOrId
+            }
+        }
     }
     // Loads the style from ArcGIS
     async _loadStyle() : Promise<StyleSpecification> {
@@ -60,17 +68,16 @@ export class VectorTileLayer extends HostedLayer {
 
         let styleSource = this._inputType;
         switch (styleSource) {
-            case 'itemId': {
+            case 'ItemId': {
                 await this._loadItemInfo();
                 styleInfo = await this._loadStyleFromItemId();
                 if (styleInfo) break;
                 else {
                     warn('Could not find a style resource associated with the provided item ID. Checking service URL instead...');
-                    styleSource = 'serviceUrl';
+                    styleSource = 'VectorTileService';
                 }
             }
-            case 'serviceUrl': {
-                console.log('loading service info')
+            case 'VectorTileService': {
                 await this._loadServiceInfo();
                 styleInfo = await this._loadStyleFromServiceUrl();
                 break;
@@ -139,12 +146,12 @@ export class VectorTileLayer extends HostedLayer {
             token:this.accessToken
         });
 
-        if (!this._itemInfoLoaded) {
+        /*if (!this._itemInfoLoaded) {
             this._itemInfo = {
                 itemId:serviceResponse.serviceItemId,
                 portalUrl: this._serviceInfo.serviceItemPortalUrl
             }
-        }
+        }*/
         this._serviceInfo = {
             ...this._serviceInfo,
             tiles: serviceResponse.tiles,
@@ -171,7 +178,7 @@ export class VectorTileLayer extends HostedLayer {
         if (!this._serviceInfoLoaded) {
             this._serviceInfo = {
                 serviceUrl: itemResponse.url,
-                serviceItemPortalUrl: this._itemInfo.portalUrl
+                //serviceItemPortalUrl: this._itemInfo.portalUrl
             }
         }
         this._itemInfo = {
@@ -234,13 +241,21 @@ export class VectorTileLayer extends HostedLayer {
         return this;
     }
 
-    // TODO validate inputs on fromItemId, fromServiceUrl
     static async fromItemId (itemId: ItemId, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
+        const isItemId = checkItemId(itemId);
+        if (!isItemId) throw new Error('Input is not a valid ArcGIS item ID.');
+        options._inputType = 'ItemId';
+
         const vtl = new VectorTileLayer(itemId,options);
         await vtl.initialize();
         return vtl;
     }
     static async fromServiceUrl (serviceUrl: string, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
+        
+        const urlType = checkServiceUrlType(serviceUrl);
+        if (urlType !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.')
+        options._inputType = urlType;
+
         const vtl = new VectorTileLayer(serviceUrl,options);
         await vtl.initialize();
         return vtl;

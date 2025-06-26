@@ -9,21 +9,34 @@ export type CommonRequestParams = {
     token?: AccessToken;
     f?: 'html' | 'json' | 'pjson'
 }
+type SupportedServiceTypes = 'FeatureService' | 'FeatureLayer' | 'VectorTileService' | 'VectorTileLayer';
 
-export const vectorTileServiceRegex = /\/VectorTileServer\/?.*$/;
+export const checkItemId = (itemId : ItemId) : 'ItemId' | null => {
+    if (itemId.length == 32) return 'ItemId';
 
-export const checkServiceUrlOrItemId = (idOrUrl : ServiceUrlOrItemId) : 'serviceUrl' | 'itemId' => {
-
+    return null;
+}
+export const checkServiceUrlType = (serviceUrl : string) : SupportedServiceTypes | null => {
+    
     const httpRegex = /^https?:\/\//;
+    
+    const layerEndpointTest = "(?<layers>[0-9]*\/?)?$";
 
-    // Check other service types here eventually
-    if (httpRegex.test(idOrUrl) && vectorTileServiceRegex.test(idOrUrl)) {
-        return 'serviceUrl';
+    if (httpRegex.test(serviceUrl)) {
+        
+        const vectorServiceTest = /\/VectorTileServer\/?$/.exec(serviceUrl);
+        if (vectorServiceTest) {
+            return 'VectorTileService'
+        };
+        
+        const featureServiceTest = /\/FeatureServer\/(?<layers>[0-9]*\/?)?$/.exec(serviceUrl);
+        if (featureServiceTest) {
+            if (featureServiceTest.groups['layers']) return 'FeatureLayer';
+            return 'FeatureService';
+        }
     }
-    else if (idOrUrl.length == 32) {
-        return 'itemId';
-    }
-    else throw new Error('Input must be a valid ArcGIS service URL or item ID.');
+
+    return null;
 }
 
 export const itemRequest = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) : Promise<any> => {

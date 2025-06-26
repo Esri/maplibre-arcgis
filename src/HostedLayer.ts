@@ -21,9 +21,9 @@ export interface ItemInfo {
 
 export interface DataServiceInfo {
     serviceUrl: string;
-    serviceItemId?: string; // This may differ from itemInfo.itemId if the itemId provided in constructor represents a style, group layer, etc
-    serviceItemPortalUrl: string;
     copyrightText?:string; // Attribution information from service JSON
+    //serviceItemId?: string; // This may differ from itemInfo.itemId if the itemId provided in constructor represents a style, group layer, etc
+    //serviceItemPortalUrl: string;
 }
 
 export abstract class HostedLayer {
@@ -52,7 +52,7 @@ export abstract class HostedLayer {
     /**
      * Hosted layers are typically loaded via item ID, but service URLs are also supported.
      */
-    _inputType: 'itemId' | 'serviceUrl';
+    //_inputType: 'itemId' | 'serviceUrl';
 
     /**
      * Internal flag to track layer loading.

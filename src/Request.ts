@@ -1,4 +1,3 @@
-import {vectorTileServiceRegex} from './Util';
 import type { CommonRequestParams } from './Util';
 function serialize(params : Record<string,any>) {
     let data = "";
@@ -110,7 +109,8 @@ const makeRequest = async (requestUrl, requestOptions, resolve,reject) : Promise
 // Test if the service endpoint supports authorization headers
 const authorizationHeaderSupported = (serviceUrl : string) => {
     // Vector tile services do not support X-Esri-Authorization
-    if (vectorTileServiceRegex.test(serviceUrl)) return false;
+    return false;
+    //if (vectorTileServiceRegex.test(serviceUrl)) return false;
 
     // Ideally we would issue an initial 'preflight' request to the service to ask what authorization methods are supported. Unfortunately, this is not supported by ArcGIS services.
     return true;
