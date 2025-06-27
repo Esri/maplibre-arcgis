@@ -29,7 +29,7 @@ export const checkServiceUrlType = (serviceUrl : string) : SupportedServiceTypes
             return 'VectorTileService'
         };
         
-        const featureServiceTest = /\/FeatureServer\/(?<layers>[0-9]*\/?)?$/.exec(serviceUrl);
+        const featureServiceTest = /\/FeatureServer\/?(?<layers>[0-9]*\/?)?$/.exec(serviceUrl);
         if (featureServiceTest) {
             if (featureServiceTest.groups['layers']) return 'FeatureLayer';
             return 'FeatureService';

@@ -233,11 +233,14 @@ export class GeoJSONLayer extends HostedLayer {
         return geojsonLayer;
     }
     static async fromServiceUrl (serviceUrl:string, options:GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
+
+        console.log(checkServiceUrlType(serviceUrl))
         if (checkServiceUrlType(serviceUrl) !== 'FeatureService') throw new Error('Must provide a valid feature service endpoint.');
 
-        options._inputType = 'FeatureService';
-        
-        const geojsonLayer = new GeoJSONLayer(serviceUrl,options);
+        const geojsonLayer = new GeoJSONLayer(serviceUrl,{
+            ...options,
+            _inputType:'FeatureService'
+        });
         await geojsonLayer.initialize();
         return geojsonLayer;
     }
