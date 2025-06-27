@@ -38,6 +38,12 @@ export const checkServiceUrlType = (serviceUrl : string) : SupportedServiceTypes
 
     return null;
 }
+export const cleanUrl = (url : string) : string => {
+    if (url[url.length - 1] !== "/") {
+        url += "/";
+    }
+    return url;
+}
 
 export const itemRequest = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) : Promise<any> => {
     const itemUrl = `${options.portalUrl ? options.portalUrl : 'https://www.arcgis.com'}/sharing/rest/content/items/${itemId}${options.endpoint ? options.endpoint : ''}`;
