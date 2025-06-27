@@ -33,47 +33,37 @@
             });
             style.applyStyleTo(map);
             
-            const vectorLayer = new maplibreArcGIS.VectorTileLayer('f0298e881b5b4743bbdf2c7d378acc84',{
-                accessToken:vectorTileKey
-            })
+            map.on('load', async () => {
+                const vectorLayer = await maplibreArcGIS.VectorTileLayer.fromItemId('f0298e881b5b4743bbdf2c7d378acc84');
 
-            map.on('load', () => {
-                vectorLayer.loadStyle().then(() => {
+                map.addSource(vectorLayer.sourceId,vectorLayer.source);
 
-                    vectorLayer.source.attribution = 'Custom data attribution here.';
-                    map.addSource(vectorLayer.sourceId,vectorLayer.source);
-
-                    // This includes properties like source and source-layer, as well as paint properties saved in ArcGIS
-                    const defaultLayer = vectorLayer.layers[0];
-
-                    map.addLayer({
-                        ...defaultLayer, 
-                        type:'fill',
-                        id:'custom-fill',
-                        paint:{
-                            "fill-color": ['case',
-                                ['==', ['get','UseType'], 'Residential'], '#E8E191', // Yellow
-                                ['==', ['get','UseType'], 'Commercial'], '#E580A2', // Red
-                                ['==', ['get','UseType'], 'Government'], '#79E284', // Green
-                                ['==', ['get','UseType'], 'Industrial'], '#C080E5', // Purple
-                                ['==', ['get','UseType'], 'Institutional'], '#80BBE5', // Blue
-                                '#bfbfbf'
-                            ]
-                        }
-                    });
-
-                    map.addLayer({
-                        ...defaultLayer,
-                        type:'line',
-                        id:'custom-outline',
-                        paint:{
-                            'line-color':'#000000',
-                            'line-width':0.25,
-                            'line-opacity':0.25
-                        }
-                    });
+                map.addLayer({
+                    ...vectorLayer.layer, // This includes properties like source, source-layer, and zoom/extent information
+                    type:'fill',
+                    id:'custom-fill',
+                    paint:{
+                        "fill-color": ['case',
+                            ['==', ['get','UseType'], 'Residential'], '#E8E191', // Yellow
+                            ['==', ['get','UseType'], 'Commercial'], '#E580A2', // Red
+                            ['==', ['get','UseType'], 'Government'], '#79E284', // Green
+                            ['==', ['get','UseType'], 'Industrial'], '#C080E5', // Purple
+                            ['==', ['get','UseType'], 'Institutional'], '#80BBE5', // Blue
+                            '#bfbfbf'
+                        ]
+                    }
                 });
-            })
+                map.addLayer({
+                    ...vectorLayer.layer,
+                    type:'line',
+                    id:'custom-outline',
+                    paint:{
+                        'line-color':'#000000',
+                        'line-width':0.25,
+                        'line-opacity':0.25
+                    }
+                });
+            });
         </script>
     </body>
 </html>
