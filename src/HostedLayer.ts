@@ -41,18 +41,13 @@ export abstract class HostedLayer {
     /**
      * Retrieves information about the associated ArcGIS item.
      */
-    _itemInfo : ItemInfo;
+    _itemInfo? : ItemInfo;
 
     /**
      * Contains formatted maplibre sources for adding to map.
      */
     _sources: {[_:string]:SupportedSourceSpecifications};
     _layers: LayerSpecification[];
-
-    /**
-     * Hosted layers are typically loaded via item ID, but service URLs are also supported.
-     */
-    //_inputType: 'itemId' | 'serviceUrl';
 
     /**
      * Internal flag to track layer loading.
@@ -178,7 +173,6 @@ export abstract class HostedLayer {
         if (!this._ready) throw new Error('Cannot add to map: Data layer has not finished loading.');
 
         this._map = map;
-        // TODO ensure each sourceId is unique
         Object.keys(this._sources).forEach(sourceId => {
             map.addSource(sourceId,this._sources[sourceId])
         });

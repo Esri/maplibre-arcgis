@@ -41,7 +41,7 @@ export class GeoJSONLayer extends HostedLayer {
     declare _serviceInfo: GeoJSONServiceInfo;
     _serviceInfoLoaded: boolean;
 
-    //_itemInfo: ItemInfo;
+    //_itemInfo?: ItemInfo;
     //accessToken?:string;
     //_ready: boolean;
     //_map?: Map;
@@ -138,14 +138,18 @@ export class GeoJSONLayer extends HostedLayer {
         if (!layerData) throw new Error('Unable to load data.');
 
         // Create maplibre source and layer for data
-        this._sources[layerInfo.name] = {
+        let sourceId = layerInfo.name;
+        if (sourceId in this._sources) { // ensure source ID is unique
+            sourceId += layerUrl[layerUrl.length-2]; // URL always ends in 0/, 1/, etc
+        }
+        this._sources[sourceId] = {
             type:'geojson',
-            attribution: layerInfo.copyrightText,
+            attribution: this._itemInfo?.accessInformation ? this._itemInfo.accessInformation : layerInfo.copyrightText,
             data: layerData
         }
         const defaultLayer = {
-            source:layerInfo.name,
-            id:`${layerInfo.name}-layer`,
+            source:sourceId,
+            id:`${sourceId}-layer`,
             type:esriGeometryDefaultStyleMap[layerInfo.geometryType],
             // TODO default "esri blue" paint style for all layer types
         }
@@ -176,7 +180,7 @@ export class GeoJSONLayer extends HostedLayer {
                         console.warn('Feature layers with sublayers are not supported. This layer will not be added.');
                         return;
                     }
-                    await this._loadLayer(this._serviceInfo.serviceUrl+i);
+                    await this._loadLayer(this._serviceInfo.serviceUrl+i+'/');
                 }
                 // loopthru service.layers
                 break;
@@ -226,9 +230,10 @@ export class GeoJSONLayer extends HostedLayer {
 
         if (checkServiceUrlType(layerUrl) !== 'FeatureLayer') throw new Error('Must provide a valid feature layer endpoint');
 
-        options._inputType = 'FeatureLayer';
-
-        const geojsonLayer = new GeoJSONLayer(layerUrl,options);
+        const geojsonLayer = new GeoJSONLayer(layerUrl,{
+            ...options,
+            _inputType:'FeatureLayer'
+        });
         await geojsonLayer.initialize();
         return geojsonLayer;
     }
