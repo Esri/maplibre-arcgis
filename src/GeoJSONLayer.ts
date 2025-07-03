@@ -31,17 +31,18 @@ interface GeoJSONLayerOptions extends HostedLayerOptions {
     layer?:LayerSpecification;
 }
 
-interface GeoJSONServiceInfo extends DataServiceInfo {}
+interface GeoJSONServiceInfo extends DataServiceInfo {};
+interface GeoJSONItemInfo extends ItemInfo {};
 
 type SupportedInputTypes = "ItemId" | "FeatureService" | "FeatureLayer";
 export class GeoJSONLayer extends HostedLayer {
 
-    _inputType: SupportedInputTypes
+    private _inputType: SupportedInputTypes
 
-    declare _serviceInfo: GeoJSONServiceInfo;
-    _serviceInfoLoaded: boolean;
+    declare protected _serviceInfo: GeoJSONServiceInfo;
+    private _serviceInfoLoaded: boolean;
 
-    //_itemInfo?: ItemInfo;
+    declare protected _itemInfo?: GeoJSONItemInfo;
     //accessToken?:string;
     //_ready: boolean;
     //_map?: Map;
@@ -49,13 +50,12 @@ export class GeoJSONLayer extends HostedLayer {
     declare _sources: { [_: string]: GeoJSONSourceSpecification };
     declare _layers: LayerSpecification[];
 
-    options?:GeoJSONLayerOptions;    
+    options?: GeoJSONLayerOptions;    
 
     constructor (serviceUrlOrId : string,options: GeoJSONLayerOptions) {
         super();
         //this._dataLoaded = false;
         this._serviceInfoLoaded = false;
-        this._ready = false;
 
         this.options = options ? options : {};
 
@@ -86,7 +86,7 @@ export class GeoJSONLayer extends HostedLayer {
 
     }
 
-    async _loadLayer(layerUrl) : Promise<IQueryFeaturesResponse> {
+    private async _loadLayer(layerUrl) : Promise<IQueryFeaturesResponse> {
         const layerInfo = await getLayer({
             url:layerUrl,
             httpMethod:'GET'
@@ -98,6 +98,7 @@ export class GeoJSONLayer extends HostedLayer {
         if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error("Feature service does not support pagination in queries");
 
         let layerData : GeoJSON.GeoJSON;
+        // @ts-expect-error
         if (layerInfo.supportsExceedsLimitStatistics) {
             const exceedsLimitsResponse = await queryFeatures({
                 url: layerUrl,
@@ -108,6 +109,7 @@ export class GeoJSONLayer extends HostedLayer {
                         maxRecordCount: 2000,
                         maxVertexCount: 250000,
                         outStatisticFieldName: "exceedslimit",
+                        // @ts-expect-error
                         statisticType: "exceedslimit"
                     }
                 ],
@@ -158,7 +160,7 @@ export class GeoJSONLayer extends HostedLayer {
         return;
     }
 
-    async _loadData() : Promise<void> {
+    private async _loadData() : Promise<void> {
 
         this._sources = {};
         this._layers = [];
@@ -192,7 +194,7 @@ export class GeoJSONLayer extends HostedLayer {
         this._serviceInfoLoaded = true;
     }
 
-    _createSourceId() {
+    private _createSourceId() {
 
         if (this.options.sourceId) return this.options.sourceId;
 
@@ -204,17 +206,7 @@ export class GeoJSONLayer extends HostedLayer {
         return this._serviceInfo.serviceUrl.substring(i,end);
     }
 
-    async initialize() : Promise<GeoJSONLayer> {
-
-        // await this._loadAttribution();
-        await this._loadData();
-        // Public API is read-only
-        this._definePublicApi();
-        this._ready = true;
-        return this;
-    }
-
-    async _handleAttribution() : Promise<void> {
+    private async _handleAttribution() : Promise<void> {
         // 1. check item ID for information, prefer that
         // 2. check service for copyrightText
         // 3. check ..... ?
@@ -226,6 +218,15 @@ export class GeoJSONLayer extends HostedLayer {
         return vtl;
     }
     */
+    async initialize() : Promise<GeoJSONLayer> {
+        // await this._loadAttribution();
+        await this._loadData();
+        // Public API is read-only
+        this._definePublicApi();
+        this._ready = true;
+        return this;
+    }
+
     static async fromLayerUrl (layerUrl: string, options : GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
 
         if (checkServiceUrlType(layerUrl) !== 'FeatureLayer') throw new Error('Must provide a valid feature layer endpoint');

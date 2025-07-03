@@ -5,35 +5,34 @@ function serialize(params : Record<string,any>) {
     params.f = params.f || "json";
   
     for (const key in params) {
-      if (Object.hasOwn(params, key)) {
-        const param = params[key];
-        if (param === null || param === undefined) continue;
+      if (!params.hasOwnProperty(key)) continue;
+      const param = params[key];
+      if (param === null || param === undefined) continue;
 
-        const type = Object.prototype.toString.call(param);
-  
-        let value : string | number;
-        if (type === "[object Array]") {
-          value =
-            Object.prototype.toString.call(param[0]) === "[object Object]"
-              ? JSON.stringify(param)
-              : param.join(",");
-        } else if (type === "[object Object]") {
-          value = JSON.stringify(param);
-        } else if (type === "[object Date]") {
-          value = param.valueOf();
-        } else {
-          value = param;
-        }
-  
-        if (data.length) {
-          data += "&";
-        }
-        data += `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+      const type = Object.prototype.toString.call(param);
+
+      let value : string | number;
+      if (type === "[object Array]") {
+        value =
+          Object.prototype.toString.call(param[0]) === "[object Object]"
+            ? JSON.stringify(param)
+            : param.join(",");
+      } else if (type === "[object Object]") {
+        value = JSON.stringify(param);
+      } else if (type === "[object Date]") {
+        value = param.valueOf();
+      } else {
+        value = param;
       }
+
+      if (data.length) {
+        data += "&";
+      }
+      data += `${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
     }
   
     const APOSTROPHE_URL_ENCODE = "%27";
-    return data.replaceAll("'", APOSTROPHE_URL_ENCODE);
+    return data.replace(/'/g, APOSTROPHE_URL_ENCODE);
 }
 
 export function fetchRequest(requestUrl : string, params : CommonRequestParams | Record<string,any> = {}, context? : any) : Promise<any> {

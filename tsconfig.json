@@ -5,7 +5,9 @@
         "moduleResolution":"bundler",
         "forceConsistentCasingInFileNames":true,
         "resolveJsonModule": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "isolatedModules": false,
+        "noEmit": true
     },
     "include": [
         "src/**/*"

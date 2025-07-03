@@ -36,28 +36,28 @@ export abstract class HostedLayer {
     /**
      * Retrieves information about the associated hosted data service in ArcGIS.
      */
-    _serviceInfo : DataServiceInfo;
+    protected _serviceInfo : DataServiceInfo;
     
     /**
      * Retrieves information about the associated ArcGIS item.
      */
-    _itemInfo? : ItemInfo;
+    protected _itemInfo? : ItemInfo;
 
     /**
      * Contains formatted maplibre sources for adding to map.
      */
-    _sources: {[_:string]:SupportedSourceSpecifications};
-    _layers: LayerSpecification[];
+    protected _sources: {[_:string]:SupportedSourceSpecifications};
+    protected _layers: LayerSpecification[];
 
     /**
      * Internal flag to track layer loading.
      */
-    _ready:boolean;
+    protected _ready:boolean;
 
     /**
      * A MapLibre GL JS map.
      */
-    _map?:Map;
+    protected _map?:Map;
 
     /**
      * Defines the following properties:
@@ -67,7 +67,7 @@ export abstract class HostedLayer {
      * layers
      * layer
      */
-    _definePublicApi() : void {
+    protected _definePublicApi() : void {
         const throwReadOnlyError = (propertyName : string) => {throw new Error(`${propertyName} is a read-only property.`)};
         
         Object.defineProperty(this,'sources',{
@@ -103,7 +103,6 @@ export abstract class HostedLayer {
             },
             set (_) {throwReadOnlyError('layers')}
         });
-        Object.seal(this['layers']);
 
         if (this._layers.length == 1) {
             Object.defineProperty(this,'layer',{
