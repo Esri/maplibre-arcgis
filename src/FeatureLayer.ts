@@ -23,7 +23,20 @@ const esriGeometryDefaultStyleMap = {
     "esriGeometryEnvelope":"fill",
     "esriGeometryMultiPatch":"fill"
 }
-
+const defaultLayerPaintMap = {
+    "circle": {
+        "circle-color":"rgb(0,0,0)", 
+    }, // #4f81bd #365d8d
+    "line": {
+        "line-color":"rgb(0,0,0)",
+        "line-width":3
+    },
+    "fill": {
+        "fill-color":"rgba(0,0,0,0.25)", 
+        "fill-outline-color":"rgb(0,0,0)",
+    }
+}
+// #0064ff #6e6e6e
 interface GeoJSONLayerOptions extends HostedLayerOptions {
     _inputType?: SupportedInputTypes;
     query?: Object;
@@ -31,15 +44,16 @@ interface GeoJSONLayerOptions extends HostedLayerOptions {
     layer?:LayerSpecification;
 }
 
-interface GeoJSONServiceInfo extends DataServiceInfo {};
+interface FeatureServiceInfo extends DataServiceInfo {};
 interface GeoJSONItemInfo extends ItemInfo {};
 
 type SupportedInputTypes = "ItemId" | "FeatureService" | "FeatureLayer";
-export class GeoJSONLayer extends HostedLayer {
+
+export class FeatureLayer extends HostedLayer {
 
     private _inputType: SupportedInputTypes
 
-    declare protected _serviceInfo: GeoJSONServiceInfo;
+    declare protected _serviceInfo: FeatureServiceInfo;
     private _serviceInfoLoaded: boolean;
 
     declare protected _itemInfo?: GeoJSONItemInfo;
@@ -76,8 +90,6 @@ export class GeoJSONLayer extends HostedLayer {
             this._serviceInfo = {
                 serviceUrl: cleanUrl(serviceUrlOrId)
             }
-            // TODO request service and fetch all layers within
-            //throw new Error('Unable to initialize GeoJSON layer. Please provide a service URL that points to a specific layer within the service, e.g. \'.../FeatureService/0\'.');
         }
         else if (this._inputType === 'ItemId') {
             throw new Error('Item IDs are not currently supported by GeoJSONLayer. Please provide a service URL referencing a layer instead.')
@@ -122,7 +134,7 @@ export class GeoJSONLayer extends HostedLayer {
             }) as IQueryFeaturesResponse;
 
             if (exceedsLimitsResponse.features[0].attributes.exceedslimit === 0) { 
-                // TODO PAGINATE DATA HERE
+                // TODO
                 layerData = await queryFeatures({
                     url:layerUrl,
                     f: "geojson"
@@ -149,11 +161,16 @@ export class GeoJSONLayer extends HostedLayer {
             attribution: this._itemInfo?.accessInformation ? this._itemInfo.accessInformation : layerInfo.copyrightText,
             data: layerData
         }
+
+        const layerType = esriGeometryDefaultStyleMap[layerInfo.geometryType];
         const defaultLayer = {
             source:sourceId,
             id:`${sourceId}-layer`,
-            type:esriGeometryDefaultStyleMap[layerInfo.geometryType],
-            // TODO default "esri blue" paint style for all layer types
+            type:layerType,
+            paint: defaultLayerPaintMap[layerType]
+            // TODO default "esri blue" paint style for all layer types 
+            // #2d7ecf
+            // #0064ff
         }
         this._layers.push(defaultLayer as LayerSpecification);
 
@@ -171,20 +188,21 @@ export class GeoJSONLayer extends HostedLayer {
                 // TODO get service url and attribution from item here then flow down
                 dataSource = 'FeatureService';
             case "FeatureService":
-                // getService
                 const serviceInfo = await getService({
                     url:this._serviceInfo.serviceUrl,
                     authentication:this.accessToken
                 });
-                // Add all layers
-                for (let i=0;i<serviceInfo.layers.length;i++) {
+                // Add layers
+                if (serviceInfo.layers.length > 10) {
+                    console.warn('The feature service provided contains more than 10 layers. Only the first 10 layers will be loaded.');
+                }
+                for (let i=0;(i<serviceInfo.layers.length) && (i < 10);i++) {
                     if (serviceInfo.layers[i]['subLayerIds']) {
                         console.warn('Feature layers with sublayers are not supported. This layer will not be added.');
                         return;
                     }
                     await this._loadLayer(this._serviceInfo.serviceUrl+i+'/');
                 }
-                // loopthru service.layers
                 break;
             case "FeatureLayer":
                 // Add single layer
@@ -218,7 +236,7 @@ export class GeoJSONLayer extends HostedLayer {
         return vtl;
     }
     */
-    async initialize() : Promise<GeoJSONLayer> {
+    async initialize() : Promise<FeatureLayer> {
         // await this._loadAttribution();
         await this._loadData();
         // Public API is read-only
@@ -227,23 +245,23 @@ export class GeoJSONLayer extends HostedLayer {
         return this;
     }
 
-    static async fromLayerUrl (layerUrl: string, options : GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
+    static async fromLayerUrl (layerUrl: string, options : GeoJSONLayerOptions) : Promise<FeatureLayer> {
 
-        if (checkServiceUrlType(layerUrl) !== 'FeatureLayer') throw new Error('Must provide a valid feature layer endpoint');
+        if (checkServiceUrlType(layerUrl) !== 'FeatureLayer') throw new Error('Must provide a valid feature layer endpoint, e.g. \/0, \/1, etc');
 
-        const geojsonLayer = new GeoJSONLayer(layerUrl,{
+        const geojsonLayer = new FeatureLayer(layerUrl,{
             ...options,
             _inputType:'FeatureLayer'
         });
         await geojsonLayer.initialize();
         return geojsonLayer;
     }
-    static async fromServiceUrl (serviceUrl:string, options:GeoJSONLayerOptions) : Promise<GeoJSONLayer> {
+    static async fromServiceUrl (serviceUrl:string, options:GeoJSONLayerOptions) : Promise<FeatureLayer> {
 
         console.log(checkServiceUrlType(serviceUrl))
         if (checkServiceUrlType(serviceUrl) !== 'FeatureService') throw new Error('Must provide a valid feature service endpoint.');
 
-        const geojsonLayer = new GeoJSONLayer(serviceUrl,{
+        const geojsonLayer = new FeatureLayer(serviceUrl,{
             ...options,
             _inputType:'FeatureService'
         });
@@ -252,4 +270,4 @@ export class GeoJSONLayer extends HostedLayer {
     }
 }
 
-export default GeoJSONLayer;
+export default FeatureLayer;
