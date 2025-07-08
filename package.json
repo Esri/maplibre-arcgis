@@ -36,6 +36,8 @@
     "start-dev": "node build.mjs dev watch"
   },
   "dependencies": {
-    "@esri/arcgis-rest-feature-service": "^4.1.0"
+    "@esri/arcgis-rest-feature-service": "^4.1.0",
+    "@esri/arcgis-rest-portal": "^4.6.1",
+    "@esri/arcgis-rest-request": "^4.6.0"
   }
 }

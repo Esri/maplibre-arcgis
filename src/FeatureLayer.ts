@@ -26,17 +26,16 @@ const esriGeometryDefaultStyleMap = {
 const defaultLayerPaintMap = {
     "circle": {
         "circle-color":"rgb(0,0,0)", 
-    }, // #4f81bd #365d8d
+    }, // "Esri blue" alternates: #4f81bd #365d8d
     "line": {
         "line-color":"rgb(0,0,0)",
         "line-width":3
-    },
+    }, // "Esri blue" alternates: #0064ff
     "fill": {
         "fill-color":"rgba(0,0,0,0.25)", 
         "fill-outline-color":"rgb(0,0,0)",
-    }
+    } // "Esri blue" alternates: #0064ff #6e6e6e
 }
-// #0064ff #6e6e6e
 interface GeoJSONLayerOptions extends HostedLayerOptions {
     _inputType?: SupportedInputTypes;
     query?: Object;
@@ -168,9 +167,6 @@ export class FeatureLayer extends HostedLayer {
             id:`${sourceId}-layer`,
             type:layerType,
             paint: defaultLayerPaintMap[layerType]
-            // TODO default "esri blue" paint style for all layer types 
-            // #2d7ecf
-            // #0064ff
         }
         this._layers.push(defaultLayer as LayerSpecification);
 

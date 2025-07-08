@@ -1,7 +1,7 @@
 import { Map,  AttributionControl as MaplibreAttributionControl } from "maplibre-gl";
-import { request } from "./Request";
 import { ItemId } from "./Util";
 import { AttributionControl } from './AttributionControl';
+import { request } from "@esri/arcgis-rest-request";
 
 type IBasemapStyleOptions = {
     accessToken: string;
@@ -148,7 +148,10 @@ export class BasemapStyle {
      * @param accessToken An ArcGIS access token
      */
     static async getSelf (options:{accessToken?:string}) : Promise<any> {
-        return await request(`${BasemapStyle._baseUrl}/self`,{token:options?.accessToken});
+        return await request(`${BasemapStyle._baseUrl}/self`,{
+            authentication:options?.accessToken,
+            httpMethod:'GET'
+        });
     }
     /**
      * Static method that returns a basemap style URL. Does not add a basemap style to the map.
