@@ -1,14 +1,7 @@
-import { request } from "./Request";
-
 type ServiceUrl = string;
 export type ItemId = string;
 export type ServiceUrlOrItemId = ServiceUrl | ItemId;
-type AccessToken = string;
 
-export type CommonRequestParams = {
-    token?: AccessToken;
-    f?: 'html' | 'json' | 'pjson'
-}
 type SupportedServiceTypes = 'FeatureService' | 'FeatureLayer' | 'VectorTileService' | 'VectorTileLayer';
 
 export const checkItemId = (itemId : ItemId) : 'ItemId' | null => {
@@ -31,7 +24,6 @@ export const checkServiceUrlType = (serviceUrl : string) : SupportedServiceTypes
         
         const featureServiceTest = /\/FeatureServer\/?([0-9]*\/?)?$/.exec(serviceUrl);
         if (featureServiceTest) {
-            console.log(featureServiceTest);
             if (featureServiceTest.length == 2 && featureServiceTest[1]) {
                 return 'FeatureLayer'
             };
@@ -48,8 +40,8 @@ export const cleanUrl = (url : string) : string => {
     return url;
 }
 
-export const itemRequest = async (itemId : ItemId, options : CommonRequestParams & {portalUrl:string, endpoint?:string}) : Promise<any> => {
-    const itemUrl = `${options.portalUrl ? options.portalUrl : 'https://www.arcgis.com'}/sharing/rest/content/items/${itemId}${options.endpoint ? options.endpoint : ''}`;
-    const params = (({portalUrl,endpoint,...params})=>params)(options);
-    return request(itemUrl, params);
+export const warn = (...args : any) => {
+  if (console && console.warn) {
+    console.warn.apply(console, args);
+  }
 }

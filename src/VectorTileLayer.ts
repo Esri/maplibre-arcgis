@@ -1,9 +1,9 @@
 import type {LayerSpecification, VectorSourceSpecification, StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
-import { ItemId, ServiceUrlOrItemId, checkServiceUrlType, checkItemId, itemRequest } from './Util';
-import { request, warn } from './Request';
-import { Map } from 'maplibre-gl';
+import { ItemId, ServiceUrlOrItemId, checkServiceUrlType, checkItemId, warn } from './Util';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from './HostedLayer';
+import { request } from '@esri/arcgis-rest-request';
+import { getItem, getItemResources, getItemResource, IItem } from '@esri/arcgis-rest-portal';
 
 interface VectorTileLayerOptions extends HostedLayerOptions {
     _inputType?: 'ItemId' | 'VectorTileService';
@@ -53,7 +53,7 @@ export class VectorTileLayer extends HostedLayer {
         if (this._inputType === 'ItemId') {
             this._itemInfo = {
                 itemId: urlOrId,
-                portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com'
+                portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest'
             };
         }
         else if (this._inputType === 'VectorTileService') {
@@ -92,23 +92,23 @@ export class VectorTileLayer extends HostedLayer {
     }
     async _loadStyleFromItemId() : Promise<StyleSpecification | null> {
         const params = {
-            token:this.accessToken,
-            portalUrl:this._itemInfo.portalUrl
+            authentication:this.accessToken,
+            portal:this._itemInfo.portalUrl
         }
         // Load style info
         let styleInfo : StyleSpecification | null = null;
         // Try loading default style name first
         try {
-            const rootStyle : any = await itemRequest(this._itemInfo.itemId,{
+            const rootStyle = await getItemResource(this._itemInfo.itemId, {
                 ...params,
-                endpoint:'/resources/styles/root.json'
+                fileName:'styles/root.json',
+                readAs:'json'
             });
             styleInfo = rootStyle;
         // Check for other style resources associated with the item
         } catch (e) {
-            const itemResources : any = await itemRequest(this._itemInfo.itemId,{
-                ...params,
-                endpoint:'/resources'
+            const itemResources : any = await getItemResources(this._itemInfo.itemId, {
+                ...params
             });
 
             let styleFile : string | null = null;
@@ -120,10 +120,11 @@ export class VectorTileLayer extends HostedLayer {
                 });
             }
             if (styleFile) {
-                const customStyle : StyleSpecification = await itemRequest(this._itemInfo.itemId,{
+                const customStyle = await getItemResource(this._itemInfo.itemId, {
                     ...params,
-                    endpoint:`/resources/${styleFile}`
-                })
+                    fileName:styleFile,
+                    readAs:'json'
+                });
                 styleInfo = customStyle;
             }
         }
@@ -133,7 +134,7 @@ export class VectorTileLayer extends HostedLayer {
         if (!this._serviceInfo.serviceUrl) throw new Error('No data service provided');
 
         const styleInfo : StyleSpecification = await request(`${this._serviceInfo.serviceUrl}/${this._serviceInfo.styleEndpoint}`,{
-            token:this.accessToken,
+            authentication:this.accessToken,
         });
         return styleInfo;
     }
@@ -143,9 +144,8 @@ export class VectorTileLayer extends HostedLayer {
     async _loadServiceInfo() : Promise<VectorTileServiceInfo> {
         // if we always need to get attribution then there's no point in requesting the default style first
         const serviceResponse : any = await request(this._serviceInfo.serviceUrl,{
-            token:this.accessToken
+            authentication:this.accessToken
         });
-
         /*if (!this._itemInfoLoaded) {
             this._itemInfo = {
                 itemId:serviceResponse.serviceItemId,
@@ -166,10 +166,11 @@ export class VectorTileLayer extends HostedLayer {
      * Retrieves information from the portal about item attribution and associated service URLs
      */
     async _loadItemInfo() : Promise<ItemInfo> {
-        const itemResponse : any = await itemRequest(this._itemInfo.itemId,{
-            token:this.accessToken,
-            portalUrl:this._itemInfo.portalUrl
-        });
+
+        const itemResponse : IItem = await getItem(this._itemInfo.itemId,{
+            authentication:this.accessToken,
+            portal:this._itemInfo.portalUrl
+        })
 
         if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
         // in feature collections, there is still data at the /data endpoint ...... just a heads up

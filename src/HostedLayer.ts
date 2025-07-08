@@ -1,6 +1,5 @@
 import type {GeoJSONSourceSpecification, LayerSpecification, SourceSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import { Map } from 'maplibre-gl';
-import { request } from './Request';
 
 type SupportedSourceSpecifications = VectorSourceSpecification | GeoJSONSourceSpecification;
 
