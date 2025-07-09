@@ -1,9 +1,9 @@
 import type {LayerSpecification, VectorSourceSpecification, StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
-import { ItemId, ServiceUrlOrItemId, checkServiceUrlType, checkItemId, warn } from './Util';
+import { checkServiceUrlType, checkItemId, warn, type ItemId} from './Util';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from './HostedLayer';
 import { request } from '@esri/arcgis-rest-request';
-import { getItem, getItemResources, getItemResource, IItem } from '@esri/arcgis-rest-portal';
+import { getItem, getItemResources, getItemResource, type IVectorTileServiceDefinition } from '@esri/arcgis-rest-portal';
 
 interface VectorTileLayerOptions extends HostedLayerOptions {
     _inputType?: 'ItemId' | 'VectorTileService';
@@ -29,7 +29,7 @@ export class VectorTileLayer extends HostedLayer {
     _itemInfoLoaded: boolean;
     _serviceInfoLoaded: boolean;
 
-    constructor (urlOrId : ServiceUrlOrItemId, options? : VectorTileLayerOptions) {
+    constructor (urlOrId : string, options? : VectorTileLayerOptions) {
 
         super();
         this._ready = false;
@@ -74,8 +74,8 @@ export class VectorTileLayer extends HostedLayer {
                 if (styleInfo) break;
                 else {
                     warn('Could not find a style resource associated with the provided item ID. Checking service URL instead...');
-                    styleSource = 'VectorTileService';
-                }
+                    styleSource = 'VectorTileService';  
+                } // falls through
             }
             case 'VectorTileService': {
                 await this._loadServiceInfo();
@@ -103,13 +103,15 @@ export class VectorTileLayer extends HostedLayer {
                 ...params,
                 fileName:'styles/root.json',
                 readAs:'json'
-            });
+            }) as StyleSpecification;
             styleInfo = rootStyle;
         // Check for other style resources associated with the item
         } catch (e) {
-            const itemResources : any = await getItemResources(this._itemInfo.itemId, {
+            const itemResources = await getItemResources(this._itemInfo.itemId, {
                 ...params
             });
+
+            console.log(itemResources);
 
             let styleFile : string | null = null;
             if (itemResources.total > 0) {
@@ -124,7 +126,7 @@ export class VectorTileLayer extends HostedLayer {
                     ...params,
                     fileName:styleFile,
                     readAs:'json'
-                });
+                }) as StyleSpecification;
                 styleInfo = customStyle;
             }
         }
@@ -133,25 +135,20 @@ export class VectorTileLayer extends HostedLayer {
     async _loadStyleFromServiceUrl() : Promise<StyleSpecification | null> {
         if (!this._serviceInfo.serviceUrl) throw new Error('No data service provided');
 
-        const styleInfo : StyleSpecification = await request(`${this._serviceInfo.serviceUrl}/${this._serviceInfo.styleEndpoint}`,{
+        const styleInfo = await request(`${this._serviceInfo.serviceUrl}/${this._serviceInfo.styleEndpoint}`,{
             authentication:this.accessToken,
-        });
+        }) as StyleSpecification;
         return styleInfo;
     }
     /**
      * Retrieves information from the data service about data attribution, associated item IDs, and more.
      */
     async _loadServiceInfo() : Promise<VectorTileServiceInfo> {
-        // if we always need to get attribution then there's no point in requesting the default style first
-        const serviceResponse : any = await request(this._serviceInfo.serviceUrl,{
+        
+        const serviceResponse = await request(this._serviceInfo.serviceUrl,{
             authentication:this.accessToken
-        });
-        /*if (!this._itemInfoLoaded) {
-            this._itemInfo = {
-                itemId:serviceResponse.serviceItemId,
-                portalUrl: this._serviceInfo.serviceItemPortalUrl
-            }
-        }*/
+        }) as IVectorTileServiceDefinition;
+
         this._serviceInfo = {
             ...this._serviceInfo,
             tiles: serviceResponse.tiles,
@@ -167,7 +164,7 @@ export class VectorTileLayer extends HostedLayer {
      */
     async _loadItemInfo() : Promise<ItemInfo> {
 
-        const itemResponse : IItem = await getItem(this._itemInfo.itemId,{
+        const itemResponse = await getItem(this._itemInfo.itemId,{
             authentication:this.accessToken,
             portal:this._itemInfo.portalUrl
         })
@@ -213,7 +210,7 @@ export class VectorTileLayer extends HostedLayer {
         })
         // Public API is read-only
         this._sources = style.sources as {[_:string]:VectorSourceSpecification};
-        this._layers = style.layers as LayerSpecification[];
+        this._layers = style.layers;
 
         this._definePublicApi();
     }

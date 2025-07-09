@@ -1,8 +1,11 @@
-import { LayerSpecification, Map, GeoJSONSourceSpecification} from "maplibre-gl";
+import type { LayerSpecification, GeoJSONSourceSpecification} from "maplibre-gl";
 import { HostedLayer } from "./HostedLayer";
-import type { DataServiceInfo, HostedLayerOptions, ItemInfo } from "./HostedLayer";
+import type { HostedLayerOptions } from "./HostedLayer";
 import { checkItemId,checkServiceUrlType, cleanUrl } from "./Util";
-import { queryFeatures, getLayer, IQueryFeaturesResponse, GeometryType, ILayerDefinition, IStatisticDefinition, getService } from "@esri/arcgis-rest-feature-service";
+import { 
+    queryFeatures, getLayer, getService,
+    type IQueryFeaturesResponse, type ILayerDefinition
+ } from "@esri/arcgis-rest-feature-service";
 
 /*
 const geoJSONDefaultStyleMap = {
@@ -15,7 +18,7 @@ const geoJSONDefaultStyleMap = {
 }
 */
 
-const esriGeometryDefaultStyleMap = {
+const esriGeometryDefaultStyleMap : {[_:string]:'circle'|'line'|'fill'} = {
     "esriGeometryPoint":"circle",
     "esriGeometryMultipoint":"circle",
     "esriGeometryPolyline":"line",
@@ -38,13 +41,10 @@ const defaultLayerPaintMap = {
 }
 interface GeoJSONLayerOptions extends HostedLayerOptions {
     _inputType?: SupportedInputTypes;
-    query?: Object;
+    query?: object;
     sourceId?:string;
     layer?:LayerSpecification;
 }
-
-interface FeatureServiceInfo extends DataServiceInfo {};
-interface GeoJSONItemInfo extends ItemInfo {};
 
 type SupportedInputTypes = "ItemId" | "FeatureService" | "FeatureLayer";
 
@@ -52,10 +52,8 @@ export class FeatureLayer extends HostedLayer {
 
     private _inputType: SupportedInputTypes
 
-    declare protected _serviceInfo: FeatureServiceInfo;
     private _serviceInfoLoaded: boolean;
 
-    declare protected _itemInfo?: GeoJSONItemInfo;
     //accessToken?:string;
     //_ready: boolean;
     //_map?: Map;
@@ -67,13 +65,12 @@ export class FeatureLayer extends HostedLayer {
 
     constructor (serviceUrlOrId : string,options: GeoJSONLayerOptions) {
         super();
-        //this._dataLoaded = false;
+
         this._serviceInfoLoaded = false;
 
         this.options = options ? options : {};
 
         if (options?.accessToken) this.accessToken = options.accessToken;
-
 
         if (options?._inputType) this._inputType = options._inputType;
         else {
@@ -97,19 +94,14 @@ export class FeatureLayer extends HostedLayer {
 
     }
 
-    private async _loadLayer(layerUrl) : Promise<IQueryFeaturesResponse> {
-        const layerInfo = await getLayer({
-            url:layerUrl,
-            httpMethod:'GET'
-        }) as ILayerDefinition;
-
+    private async _fetchAllFeatures(layerUrl : string, layerInfo : ILayerDefinition) : Promise<GeoJSON.GeoJSON> {
 
         if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error("Feature service does not support GeoJSON format.");
         if (!layerInfo.capabilities.includes("Query")) throw new Error("Feature service does not support queries.");
         if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error("Feature service does not support pagination in queries");
-
+        
         let layerData : GeoJSON.GeoJSON;
-        // @ts-expect-error
+        // @ts-expect-error: REST JS ILayerDefinition has not been updated to include the 'supportsExceedsLimitStatistics' property.
         if (layerInfo.supportsExceedsLimitStatistics) {
             const exceedsLimitsResponse = await queryFeatures({
                 url: layerUrl,
@@ -120,7 +112,7 @@ export class FeatureLayer extends HostedLayer {
                         maxRecordCount: 2000,
                         maxVertexCount: 250000,
                         outStatisticFieldName: "exceedslimit",
-                        // @ts-expect-error
+                        // @ts-expect-error: REST JS IStatisticDefinition has not been updated to include the 'exceedslimit' statistic type
                         statisticType: "exceedslimit"
                     }
                 ],
@@ -133,7 +125,7 @@ export class FeatureLayer extends HostedLayer {
             }) as IQueryFeaturesResponse;
 
             if (exceedsLimitsResponse.features[0].attributes.exceedslimit === 0) { 
-                // TODO
+                // TODO paginate once nextPage is supported by REST JS
                 layerData = await queryFeatures({
                     url:layerUrl,
                     f: "geojson"
@@ -150,22 +142,34 @@ export class FeatureLayer extends HostedLayer {
         }
         if (!layerData) throw new Error('Unable to load data.');
 
+        return layerData;
+    }
+
+    private async _loadLayer(layerUrl : string) : Promise<void> {
+        const layerInfo = await getLayer({
+            url:layerUrl,
+            httpMethod:'GET'
+        });
+        console.log(layerInfo);
+
+        const layerData = await this._fetchAllFeatures(layerUrl, layerInfo);
+
         // Create maplibre source and layer for data
         let sourceId = layerInfo.name;
         if (sourceId in this._sources) { // ensure source ID is unique
             sourceId += layerUrl[layerUrl.length-2]; // URL always ends in 0/, 1/, etc
         }
         this._sources[sourceId] = {
-            type:'geojson',
+            type: 'geojson',
             attribution: this._itemInfo?.accessInformation ? this._itemInfo.accessInformation : layerInfo.copyrightText,
             data: layerData
         }
 
         const layerType = esriGeometryDefaultStyleMap[layerInfo.geometryType];
         const defaultLayer = {
-            source:sourceId,
-            id:`${sourceId}-layer`,
-            type:layerType,
+            source: sourceId,
+            id: `${sourceId}-layer`,
+            type: layerType,
             paint: defaultLayerPaintMap[layerType]
         }
         this._layers.push(defaultLayer as LayerSpecification);
@@ -180,13 +184,15 @@ export class FeatureLayer extends HostedLayer {
 
         let dataSource = this._inputType;
         switch (dataSource) {
-            case "ItemId":
-                // TODO get service url and attribution from item here then flow down
+            case "ItemId": {
+                // TODO get service url and attribution from item here
                 dataSource = 'FeatureService';
-            case "FeatureService":
+                // falls through
+            }
+            case "FeatureService": {
                 const serviceInfo = await getService({
-                    url:this._serviceInfo.serviceUrl,
-                    authentication:this.accessToken
+                    url: this._serviceInfo.serviceUrl,
+                    authentication: this.accessToken
                 });
                 // Add layers
                 if (serviceInfo.layers.length > 10) {
@@ -197,13 +203,15 @@ export class FeatureLayer extends HostedLayer {
                         console.warn('Feature layers with sublayers are not supported. This layer will not be added.');
                         return;
                     }
-                    await this._loadLayer(this._serviceInfo.serviceUrl+i+'/');
+                    await this._loadLayer(`${this._serviceInfo.serviceUrl}${i}/`); // TODO test on a layer with tables
                 }
                 break;
-            case "FeatureLayer":
+            }
+            case "FeatureLayer": {
                 // Add single layer
                 await this._loadLayer(this._serviceInfo.serviceUrl);
                 break;
+            }
         }
         this._serviceInfoLoaded = true;
     }
@@ -247,7 +255,7 @@ export class FeatureLayer extends HostedLayer {
 
         const geojsonLayer = new FeatureLayer(layerUrl,{
             ...options,
-            _inputType:'FeatureLayer'
+            _inputType: 'FeatureLayer'
         });
         await geojsonLayer.initialize();
         return geojsonLayer;
@@ -259,7 +267,7 @@ export class FeatureLayer extends HostedLayer {
 
         const geojsonLayer = new FeatureLayer(serviceUrl,{
             ...options,
-            _inputType:'FeatureService'
+            _inputType: 'FeatureService'
         });
         await geojsonLayer.initialize();
         return geojsonLayer;

@@ -20,7 +20,7 @@ export default tseslint.config([
     },
     extends: [
       js.configs.recommended,
-      tseslint.configs.recommended
+      tseslint.configs.recommendedTypeChecked
     ],
     languageOptions: {
       globals: {
@@ -33,6 +33,7 @@ export default tseslint.config([
 
       parserOptions: {
         createDefaultProgram:true,
+        projectService:true,
         tsconfigRootDir: import.meta.dirname
       },
       
@@ -58,7 +59,6 @@ export default tseslint.config([
       'array-bracket-spacing': 'error',
       'consistent-return': 'off',
       'global-require': 'off',
-      'key-spacing': 'error',
       'no-eq-null': 'off',
       'no-lonely-if': 'off',
       'no-new': 'off',
@@ -68,7 +68,6 @@ export default tseslint.config([
       }],
       'no-unused-vars': 'off',
       'no-warning-comments': 'error',
-      'object-curly-spacing': ['error', 'never'],
       'prefer-arrow-callback': 'error',
       'prefer-const': ['error', {
           destructuring: 'all',
@@ -81,14 +80,12 @@ export default tseslint.config([
       'template-curly-spacing': 'error',
       'no-useless-escape': 'off',
       indent: 'off',
-      'no-multiple-empty-lines': ['error', {
-          max: 1,
-      }],
-
 
       'tsdoc/syntax': 'warn',
     
-
+      '@typescript-eslint/no-explicit-any':['error',{
+        'ignoreRestArgs':true
+      }],
       '@typescript-eslint/no-dupe-class-members': ['error'],
       '@typescript-eslint/consistent-type-imports': ['error',{
           'fixStyle': 'inline-type-imports'

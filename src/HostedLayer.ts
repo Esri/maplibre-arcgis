@@ -1,5 +1,5 @@
-import type {GeoJSONSourceSpecification, LayerSpecification, SourceSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
-import { Map } from 'maplibre-gl';
+import type {GeoJSONSourceSpecification, LayerSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
+import type { Map } from 'maplibre-gl';
 
 type SupportedSourceSpecifications = VectorSourceSpecification | GeoJSONSourceSpecification;
 
@@ -70,7 +70,7 @@ export abstract class HostedLayer {
         const throwReadOnlyError = (propertyName : string) => {throw new Error(`${propertyName} is a read-only property.`)};
         
         Object.defineProperty(this,'sources',{
-            get () : SupportedSourceSpecifications {
+            get: () : Readonly<{[_:string]:SupportedSourceSpecifications}> => {
                 return Object.freeze(this._sources);
             },
             set (_) {throwReadOnlyError('sources')}
@@ -80,7 +80,7 @@ export abstract class HostedLayer {
 
         if (sourceIds.length == 1) {
             Object.defineProperty(this,'source',{
-                get () : SupportedSourceSpecifications {
+                get: () : Readonly<SupportedSourceSpecifications> => {
                     const sourceIds = Object.keys(this._sources);
                     return Object.freeze(this._sources[sourceIds[0]]);
                 },
@@ -88,7 +88,7 @@ export abstract class HostedLayer {
             });
 
             Object.defineProperty(this,'sourceId',{
-                get () : string {
+                get: () : Readonly<string> => {
                     const sourceIds = Object.keys(this._sources);
                     return Object.freeze(sourceIds[0]);
                 },
@@ -97,7 +97,7 @@ export abstract class HostedLayer {
         }
 
         Object.defineProperty(this,'layers',{
-            get () : LayerSpecification[] {
+            get: () : Readonly<LayerSpecification[]> => {
                 return Object.freeze(this._layers);
             },
             set (_) {throwReadOnlyError('layers')}
@@ -105,7 +105,7 @@ export abstract class HostedLayer {
 
         if (this._layers.length == 1) {
             Object.defineProperty(this,'layer',{
-                get () : LayerSpecification {
+                get: () : Readonly<LayerSpecification> => {
                     return Object.freeze(this._layers[0]);
                 },
                 set (_) {throwReadOnlyError('layer')}
@@ -115,8 +115,8 @@ export abstract class HostedLayer {
 
     /**
      * Changes the ID of a maplibre style source, and updates all associated maplibre style layers.
-     * @param oldId The source ID to be changed.
-     * @param newId The new source ID.
+     * @param oldId - The source ID to be changed.
+     * @param newId - The new source ID.
      */
     setSourceId(oldId:string, newId:string) : void {
         // Update ID of source
@@ -134,8 +134,8 @@ export abstract class HostedLayer {
 
     /**
      * Sets the data attribution of the specified source
-     * @param sourceId The ID of the maplibre style source.
-     * @param attribution Custom attribution text.
+     * @param sourceId - The ID of the maplibre style source.
+     * @param attribution - Custom attribution text.
      */
     setAttribution(sourceId : string, attribution : string) : void {
         if (!sourceId || !attribution) throw new Error('Must provide a source ID and attribution');
@@ -146,7 +146,7 @@ export abstract class HostedLayer {
 
     /**
      * Returns a mutable copy of the specified source.
-     * @param sourceId The ID of the maplibre style source to copy.
+     * @param sourceId - The ID of the maplibre style source to copy.
      */
     copySource (sourceId : string) : SupportedSourceSpecifications {
         return structuredClone(this._sources[sourceId]);
@@ -154,7 +154,7 @@ export abstract class HostedLayer {
 
     /**
      * Returns a mutable copy of the specified layer
-     * @param layerId The ID of the maplibre style layer to copy
+     * @param layerId - The ID of the maplibre style layer to copy
      */
     copyLayer (layerId : string) : LayerSpecification {
         for (let i=0;i<this._layers.length;i++) {
@@ -165,7 +165,7 @@ export abstract class HostedLayer {
 
     /**
      * Convenience method that adds all associated Maplibre sources and data layers to a map.
-     * @param map A MapLibre GL JS map
+     * @param map - A MapLibre GL JS map
      */
     addSourcesAndLayersTo(map : Map) : HostedLayer {
         if (!this._ready) throw new Error('Cannot add to map: Data layer has not finished loading.');

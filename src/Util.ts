@@ -1,6 +1,4 @@
-type ServiceUrl = string;
 export type ItemId = string;
-export type ServiceUrlOrItemId = ServiceUrl | ItemId;
 
 type SupportedServiceTypes = 'FeatureService' | 'FeatureLayer' | 'VectorTileService' | 'VectorTileLayer';
 
@@ -13,7 +11,7 @@ export const checkServiceUrlType = (serviceUrl : string) : SupportedServiceTypes
     
     const httpRegex = /^https?:\/\//;
     
-    const layerEndpointTest = "(?<layers>[0-9]*\/?)?$";
+    // const layerEndpointTest = "(?<layers>[0-9]*\/?)?$";
 
     if (httpRegex.test(serviceUrl)) {
         
@@ -40,7 +38,7 @@ export const cleanUrl = (url : string) : string => {
     return url;
 }
 
-export const warn = (...args : any) => {
+export const warn = (...args : any[]) => {
   if (console && console.warn) {
     console.warn.apply(console, args);
   }

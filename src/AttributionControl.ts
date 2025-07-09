@@ -1,4 +1,8 @@
-import { AttributionControl as MaplibreAttributionControl, AttributionControlOptions as MaplibreAttributionControlOptions, Map } from "maplibre-gl";
+import {
+    AttributionControl as MaplibreAttributionControl,
+    type AttributionControlOptions as MaplibreAttributionControlOptions,
+    type Map
+} from "maplibre-gl";
 
 interface AttributionControlOptions {
     compact?:boolean;

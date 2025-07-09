@@ -1,7 +1,36 @@
-import { Map,  AttributionControl as MaplibreAttributionControl } from "maplibre-gl";
-import { ItemId } from "./Util";
-import { AttributionControl } from './AttributionControl';
-import { request } from "@esri/arcgis-rest-request";
+import type {IControl, Map, AttributionControl as MaplibreAttributionControl} from "maplibre-gl";
+import {request} from "@esri/arcgis-rest-request";
+import {AttributionControl} from './AttributionControl';
+
+type BasemapSelfResponse = {
+    customStylesUrl:string,
+    selfUrl:string,
+    languages: [CodeNamePair],
+    worldviews: [CodeNamePair],
+    places: [CodeNamePair],
+    styleFamilies: [CodeNamePair],
+    styles: [BasemapStyleObject],
+}
+
+type CodeNamePair = {
+    code: string,
+    name: string
+}
+type BasemapStyleObject = {
+    complete:boolean,
+    deprecated?:boolean,
+    name:string,
+    path:string,
+    provider:string,
+    styleFamily:string,
+    styleUrl:string,
+    selfUrl:string,
+    thumbnailUrl:string,
+    detailUrl?:string,
+    labelsUrl?:string,
+    rootUrl?:string,
+    baseUrl?:string
+}
 
 type IBasemapStyleOptions = {
     accessToken: string;
@@ -20,11 +49,10 @@ type BasemapPreferences = {
 type PlacesOptions = 'all' | 'attributed' | 'none';
 type StyleFamily = 'arcgis' | 'open' | 'osm';
 type StyleEnum = `${StyleFamily}/${string}`;
-type StyleOptions = StyleEnum | ItemId;
 
 export class BasemapStyle {
     // Type declarations
-    style: StyleOptions;
+    style: string;
     accessToken: string;
     
     preferences: BasemapPreferences;
@@ -37,10 +65,10 @@ export class BasemapStyle {
     static _baseUrl: string = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
     /**
      * 
-     * @param {StyleOptions} style - The basemap style enumeration
-     * @param {IBasemapStyleOptions} options
+     * @param style - The basemap style enumeration
+     * @param options - Additional options, including access token and style preferences
      */
-    constructor (style : StyleOptions, options : IBasemapStyleOptions) {
+    constructor (style : string, options : IBasemapStyleOptions) {
 
         // Access token validation
         if (options.accessToken) this.accessToken = options.accessToken;
@@ -54,9 +82,9 @@ export class BasemapStyle {
 
         // Language param
         this.setPreferences({
-            language:options?.language,
-            worldview:options?.worldview,
-            places:options?.places
+            language: options?.language,
+            worldview: options?.worldview,
+            places: options?.places
         });
     }
 
@@ -93,8 +121,8 @@ export class BasemapStyle {
         // Remove existing attribution controls
         if (this._map._controls.length > 0) {
 
-            const controlIsAttribution = (control : any) : control is MaplibreAttributionControl => {
-                return control.options.customAttribution !== undefined;
+            const controlIsAttribution = (control : IControl) => {
+                return (control as MaplibreAttributionControl).options?.customAttribution !== undefined;
             }
             this._map._controls.forEach(control => {            
                 if (controlIsAttribution(control)) {
@@ -106,7 +134,7 @@ export class BasemapStyle {
         this._map.addControl(new AttributionControl())
     }
 
-    setStyle (style : StyleOptions) : BasemapStyle {
+    setStyle (style : string) : BasemapStyle {
         this.style = style; // arcgis/outdoor
         if (!(this.style.startsWith('arcgis/') || this.style.startsWith('open/') || this.style.startsWith('osm/')) && this.style.length === 32) {
             // Style is an ItemId
@@ -145,25 +173,23 @@ export class BasemapStyle {
     }
     /**
      * Makes a \'/self\' request to the basemap styles service endpoint
-     * @param accessToken An ArcGIS access token
+     * @param accessToken - An ArcGIS access token
      */
-    static async getSelf (options:{accessToken?:string}) : Promise<any> {
+    static async getSelf (options:{accessToken?:string}) : Promise<BasemapSelfResponse> {
         return await request(`${BasemapStyle._baseUrl}/self`,{
-            authentication:options?.accessToken,
-            httpMethod:'GET'
-        });
+            authentication: options?.accessToken,
+            httpMethod: 'GET'
+        }) as BasemapSelfResponse;
     }
     /**
      * Static method that returns a basemap style URL. Does not add a basemap style to the map.
-     * @param {StyleEnum} style The basemap style enumeration being requested
-     * @param {IBasemapStyleOptions} options Additional parameters including an ArcGIS access token
-     * @returns {string} The URL of the specified ArcGIS basemap style with all included parameters
+     * @param style - The basemap style enumeration being requested
+     * @param options - Additional parameters including an ArcGIS access token
+     * @returns The URL of the specified ArcGIS basemap style with all included parameters
      */
-    static url (style : StyleEnum, options :IBasemapStyleOptions) : string {
+    static url (style : string, options :IBasemapStyleOptions) : string {
         return new BasemapStyle(style,options).styleUrl;
     }
 }
 
 export default BasemapStyle;
-
-
