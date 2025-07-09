@@ -198,7 +198,7 @@ export class FeatureLayer extends HostedLayer {
                 
                 if (!itemResponse.url) throw new Error('The provided ArcGIS portal item has no associated service URL.');
                 // in feature collections, there is still data at the /data endpoint ...... just a heads up
-                console.log('Item info:',itemResponse);
+
                 this._itemInfo = {
                     ...this._itemInfo,
                     accessInformation:itemResponse.accessInformation,

@@ -25,24 +25,25 @@
 
             const map = new maplibregl.Map({
                 container: "map", // the id of the div element
-                zoom: 12, // starting zoom
-                center: [-118.805, 34.027], // starting location [longitude, latitude]
-            });
+                zoom: 13, // starting zoom
+                center: [-118.498, 34.014], // starting location [longitude, latitude]
+            }); 
             const style = new maplibreArcGIS.BasemapStyle('arcgis/light-gray', {
                 accessToken: basemapsKey
             });
             style.applyStyleTo(map);
             
             map.on('load', async () => {
-                const vectorLayer = await maplibreArcGIS.VectorTileLayer.fromItemId('f0298e881b5b4743bbdf2c7d378acc84');
 
-                map.addSource(vectorLayer.sourceId,vectorLayer.source);
+                const santaMonicaParcels = await maplibreArcGIS.VectorTileLayer.fromPortalItem('f0298e881b5b4743bbdf2c7d378acc84');
+                // https://www.arcgis.com/home/item.html?id=f0298e881b5b4743bbdf2c7d378acc84
+
+                map.addSource(santaMonicaParcels.sourceId,santaMonicaParcels.source);
 
                 map.addLayer({
-                    ...vectorLayer.layer, // This includes properties like source, source-layer, and zoom/extent information
+                    ...santaMonicaParcels.layer, // The layer property is a preformatted maplibre layer, including a layer ID, source, source-layer, and paint/layout information.
                     type:'fill',
-                    id:'custom-fill',
-                    paint:{
+                    paint:{ // Override paint properties provided by service
                         "fill-color": ['case',
                             ['==', ['get','UseType'], 'Residential'], '#E8E191', // Yellow
                             ['==', ['get','UseType'], 'Commercial'], '#E580A2', // Red
@@ -53,10 +54,11 @@
                         ]
                     }
                 });
+                
                 map.addLayer({
-                    ...vectorLayer.layer,
+                    ...santaMonicaParcels.layer,
+                    id:'custom-outline', // All Layer IDs must be unique
                     type:'line',
-                    id:'custom-outline',
                     paint:{
                         'line-color':'#000000',
                         'line-width':0.25,

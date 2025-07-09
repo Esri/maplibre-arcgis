@@ -26,32 +26,22 @@
                 center: [-118.805, 34.027] // starting location [longitude, latitude]
             });
             const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
-                accessToken: apiKey,
-                sessionPricing:true
+                accessToken: apiKey
             }).applyStyleTo(map);
 
             const polygonLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0";
             const pointLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
-            
-            map.loadImage("https://static.arcgis.com/images/Symbols/NPS/npsPictograph_0231b.png").then((resp) => {
-                map.addImage("hiker-icon", resp.data);
-            });
-
+            const lineLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
+            // query?where=1%3D1&outFields=*&returnGeometry=true&f=pgeojson
 
             map.on('load',async () => {
+                const trailheads = await maplibreArcGIS.FeatureLayer.fromServiceUrl(pointLayer);
+                const trails = await maplibreArcGIS.FeatureLayer.fromServiceUrl(lineLayer);
+                const parks = await maplibreArcGIS.FeatureLayer.fromServiceUrl(polygonLayer);
 
-                const featureLayer = await maplibreArcGIS.GeoJSONLayer.fromLayerUrl(pointLayer);
-
-                map.addSource(featureLayer.sourceId,featureLayer.source);
-                map.addLayer({
-                    ...featureLayer.layer,
-                    type:"symbol",
-                    layout: {
-                        "icon-image": "hiker-icon",
-                        "icon-size": 0.3,
-                        "icon-allow-overlap": true,
-                    }
-                })
+                trailheads.addSourcesAndLayersTo(map);
+                trails.addSourcesAndLayersTo(map);
+                parks.addSourcesAndLayersTo(map);
             });
     
         </script>
