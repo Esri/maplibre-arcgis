@@ -73,6 +73,8 @@ export class FeatureLayer extends HostedLayer {
         if (options?.accessToken) this.accessToken = options.accessToken;
 
         if (options?._inputType) this._inputType = options._inputType;
+        if (options?.attribution) this._customAttribution = options.attribution;
+
         else {
             if (!(this._inputType=checkItemId(serviceUrlOrId))) this._inputType = checkServiceUrlType(serviceUrlOrId) as SupportedInputTypes;
         }
@@ -160,7 +162,7 @@ export class FeatureLayer extends HostedLayer {
         }
         this._sources[sourceId] = {
             type: 'geojson',
-            attribution: this._itemInfo?.accessInformation ? this._itemInfo.accessInformation : layerInfo.copyrightText,
+            attribution: this._setupAttribution(layerInfo),
             data: layerData
         }
 
@@ -213,6 +215,18 @@ export class FeatureLayer extends HostedLayer {
             }
         }
         this._serviceInfoLoaded = true;
+    }
+
+    private _setupAttribution(layerInfo:ILayerDefinition) : string {
+        if (this._customAttribution) return this._customAttribution;
+
+        if (this._itemInfo.accessInformation) return this._itemInfo.accessInformation;
+
+        if (this._serviceInfo.copyrightText) return this._serviceInfo.copyrightText;
+
+        if (layerInfo.copyrightText) return layerInfo.copyrightText;
+
+        return null;
     }
 
     private _createSourceId() {

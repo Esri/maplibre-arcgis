@@ -3,7 +3,14 @@ import { checkServiceUrlType, checkItemId, warn, type ItemId} from './Util';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from './HostedLayer';
 import { request } from '@esri/arcgis-rest-request';
-import { getItem, getItemResources, getItemResource, type IVectorTileServiceDefinition } from '@esri/arcgis-rest-portal';
+import { getItem, getItemResources, getItemResource } from '@esri/arcgis-rest-portal';
+
+
+interface IVectorTileServiceDefinition {
+    tiles: string[];
+    defaultStyles: string;
+    copyrightText: string;
+};
 
 interface VectorTileLayerOptions extends HostedLayerOptions {
     _inputType?: 'ItemId' | 'VectorTileService';
@@ -42,6 +49,8 @@ export class VectorTileLayer extends HostedLayer {
         if (options?.accessToken) this.accessToken = options.accessToken;
         
         if (options?._inputType) this._inputType = options._inputType;
+
+        if (options?.attribution) this._customAttribution = options.attribution;
         else {
             let inputType : string;
             if (!(inputType=checkItemId(urlOrId))) {
@@ -216,15 +225,18 @@ export class VectorTileLayer extends HostedLayer {
     }
 
     _getAttribution(sourceId : string) : string|null {
-        // 1. Prefer attribution from item info if available
+        
+        // Custom attribution is highest priority
+        if (this._customAttribution) return this._customAttribution;
+        // Next, attribution from item info if available
         if (this._itemInfoLoaded && this._itemInfo.accessInformation) {
             return this._itemInfo.accessInformation;
         }
-        // 2. Next, check data service info
+        // 2. Next, attribution from data service
         if (this._serviceInfoLoaded && this._serviceInfo.copyrightText) {
             return this._serviceInfo.copyrightText;
         }
-        // 3. Finally, check style info of the specific source
+        // 3. Finally, attribution from style object
         if (this._styleLoaded && sourceId && this._style.sources[sourceId] && (this._style.sources[sourceId] as VectorSourceSpecification).attribution) {
             return (this._style.sources[sourceId] as VectorSourceSpecification).attribution;
         }

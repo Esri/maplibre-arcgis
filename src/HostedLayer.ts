@@ -6,6 +6,7 @@ type SupportedSourceSpecifications = VectorSourceSpecification | GeoJSONSourceSp
 export type HostedLayerOptions = {
     accessToken?: string;
     portalUrl?: string;
+    attribution?: string;
 }
 
 export interface ItemInfo {
@@ -31,6 +32,8 @@ export abstract class HostedLayer {
      * An ArcGIS access token, required for accessing secure data layers. To get a token, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.
      */
     accessToken?: string;
+
+    protected _customAttribution: string;
 
     /**
      * Retrieves information about the associated hosted data service in ArcGIS.
