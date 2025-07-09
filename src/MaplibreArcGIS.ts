@@ -25,7 +25,6 @@ export { BasemapStyle } from './BasemapStyle';
 export { AttributionControl } from './AttributionControl';
 export { VectorTileLayer } from './VectorTileLayer';
 export { FeatureLayer } from './FeatureLayer';
-export { request } from './Request';
 
 if (window.TEST_ENVIRONMENT) {
     new EventSource('/esbuild').addEventListener('change', () => location.reload())
