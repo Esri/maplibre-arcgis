@@ -101,7 +101,6 @@ export class FeatureLayer extends HostedLayer {
         if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error("Feature service does not support pagination in queries");
         
         let layerData : GeoJSON.GeoJSON;
-        // @ts-expect-error: REST JS ILayerDefinition has not been updated to include the 'supportsExceedsLimitStatistics' property.
         if (layerInfo.supportsExceedsLimitStatistics) {
             const exceedsLimitsResponse = await queryFeatures({
                 url: layerUrl,
@@ -112,7 +111,7 @@ export class FeatureLayer extends HostedLayer {
                         maxRecordCount: 2000,
                         maxVertexCount: 250000,
                         outStatisticFieldName: "exceedslimit",
-                        // @ts-expect-error: REST JS IStatisticDefinition has not been updated to include the 'exceedslimit' statistic type
+                        // @ts-expect-error The "exceedslimit" statistic type has not yet been addeed to the REST API
                         statisticType: "exceedslimit"
                     }
                 ],
