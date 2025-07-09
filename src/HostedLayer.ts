@@ -12,11 +12,13 @@ export type HostedLayerOptions = {
 export interface ItemInfo {
     portalUrl: string;
     itemId: string;
-    title?: string;
     accessInformation?: string; // Attribution information from item JSON
-    //spatialReference?: string,
-    //access?: string,
-    //type?: string;
+    title?: string;
+    description?: string;
+    access?: string;
+    orgId?: string;
+    licenseInfo?: string;
+    //spatialReference?: string
 }
 
 export interface DataServiceInfo {
@@ -172,7 +174,6 @@ export abstract class HostedLayer {
      */
     addSourcesAndLayersTo(map : Map) : HostedLayer {
         if (!this._ready) throw new Error('Cannot add to map: Data layer has not finished loading.');
-
         this._map = map;
         Object.keys(this._sources).forEach(sourceId => {
             map.addSource(sourceId,this._sources[sourceId])

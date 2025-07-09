@@ -21,6 +21,8 @@ interface VectorTileServiceInfo extends DataServiceInfo {
     tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
 
+const SupportedInputTypes = ["ItemId","VectorTileService"];
+
 export class VectorTileLayer extends HostedLayer {
 
     declare _serviceInfo : VectorTileServiceInfo;
@@ -36,7 +38,7 @@ export class VectorTileLayer extends HostedLayer {
     _itemInfoLoaded: boolean;
     _serviceInfoLoaded: boolean;
 
-    constructor (urlOrId : string, options? : VectorTileLayerOptions) {
+    constructor (serviceUrlOrId : string, options? : VectorTileLayerOptions) {
 
         super();
         this._ready = false;
@@ -44,30 +46,33 @@ export class VectorTileLayer extends HostedLayer {
         this._serviceInfoLoaded = false;
         this._itemInfoLoaded = false;
         
-        if (!urlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
+        if (!serviceUrlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
         
         if (options?.accessToken) this.accessToken = options.accessToken;
-        
-        if (options?._inputType) this._inputType = options._inputType;
-
         if (options?.attribution) this._customAttribution = options.attribution;
-        else {
-            let inputType : string;
-            if (!(inputType=checkItemId(urlOrId))) {
-                if (!(inputType=checkServiceUrlType(urlOrId)) || inputType !== 'VectorTileService') throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
-            }
-            this._inputType = inputType as 'ItemId' | 'VectorTileService';
+
+
+        if (options?._inputType && options._inputType in SupportedInputTypes) {
+            this._inputType = options._inputType;
         }
+        else {
+            const isItem = checkItemId(serviceUrlOrId);
+            const isValidUrl = checkServiceUrlType(serviceUrlOrId);
+            if (isItem) this._inputType = isItem;
+            else if (isValidUrl  === 'VectorTileService') this._inputType = isValidUrl;
+            else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
+        }
+
 
         if (this._inputType === 'ItemId') {
             this._itemInfo = {
-                itemId: urlOrId,
+                itemId: serviceUrlOrId,
                 portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest'
             };
         }
         else if (this._inputType === 'VectorTileService') {
             this._serviceInfo = {
-                serviceUrl: urlOrId
+                serviceUrl: serviceUrlOrId
             }
         }
     }
@@ -119,8 +124,6 @@ export class VectorTileLayer extends HostedLayer {
             const itemResources = await getItemResources(this._itemInfo.itemId, {
                 ...params
             });
-
-            console.log(itemResources);
 
             let styleFile : string | null = null;
             if (itemResources.total > 0) {
@@ -179,7 +182,6 @@ export class VectorTileLayer extends HostedLayer {
         })
 
         if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
-        // in feature collections, there is still data at the /data endpoint ...... just a heads up
 
         // Set service URL if it doesn't exist
         if (!this._serviceInfoLoaded) {
@@ -192,7 +194,10 @@ export class VectorTileLayer extends HostedLayer {
             ...this._itemInfo,
             accessInformation: itemResponse.accessInformation,
             title: itemResponse.title,
-            //type: itemResponse.type
+            description: itemResponse.description,
+            access: itemResponse.access,
+            orgId: itemResponse.orgId,
+            licenseInfo: itemResponse.licenseInfo
         }
         this._itemInfoLoaded = true;
         return this._itemInfo;
@@ -251,12 +256,14 @@ export class VectorTileLayer extends HostedLayer {
         return this;
     }
 
-    static async fromItemId (itemId: ItemId, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
-        const isItemId = checkItemId(itemId);
-        if (!isItemId) throw new Error('Input is not a valid ArcGIS item ID.');
-        options._inputType = 'ItemId';
+    static async fromPortalItem (itemId: ItemId, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
 
-        const vtl = new VectorTileLayer(itemId,options);
+        if (checkItemId(itemId) !== 'ItemId') throw new Error('Input is not a valid ArcGIS item ID.');
+
+        const vtl = new VectorTileLayer(itemId,{
+            ...options,
+            _inputType:'ItemId'
+        });
         await vtl.initialize();
         return vtl;
     }

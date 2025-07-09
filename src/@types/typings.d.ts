@@ -9,9 +9,13 @@ declare module '@esri/arcgis-rest-feature-service' {
 declare module '@esri/arcgis-rest-portal' {
     
     interface IItem {
-        accessInformation:string;
+        accessInformation?:string;
+        access?:string;
+        orgId?:string;
+        description?:string;
+        licenseInfo?:string;
     }
-    
+
     interface IItemResourcesResponse {
         start:number;
         nextStart:number;
