@@ -14,6 +14,7 @@
  */
 import * as esbuild from 'esbuild';
 import pkg from './package.json' with { type: 'json'};
+import { globalExternals } from '@fal-works/esbuild-plugin-global-externals';
 
 var copyright = '/* ' + pkg.name + ' - v' + pkg.version + ' - ' + new Date().toString() + '\n' +
                 ' * Copyright (c) ' + new Date().getFullYear() + ' Environmental Systems Research Institute, Inc.\n' +
@@ -22,6 +23,14 @@ var copyright = '/* ' + pkg.name + ' - v' + pkg.version + ' - ' + new Date().toS
 const BUILD_MODE = process.argv[2];
 const LIVE_RELOAD = process.argv.length > 3 && process.argv[3] == 'watch';
 
+const globals = {
+    'maplibre-gl': {
+        varName:'maplibregl',
+        namedExports: ['AttributionControl'],
+        defaultExport: false
+    }
+}
+
 const buildOptions = {
     entryPoints: ['./src/MaplibreArcGIS.ts'],
     bundle:true,
@@ -29,7 +38,8 @@ const buildOptions = {
         js:copyright
     },
     globalName: 'maplibreArcGIS',
-    //external:['maplibre-gl']
+    external: ['maplibre-gl'],
+    plugins: [globalExternals(globals)]
 }
 
 if (BUILD_MODE == 'dev') {
@@ -48,7 +58,7 @@ if (BUILD_MODE == 'prod') {
         minify: true, //minify output
         platform:'browser',
         format:'iife',
-        target: ['chrome132','firefox130'] //list of supported browsers
+        target: ['chrome132','firefox130'], //list of supported browsers
     };
 
     Object.assign(buildOptions,prodOptions);

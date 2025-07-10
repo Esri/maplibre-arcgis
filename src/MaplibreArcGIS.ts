@@ -12,20 +12,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import BasemapStyle from './BasemapStyle';
+import AttributionControl from './AttributionControl';
+import VectorTileLayer from './VectorTileLayer';
+import FeatureLayer from './FeatureLayer';
+import packageInfo from '../package.json';
+
 interface CustomWindow extends Window {
     TEST_ENVIRONMENT: string | null;
 }
 declare let window: CustomWindow;
-
-import packageInfo from '../package.json';
-const version = packageInfo.version;
-export { version as VERSION };
-
-export { BasemapStyle } from './BasemapStyle';
-export { AttributionControl } from './AttributionControl';
-export { VectorTileLayer } from './VectorTileLayer';
-export { FeatureLayer } from './FeatureLayer';
-
 if (window.TEST_ENVIRONMENT) {
     new EventSource('/esbuild').addEventListener('change', () => location.reload())
+}
+
+const version = packageInfo.version;
+
+export {
+    version as VERSION,
+    BasemapStyle,
+    AttributionControl,
+    VectorTileLayer,
+    FeatureLayer
 }
