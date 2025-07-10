@@ -4,9 +4,15 @@ import type { HostedLayerOptions } from "./HostedLayer";
 import { checkItemId,checkServiceUrlType, cleanUrl } from "./Util";
 import { 
     queryFeatures, getLayer, getService,
-    type IQueryFeaturesResponse, type ILayerDefinition
+    type IQueryFeaturesResponse, 
+    type ILayerDefinition, 
+    type IGeometry,
+    type GeometryType,
+    type ISpatialReference,
+    type SpatialRelationship
  } from "@esri/arcgis-rest-feature-service";
 import { getItem } from "@esri/arcgis-rest-portal";
+import type { IParams } from "@esri/arcgis-rest-request";
 
 /*
 const geoJSONDefaultStyleMap = {
@@ -42,9 +48,20 @@ const defaultLayerPaintMap = {
 }
 interface GeoJSONLayerOptions extends HostedLayerOptions {
     _inputType?: ISupportedInputTypes;
-    query?: object;
-    sourceId?:string;
-    layer?:LayerSpecification;
+    query?: QueryOptions;
+}
+
+interface QueryOptions {
+    gdbVersion?:string;
+    geometry?:IGeometry;
+    geometryType?:GeometryType;
+    geometryPrecision?:number;
+    inSR?:string|ISpatialReference;
+    outFields?:string[]|"*";
+    params?:IParams;
+    spatialRel?:SpatialRelationship;
+    sqlFormat?:"none"|"standard"|"native";
+    where?:string;
 }
 
 type ISupportedInputTypes = "ItemId" | "FeatureService" | "FeatureLayer";
@@ -63,12 +80,10 @@ export class FeatureLayer extends HostedLayer {
     declare _sources: { [_: string]: GeoJSONSourceSpecification };
     declare _layers: LayerSpecification[];
 
-    options?: GeoJSONLayerOptions;    
+    query?:QueryOptions;
 
     constructor (serviceUrlOrId : string,options: GeoJSONLayerOptions) {
         super();
-
-        this.options = options ? options : {};
 
         if (options?.accessToken) this.accessToken = options.accessToken;
         if (options?.attribution) this._customAttribution = options.attribution;
@@ -83,6 +98,12 @@ export class FeatureLayer extends HostedLayer {
             if (isItem) this._inputType = isItem;
             else if (isValidUrl  === 'FeatureLayer' || isValidUrl === 'FeatureService') this._inputType = isValidUrl;
             else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
+        }
+
+        if (options?.query) {
+            if (this._inputType !== 'FeatureLayer') throw new Error('Query options are only supported on individual feature layers, not on feature services or item IDs. Please provide a feature layer URL ending in \/0, \/1, etc.');
+
+            this.query = options.query;
         }
         
         // Set up
@@ -135,7 +156,8 @@ export class FeatureLayer extends HostedLayer {
                 // TODO paginate once nextPage is supported by REST JS
                 layerData = await queryFeatures({
                     url:layerUrl,
-                    f: "geojson"
+                    f: "geojson",
+                    ...this.query
                 }) as GeoJSON.GeoJSON;
             }
             else {
@@ -253,7 +275,6 @@ export class FeatureLayer extends HostedLayer {
     }
 
     async initialize() : Promise<FeatureLayer> {
-        // await this._loadAttribution();
         await this._loadData();
         // Public API is read-only
         this._definePublicApi();

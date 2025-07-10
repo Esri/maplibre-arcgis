@@ -35,12 +35,21 @@
             // query?where=1%3D1&outFields=*&returnGeometry=true&f=pgeojson
 
             map.on('load',async () => {
+                // Trails layer
                 const trailheads = await maplibreArcGIS.FeatureLayer.fromServiceUrl(pointLayer);
-                const trails = await maplibreArcGIS.FeatureLayer.fromServiceUrl(lineLayer);
-                const parks = await maplibreArcGIS.FeatureLayer.fromServiceUrl(polygonLayer);
-
                 trailheads.addSourcesAndLayersTo(map);
+
+                // Trailheads layer
+                const trails = await maplibreArcGIS.FeatureLayer.fromServiceUrl(lineLayer,{
+                    query:{ // Query parameter supported with layer URLs
+                        outFields:['TRL_ID','ELEV_MIN','ELEV_MAX'],
+                        where:'ELEV_MIN > 200'
+                    }
+                });
                 trails.addSourcesAndLayersTo(map);
+
+                // Parks layer
+                const parks = await maplibreArcGIS.FeatureLayer.fromServiceUrl(polygonLayer);
                 parks.addSourcesAndLayersTo(map);
             });
     
