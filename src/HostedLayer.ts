@@ -1,10 +1,12 @@
+import type { IAuthenticationManager } from '@esri/arcgis-rest-request';
 import type {GeoJSONSourceSpecification, LayerSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type { Map } from 'maplibre-gl';
 
 type SupportedSourceSpecifications = VectorSourceSpecification | GeoJSONSourceSpecification;
 
 export type HostedLayerOptions = {
-    accessToken?: string;
+    accessToken?: string; // Access token as a string
+    authentication?: IAuthenticationManager; // Authentication as a REST JS object
     portalUrl?: string;
     attribution?: string;
 }
@@ -31,9 +33,9 @@ export interface DataServiceInfo {
 export abstract class HostedLayer {
 
     /**
-     * An ArcGIS access token, required for accessing secure data layers. To get a token, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.
+     * An ArcGIS access token is required for accessing secure data layers. To get a token, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.
      */
-    accessToken?: string;
+    authentication?: IAuthenticationManager;
 
     protected _customAttribution: string;
 

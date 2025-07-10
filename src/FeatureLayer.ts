@@ -12,7 +12,7 @@ import {
     type SpatialRelationship
  } from "@esri/arcgis-rest-feature-service";
 import { getItem } from "@esri/arcgis-rest-portal";
-import type { IParams } from "@esri/arcgis-rest-request";
+import { ApiKeyManager, type IParams } from "@esri/arcgis-rest-request";
 
 /*
 const geoJSONDefaultStyleMap = {
@@ -85,7 +85,9 @@ export class FeatureLayer extends HostedLayer {
     constructor (serviceUrlOrId : string,options: GeoJSONLayerOptions) {
         super();
 
-        if (options?.accessToken) this.accessToken = options.accessToken;
+        if (options?.authentication) this.authentication = options.authentication;
+        else if (options?.accessToken) this.authentication = ApiKeyManager.fromKey(options.accessToken);
+        
         if (options?.attribution) this._customAttribution = options.attribution;
 
         // Determine input type
@@ -132,6 +134,7 @@ export class FeatureLayer extends HostedLayer {
         let layerData : GeoJSON.GeoJSON;
         if (layerInfo.supportsExceedsLimitStatistics) {
             const exceedsLimitsResponse = await queryFeatures({
+                authentication:this.authentication,
                 url: layerUrl,
                 outFields: [layerInfo.objectIdField],
                 outStatistics: [
@@ -155,6 +158,7 @@ export class FeatureLayer extends HostedLayer {
             if (exceedsLimitsResponse.features[0].attributes.exceedslimit === 0) { 
                 // TODO paginate once nextPage is supported by REST JS
                 layerData = await queryFeatures({
+                    authentication:this.authentication,
                     url:layerUrl,
                     f: "geojson",
                     ...this.query
@@ -176,6 +180,7 @@ export class FeatureLayer extends HostedLayer {
 
     private async _loadLayer(layerUrl : string) : Promise<void> {
         const layerInfo = await getLayer({
+            authentication:this.authentication,
             url:layerUrl,
             httpMethod:'GET'
         });
@@ -214,7 +219,7 @@ export class FeatureLayer extends HostedLayer {
         switch (dataSource) {
             case "ItemId": {
                 const itemResponse = await getItem(this._itemInfo.itemId,{
-                    authentication:this.accessToken,
+                    authentication:this.authentication,
                     portal:this._itemInfo.portalUrl
                 });
                 
@@ -239,7 +244,7 @@ export class FeatureLayer extends HostedLayer {
             case "FeatureService": {
                 const serviceInfo = await getService({
                     url: this._serviceInfo.serviceUrl,
-                    authentication: this.accessToken
+                    authentication: this.authentication
                 });
                 // Add layers
                 if (serviceInfo.layers.length > 10) {

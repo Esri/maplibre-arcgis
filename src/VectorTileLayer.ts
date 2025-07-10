@@ -2,7 +2,7 @@ import type {LayerSpecification, VectorSourceSpecification, StyleSpecification} 
 import { checkServiceUrlType, checkItemId, warn, type ItemId} from './Util';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from './HostedLayer';
-import { request } from '@esri/arcgis-rest-request';
+import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import { getItem, getItemResources, getItemResource } from '@esri/arcgis-rest-portal';
 
 
@@ -48,9 +48,10 @@ export class VectorTileLayer extends HostedLayer {
         
         if (!serviceUrlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
         
-        if (options?.accessToken) this.accessToken = options.accessToken;
-        if (options?.attribution) this._customAttribution = options.attribution;
+        if (options?.authentication) this.authentication = options.authentication;
+        else if (options?.accessToken) this.authentication = ApiKeyManager.fromKey(options.accessToken);
 
+        if (options?.attribution) this._customAttribution = options.attribution;
 
         if (options?._inputType && options._inputType in SupportedInputTypes) {
             this._inputType = options._inputType;
@@ -106,7 +107,7 @@ export class VectorTileLayer extends HostedLayer {
     }
     async _loadStyleFromItemId() : Promise<StyleSpecification | null> {
         const params = {
-            authentication:this.accessToken,
+            authentication:this.authentication,
             portal:this._itemInfo.portalUrl
         }
         // Load style info
@@ -148,7 +149,7 @@ export class VectorTileLayer extends HostedLayer {
         if (!this._serviceInfo.serviceUrl) throw new Error('No data service provided');
 
         const styleInfo = await request(`${this._serviceInfo.serviceUrl}/${this._serviceInfo.styleEndpoint}`,{
-            authentication:this.accessToken,
+            authentication:this.authentication,
         }) as StyleSpecification;
         return styleInfo;
     }
@@ -158,7 +159,7 @@ export class VectorTileLayer extends HostedLayer {
     async _loadServiceInfo() : Promise<VectorTileServiceInfo> {
         
         const serviceResponse = await request(this._serviceInfo.serviceUrl,{
-            authentication:this.accessToken
+            authentication:this.authentication
         }) as IVectorTileServiceDefinition;
 
         this._serviceInfo = {
@@ -177,7 +178,7 @@ export class VectorTileLayer extends HostedLayer {
     async _loadItemInfo() : Promise<ItemInfo> {
 
         const itemResponse = await getItem(this._itemInfo.itemId,{
-            authentication:this.accessToken,
+            authentication:this.authentication,
             portal:this._itemInfo.portalUrl
         })
 
@@ -202,11 +203,13 @@ export class VectorTileLayer extends HostedLayer {
         this._itemInfoLoaded = true;
         return this._itemInfo;
     }
-    _createSourcesAndLayers(style : StyleSpecification) : void {
+    async _createSourcesAndLayers(style : StyleSpecification) : Promise<void> {
         if (!style) throw new Error('Vector tile style has not been loaded from ArcGIS.')
+
         // Finish creating sources
-        Object.keys(style.sources).forEach(id => {
-            const source = style.sources[id] as VectorSourceSpecification;
+        for (const sourceId of Object.keys(style.sources)) {
+            const source = style.sources[sourceId] as VectorSourceSpecification;
+
             // Fix service URL
             if (source.url == '../../') source.url = this._serviceInfo.serviceUrl;
             // Format tiles
@@ -214,14 +217,18 @@ export class VectorTileLayer extends HostedLayer {
                 if (this._serviceInfo.tiles) source.tiles = [`${source.url}/${this._serviceInfo.tiles[0]}`];
                 else source.tiles = [`${source.url}/tile/{z}/{y}/{x}.pbf`]; // Just take our best guess
             }
+
             // Provide authentication
-            if (this.accessToken) {
-                if (source.url) source.url = `${source.url}?token=${this.accessToken}`;
-                if (source.tiles) source.tiles = source.tiles.map((tileUrl) => `${tileUrl}?token=${this.accessToken}`);
+            if (this.authentication) {
+                const accessToken = await this.authentication.getToken(source.url);
+
+                if (source.url) source.url = `${source.url}?token=${accessToken}`;
+                if (source.tiles) source.tiles = source.tiles.map((tileUrl) => `${tileUrl}?token=${accessToken}`);
             }
+
             // Provide attribution
-            source.attribution = this._getAttribution(id);
-        })
+            source.attribution = this._getAttribution(sourceId);
+        }
         // Public API is read-only
         this._sources = style.sources as {[_:string]:VectorSourceSpecification};
         this._layers = style.layers;
@@ -251,7 +258,7 @@ export class VectorTileLayer extends HostedLayer {
     // Public API
     async initialize() : Promise<VectorTileLayer> {
         const style = await this._loadStyle();
-        this._createSourcesAndLayers(style);
+        await this._createSourcesAndLayers(style);
         this._ready = true;
         return this;
     }
