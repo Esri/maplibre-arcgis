@@ -1,5 +1,5 @@
 import type {IControl, Map, AttributionControl as MaplibreAttributionControl} from "maplibre-gl";
-import {request} from "@esri/arcgis-rest-request";
+import {ApiKeyManager, type IAuthenticationManager, request} from "@esri/arcgis-rest-request";
 import {AttributionControl} from './AttributionControl';
 
 type BasemapSelfResponse = {
@@ -34,6 +34,7 @@ type BasemapStyleObject = {
 
 type IBasemapStyleOptions = {
     accessToken: string;
+    authentication: IAuthenticationManager;
     language?: string;
     worldview?: string;
     places?: PlacesOptions;
@@ -54,6 +55,7 @@ export class BasemapStyle {
     // Type declarations
     style: string;
     accessToken: string;
+    authentication: IAuthenticationManager;
     
     preferences: BasemapPreferences;
 
@@ -71,11 +73,11 @@ export class BasemapStyle {
     constructor (style : string, options : IBasemapStyleOptions) {
 
         // Access token validation
-        if (options.accessToken) this.accessToken = options.accessToken;
+        if (options.authentication) this.authentication = options.authentication;
+        else if (options.accessToken) this.authentication = ApiKeyManager.fromKey(options.accessToken);
         else throw new Error(
             'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
         )
-        // TODO add support for REST JS authentication objects
 
         // Configure style and base URL
         this.setStyle(style);
@@ -91,7 +93,7 @@ export class BasemapStyle {
     get styleUrl () : string {
 
         let styleUrl = this._baseUrl;
-        styleUrl += `?token=${this.accessToken}`;
+        styleUrl += `?token=${this.authentication.token}`;
         
         if (this.preferences.language) {
             styleUrl += `&language=${this.preferences.language}`;

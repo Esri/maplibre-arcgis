@@ -203,7 +203,7 @@ export class VectorTileLayer extends HostedLayer {
         this._itemInfoLoaded = true;
         return this._itemInfo;
     }
-    async _createSourcesAndLayers(style : StyleSpecification) : Promise<void> {
+    _createSourcesAndLayers(style : StyleSpecification) : void {
         if (!style) throw new Error('Vector tile style has not been loaded from ArcGIS.')
 
         // Finish creating sources
@@ -220,7 +220,7 @@ export class VectorTileLayer extends HostedLayer {
 
             // Provide authentication
             if (this.authentication) {
-                const accessToken = await this.authentication.getToken(source.url);
+                const accessToken = this.authentication.token;
 
                 if (source.url) source.url = `${source.url}?token=${accessToken}`;
                 if (source.tiles) source.tiles = source.tiles.map((tileUrl) => `${tileUrl}?token=${accessToken}`);
@@ -258,7 +258,7 @@ export class VectorTileLayer extends HostedLayer {
     // Public API
     async initialize() : Promise<VectorTileLayer> {
         const style = await this._loadStyle();
-        await this._createSourcesAndLayers(style);
+        this._createSourcesAndLayers(style);
         this._ready = true;
         return this;
     }

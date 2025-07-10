@@ -1,5 +1,11 @@
 import type { IRequestOptions } from "@esri/arcgis-rest-request";
 
+declare module '@esri/arcgis-rest-request' {
+    interface IAuthenticationManager {
+        token: string;
+    }
+}
+
 declare module '@esri/arcgis-rest-feature-service' {
     interface ILayerDefinition {
         supportsExceedsLimitStatistics:boolean;
