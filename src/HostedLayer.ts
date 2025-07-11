@@ -1,12 +1,12 @@
-import type { IAuthenticationManager } from '@esri/arcgis-rest-request';
 import type {GeoJSONSourceSpecification, LayerSpecification, VectorSourceSpecification} from '@maplibre/maplibre-gl-style-spec';
 import type { Map } from 'maplibre-gl';
+import type { RestJSAuthenticationManager } from './Util';
 
-type SupportedSourceSpecifications = VectorSourceSpecification | GeoJSONSourceSpecification;
+type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpecification;
 
 export type HostedLayerOptions = {
     accessToken?: string; // Access token as a string
-    authentication?: IAuthenticationManager; // Authentication as a REST JS object
+    authentication?: RestJSAuthenticationManager; // Authentication as a REST JS object
     portalUrl?: string;
     attribution?: string;
 }
@@ -35,7 +35,7 @@ export abstract class HostedLayer {
     /**
      * An ArcGIS access token is required for accessing secure data layers. To get a token, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.
      */
-    authentication?: IAuthenticationManager;
+    authentication?: RestJSAuthenticationManager;
 
     protected _customAttribution: string;
 
@@ -52,7 +52,7 @@ export abstract class HostedLayer {
     /**
      * Contains formatted maplibre sources for adding to map.
      */
-    protected _sources: {[_:string]:SupportedSourceSpecifications};
+    protected _sources: {[_:string]:SupportedSourceSpecification};
     protected _layers: LayerSpecification[];
 
     /**
@@ -77,7 +77,7 @@ export abstract class HostedLayer {
         const throwReadOnlyError = (propertyName : string) => {throw new Error(`${propertyName} is a read-only property.`)};
         
         Object.defineProperty(this,'sources',{
-            get: () : Readonly<{[_:string]:SupportedSourceSpecifications}> => {
+            get: () : Readonly<{[_:string]:SupportedSourceSpecification}> => {
                 return Object.freeze(this._sources);
             },
             set (_) {throwReadOnlyError('sources')}
@@ -87,7 +87,7 @@ export abstract class HostedLayer {
 
         if (sourceIds.length == 1) {
             Object.defineProperty(this,'source',{
-                get: () : Readonly<SupportedSourceSpecifications> => {
+                get: () : Readonly<SupportedSourceSpecification> => {
                     const sourceIds = Object.keys(this._sources);
                     return Object.freeze(this._sources[sourceIds[0]]);
                 },
@@ -155,7 +155,7 @@ export abstract class HostedLayer {
      * Returns a mutable copy of the specified source.
      * @param sourceId - The ID of the maplibre style source to copy.
      */
-    copySource (sourceId : string) : SupportedSourceSpecifications {
+    copySource (sourceId : string) : SupportedSourceSpecification {
         return structuredClone(this._sources[sourceId]);
     }
 
@@ -175,7 +175,7 @@ export abstract class HostedLayer {
      * @param map - A MapLibre GL JS map
      */
     addSourcesAndLayersTo(map : Map) : HostedLayer {
-        if (!this._ready) throw new Error('Cannot add to map: Data layer has not finished loading.');
+        if (!this._ready) throw new Error('Cannot add sources and layers to map: Object has not finished loading.');
         this._map = map;
         Object.keys(this._sources).forEach(sourceId => {
             map.addSource(sourceId,this._sources[sourceId])
@@ -184,6 +184,24 @@ export abstract class HostedLayer {
             map.addLayer(layer);
         });
 
+        return this;
+    }
+
+    addSourcesTo(map : Map) : HostedLayer {
+        if (!this._ready) throw new Error('Cannot add sources to map: Object has not finished loading.');
+        this._map = map;
+        Object.keys(this._sources).forEach(sourceId => {
+            map.addSource(sourceId,this._sources[sourceId])
+        });
+        return this;
+    }
+
+    addLayersTo(map : Map) : HostedLayer {
+        if (!this._ready) throw new Error('Cannot add layers to map: Object has not finished loading.');
+        this._map = map;
+                this._layers.forEach(layer => {
+            map.addLayer(layer);
+        });
         return this;
     }
 

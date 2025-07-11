@@ -274,7 +274,7 @@ export class VectorTileLayer extends HostedLayer {
         await vtl.initialize();
         return vtl;
     }
-    static async fromServiceUrl (serviceUrl: string, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
+    static async fromUrl (serviceUrl: string, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
         
         const urlType = checkServiceUrlType(serviceUrl);
         if (urlType !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.')

@@ -1,6 +1,7 @@
 import type {IControl, Map, AttributionControl as MaplibreAttributionControl} from "maplibre-gl";
-import {ApiKeyManager, type IAuthenticationManager, request} from "@esri/arcgis-rest-request";
+import {ApiKeyManager, request} from "@esri/arcgis-rest-request";
 import {AttributionControl} from './AttributionControl';
+import type { RestJSAuthenticationManager } from "./Util";
 
 type BasemapSelfResponse = {
     customStylesUrl:string,
@@ -16,11 +17,15 @@ type CodeNamePair = {
     code: string,
     name: string
 }
+type PlacesOptions = 'all' | 'attributed' | 'none';
+type StyleFamily = 'arcgis' | 'open' | 'osm';
+type StyleEnum = `${StyleFamily}/${string}`;
+
 type BasemapStyleObject = {
     complete:boolean,
     deprecated?:boolean,
     name:string,
-    path:string,
+    path:StyleEnum,
     provider:string,
     styleFamily:string,
     styleUrl:string,
@@ -34,7 +39,7 @@ type BasemapStyleObject = {
 
 type IBasemapStyleOptions = {
     accessToken: string;
-    authentication: IAuthenticationManager;
+    authentication: RestJSAuthenticationManager;
     language?: string;
     worldview?: string;
     places?: PlacesOptions;
@@ -47,15 +52,11 @@ type BasemapPreferences = {
     language?: string;
 }
 
-type PlacesOptions = 'all' | 'attributed' | 'none';
-type StyleFamily = 'arcgis' | 'open' | 'osm';
-type StyleEnum = `${StyleFamily}/${string}`;
-
 export class BasemapStyle {
     // Type declarations
     style: string;
     accessToken: string;
-    authentication: IAuthenticationManager;
+    authentication: RestJSAuthenticationManager;
     
     preferences: BasemapPreferences;
 

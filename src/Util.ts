@@ -1,13 +1,16 @@
-export type ItemId = string;
+import type {ApiKeyManager, ApplicationCredentialsManager, ArcGISIdentityManager} from '@esri/arcgis-rest-request';
 
-type SupportedServiceTypes = 'FeatureService' | 'FeatureLayer' | 'VectorTileService' | 'VectorTileLayer';
+export type ItemId = string;
+export type RestJSAuthenticationManager = ApiKeyManager | ArcGISIdentityManager | ApplicationCredentialsManager;
+
+type SupportedServiceType = 'FeatureService' | 'FeatureLayer' | 'VectorTileService' | 'VectorTileLayer';
 
 export const checkItemId = (itemId : ItemId) : 'ItemId' | null => {
     if (itemId.length == 32) return 'ItemId';
 
     return null;
 }
-export const checkServiceUrlType = (serviceUrl : string) : SupportedServiceTypes | null => {
+export const checkServiceUrlType = (serviceUrl : string) : SupportedServiceType | null => {
     
     const httpRegex = /^https?:\/\//;
     

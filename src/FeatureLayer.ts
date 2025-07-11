@@ -287,7 +287,7 @@ export class FeatureLayer extends HostedLayer {
         return this;
     }
 
-    static async fromServiceUrl (serviceUrl:string, options:GeoJSONLayerOptions) : Promise<FeatureLayer> {
+    static async fromUrl (serviceUrl:string, options:GeoJSONLayerOptions) : Promise<FeatureLayer> {
         const inputType = checkServiceUrlType(serviceUrl);
         if (inputType !== 'FeatureService' && inputType !== 'FeatureLayer') throw new Error('Must provide a valid feature service or feature layer.');
 
