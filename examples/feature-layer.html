@@ -29,18 +29,20 @@
                 accessToken: apiKey
             }).applyStyleTo(map);
 
-            const polygonLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0";
-            const pointLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
-            const lineLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
+            const pointService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
+            const lineService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
+
+            const polygonService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0";
             // query?where=1%3D1&outFields=*&returnGeometry=true&f=pgeojson
 
             map.on('load',async () => {
-                // Trails layer
-                const trailheads = await maplibreArcGIS.FeatureLayer.fromServiceUrl(pointLayer);
+
+                // Load trailheads from service URL
+                const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointService);
                 trailheads.addSourcesAndLayersTo(map);
 
-                // Trailheads layer
-                const trails = await maplibreArcGIS.FeatureLayer.fromServiceUrl(lineLayer,{
+                // Load trails from service URL and query
+                const trails = await maplibreArcGIS.FeatureLayer.fromUrl(lineService,{
                     query:{ // Query parameter supported with layer URLs
                         outFields:['TRL_ID','ELEV_MIN','ELEV_MAX'],
                         where:'ELEV_MIN > 200'
@@ -48,8 +50,8 @@
                 });
                 trails.addSourcesAndLayersTo(map);
 
-                // Parks layer
-                const parks = await maplibreArcGIS.FeatureLayer.fromServiceUrl(polygonLayer);
+                // Load parks from from portal item ID
+                const parks = await maplibreArcGIS.FeatureLayer.fromPortalItem('f2ea5d874dad427294641d2d45097c0e');
                 parks.addSourcesAndLayersTo(map);
             });
     

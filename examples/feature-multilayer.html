@@ -29,14 +29,9 @@
                 accessToken: apiKey
             }).applyStyleTo(map);
             
-
-            const beetleAnalysisItemId = '44299709cce447ea99014ff1e3bf8505';
-            // Associated service URL: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Find_the_center_of_beetle_infestation_1738354419/FeatureServer/'
-
             map.on('load',async () => {
-
+                // This item contains 4 layers: https://www.arcgis.com/home/item.html?id=44299709cce447ea99014ff1e3bf8505
                 const beetleAnalysisResults = await maplibreArcGIS.FeatureLayer.fromPortalItem('44299709cce447ea99014ff1e3bf8505');
-
                 beetleAnalysisResults.addSourcesAndLayersTo(map);
             })
     

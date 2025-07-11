@@ -40,8 +40,8 @@
             map.on('load',async () => {
 
                 // Parks data
-                const parks = await maplibreArcGIS.FeatureLayer.fromServiceUrl(polygonLayer);
-                map.addSource(parks.sourceId,parks.source);
+                const parks = await maplibreArcGIS.FeatureLayer.fromUrl(polygonLayer);
+                parks.addSourcesTo(map);
                 map.addLayer({
                     ...parks.layer, // The layer property contains a preformatted maplibre layer, including a layer ID and source.
                     paint: { // Override default paint properties provided by parks.layer
@@ -58,8 +58,8 @@
                 })
 
                 // Trails data
-                const trails = await maplibreArcGIS.FeatureLayer.fromServiceUrl(lineLayer);
-                map.addSource(trails.sourceId,trails.source);
+                const trails = await maplibreArcGIS.FeatureLayer.fromUrl(lineLayer);
+                trails.addSourcesTo(map);
                 map.addLayer({
                     ...trails.layer,
                     paint: {
@@ -81,8 +81,8 @@
 
                 
                 // Trailheads data
-                const trailheads = await maplibreArcGIS.FeatureLayer.fromServiceUrl(pointLayer);
-                map.addSource(trailheads.sourceId,trailheads.source);
+                const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointLayer);
+                trailheads.addSourcesTo(map);
                 map.addLayer({
                     ...trailheads.layer,
                     type:"symbol",
