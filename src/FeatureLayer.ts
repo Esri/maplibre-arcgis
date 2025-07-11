@@ -1,7 +1,7 @@
 import type { LayerSpecification, GeoJSONSourceSpecification} from "maplibre-gl";
 import { HostedLayer } from "./HostedLayer";
 import type { HostedLayerOptions } from "./HostedLayer";
-import { checkItemId,checkServiceUrlType, cleanUrl } from "./Util";
+import { checkItemId,checkServiceUrlType, cleanUrl, warn } from "./Util";
 import { 
     queryFeatures, getLayer, getService,
     type IQueryFeaturesResponse, 
@@ -101,12 +101,6 @@ export class FeatureLayer extends HostedLayer {
             else if (isValidUrl  === 'FeatureLayer' || isValidUrl === 'FeatureService') this._inputType = isValidUrl;
             else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
         }
-
-        if (options?.query) {
-            if (this._inputType !== 'FeatureLayer') throw new Error('Query options are only supported on individual feature layers, not on feature services or item IDs. Please provide a feature layer URL ending in \/0, \/1, etc.');
-
-            this.query = options.query;
-        }
         
         // Set up
         if (this._inputType=='ItemId') {
@@ -115,13 +109,26 @@ export class FeatureLayer extends HostedLayer {
                 portalUrl:options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest'
             }            
         }
-        else if (this._inputType === 'FeatureLayer' || this._inputType === 'FeatureService') {
+        else if (this._inputType === 'FeatureLayer') {
             this._serviceInfo = {
                 serviceUrl: cleanUrl(serviceUrlOrId)
             }
         }
+        else if (this._inputType === 'FeatureService') {
+            warn('The provided service URL does not point to any specific feature layer. Layer \'/0\' will be loaded from the service automatically.');
+            this._serviceInfo = {
+                serviceUrl: `${cleanUrl(serviceUrlOrId)}0`
+            }
+            this._inputType = 'FeatureLayer';
+        }
         else {
             throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS portal item ID or feature service URL.');
+        }
+
+        if (options?.query) {
+            if (this._inputType !== 'FeatureLayer') throw new Error('Feature service queries are only supported with layer URLs, not item IDs. To use query parameters, call \'FeatureLayer.fromUrl\' with a service URL ending in \/0, \/1, etc.');
+
+            this.query = options.query;
         }
     }
 
@@ -248,7 +255,7 @@ export class FeatureLayer extends HostedLayer {
                 });
                 // Add layers
                 if (serviceInfo.layers.length > 10) {
-                    console.warn('The feature service provided contains more than 10 layers. Only the first 10 layers will be loaded.');
+                    console.warn('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
                 }
                 for (let i=0;(i<serviceInfo.layers.length) && (i < 10);i++) {
                     if (serviceInfo.layers[i]['subLayerIds']) {
@@ -289,7 +296,7 @@ export class FeatureLayer extends HostedLayer {
 
     static async fromUrl (serviceUrl:string, options:GeoJSONLayerOptions) : Promise<FeatureLayer> {
         const inputType = checkServiceUrlType(serviceUrl);
-        if (inputType !== 'FeatureService' && inputType !== 'FeatureLayer') throw new Error('Must provide a valid feature service or feature layer.');
+        if (inputType !== 'FeatureService' && inputType !== 'FeatureLayer') throw new Error('Must provide a valid feature layer URL.');
 
         const geojsonLayer = new FeatureLayer(serviceUrl,{
             ...options,
@@ -300,7 +307,7 @@ export class FeatureLayer extends HostedLayer {
     }
     static async fromPortalItem (itemId:string, options:GeoJSONLayerOptions) : Promise<FeatureLayer> {
 
-        if (checkItemId(itemId) !== 'ItemId') throw new Error('Must provide a valid item ID from an ArcGIS portal item.');
+        if (checkItemId(itemId) !== 'ItemId') throw new Error('Must provide a valid item ID for an ArcGIS hosted feature layer.');
 
         const geojsonLayer = new FeatureLayer(itemId,{
             ...options,
