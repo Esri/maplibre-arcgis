@@ -232,8 +232,6 @@ export class VectorTileLayer extends HostedLayer {
         // Public API is read-only
         this._sources = style.sources as {[_:string]:VectorSourceSpecification};
         this._layers = style.layers;
-
-        this._definePublicApi();
     }
 
     _getAttribution(sourceId : string) : string|null {

@@ -288,8 +288,6 @@ export class FeatureLayer extends HostedLayer {
 
     async initialize() : Promise<FeatureLayer> {
         await this._loadData();
-        // Public API is read-only
-        this._definePublicApi();
         this._ready = true;
         return this;
     }

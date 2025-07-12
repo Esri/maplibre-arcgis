@@ -30,6 +30,8 @@ export interface DataServiceInfo {
     //serviceItemPortalUrl: string;
 }
 
+const throwReadOnlyError = (propertyName : string) => {throw new Error(`${propertyName} is a read-only property.`)};
+
 export abstract class HostedLayer {
 
     /**
@@ -66,59 +68,52 @@ export abstract class HostedLayer {
     protected _map?:Map;
 
     /**
-     * Defines the following properties:
-     * sources
-     * source
-     * sourceId
-     * layers
-     * layer
+     * 
      */
-    protected _definePublicApi() : void {
-        const throwReadOnlyError = (propertyName : string) => {throw new Error(`${propertyName} is a read-only property.`)};
-        
-        Object.defineProperty(this,'sources',{
-            get: () : Readonly<{[_:string]:SupportedSourceSpecification}> => {
-                return Object.freeze(this._sources);
-            },
-            set (_) {throwReadOnlyError('sources')}
-        });      
-
-        const sourceIds = Object.keys(this._sources);
-
-        if (sourceIds.length == 1) {
-            Object.defineProperty(this,'source',{
-                get: () : Readonly<SupportedSourceSpecification> => {
-                    const sourceIds = Object.keys(this._sources);
-                    return Object.freeze(this._sources[sourceIds[0]]);
-                },
-                set (_) {throwReadOnlyError('source')}
-            });
-
-            Object.defineProperty(this,'sourceId',{
-                get: () : Readonly<string> => {
-                    const sourceIds = Object.keys(this._sources);
-                    return Object.freeze(sourceIds[0]);
-                },
-                set (_) {throwReadOnlyError('sourceId')}
-            });
-        }
-
-        Object.defineProperty(this,'layers',{
-            get: () : Readonly<LayerSpecification[]> => {
-                return Object.freeze(this._layers);
-            },
-            set (_) {throwReadOnlyError('layers')}
-        });
-
-        if (this._layers.length == 1) {
-            Object.defineProperty(this,'layer',{
-                get: () : Readonly<LayerSpecification> => {
-                    return Object.freeze(this._layers[0]);
-                },
-                set (_) {throwReadOnlyError('layer')}
-            });
-        }
+    get sources () : Readonly<{[_:string]:SupportedSourceSpecification}> {
+        return Object.freeze(this._sources);
     }
+    set sources (_) {throwReadOnlyError('sources')}
+
+    /**
+     * 
+     */
+    get source () : Readonly<SupportedSourceSpecification> | undefined {
+        const sourceIds = Object.keys(this._sources);
+        if (sourceIds.length !== 1) return undefined;
+
+        return Object.freeze(this._sources[sourceIds[0]]);
+    }
+    set source (_) {throwReadOnlyError('source')}
+
+    /**
+     * 
+     */
+    get sourceId () : Readonly<string> | undefined {
+        const sourceIds = Object.keys(this._sources);
+        if (sourceIds.length !== 1) return undefined;
+
+        return Object.freeze(sourceIds[0]);
+    }
+    set sourceId (_) {throwReadOnlyError('sourceId')}
+    
+    /**
+     * 
+     */
+    get layers () : Readonly<LayerSpecification[]> {
+        return Object.freeze(this._layers);
+    }
+    set layers (_) {throwReadOnlyError('layers')}
+
+    /**
+     * 
+     */
+    get layer () : Readonly<LayerSpecification> | undefined {
+        if (this._layers.length !== 1) return undefined;
+
+        return Object.freeze(this._layers[0]);
+    }
+    set layer (_) {throwReadOnlyError('layer')}
 
     /**
      * Changes the ID of a maplibre style source, and updates all associated maplibre style layers.
