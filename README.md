@@ -1,8 +1,8 @@
-# Esri MapLibre
+# MapLibre ArcGIS plugin
 
 (TODO npm version once published)
 
-A MapLibre GL JS plugin for working with ArcGIS services, including basemaps and vector tiles.
+A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps, vector tiles, and feature layers.
 
 > This project is maintained with ❤️ by folks at Esri, but we provide no guarantee of individual features, nor a traditional product lifecycle to support planning.
 
@@ -13,7 +13,9 @@ A MapLibre GL JS plugin for working with ArcGIS services, including basemaps and
 
 ## Quick start
 
-TODO
+The easiest way to get started is to load MapLibre ArcGIS via CDN. For a complete example, go here: [Maplibre ArcGIS quick start](https://developers.arcgis.com/maplibre-gl-js/get-started/).
+
+TODO photo here
 
 
 ## Samples, tutorials, and API reference
@@ -56,7 +58,7 @@ For more information on SemVer, please visit http://semver.org/.
 
 ## Credit
 
-TODO - credit mapbox esri sources if we end up using that
+TODO
 
 ## Licensing
 
