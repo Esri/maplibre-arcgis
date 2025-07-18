@@ -1,0 +1,8 @@
+{
+    "out":"typedoc",
+    "json":"docs/build/typedoc.json",
+    "logLevel": "Verbose",
+    "excludeInternal": true,
+    "excludePrivate": true,
+    "excludeProtected": true
+}

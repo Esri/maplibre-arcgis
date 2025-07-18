@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            html, body, #map {
+                padding:0;
+                margin:0;
+                width:100%;
+                height:100%;
+            }
+        </style>
+        <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet"/>
+        <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
+        <!-- Maplibre ArcGIS -->
+        <script src="../dist/maplibre-arcgis-debug.js"></script>
+
+    </head>
+    <body>
+        <div id="map"></div>
+        <script src="../debug/apikey.js"></script>
+        <script type="module">
+
+            const basemapsKey = apiKey;
+            const vectorTileKey = vectorTileApiKey;
+
+            const map = new maplibregl.Map({
+                container: "map", // the id of the div element
+                zoom: 13, // starting zoom
+                center: [-118.498, 34.014], // starting location [longitude, latitude]
+            }); 
+            const style = new maplibreArcGIS.BasemapStyle('arcgis/light-gray', {
+                token: basemapsKey
+            });
+            style.applyStyleTo(map);
+            
+            map.on('load', async () => {
+                // https://www.arcgis.com/home/item.html?id=f0298e881b5b4743bbdf2c7d378acc84
+                const santaMonicaParcels = await maplibreArcGIS.VectorTileLayer.fromPortalItem('f0298e881b5b4743bbdf2c7d378acc84');
+
+                santaMonicaParcels.addSourcesTo(map);
+                map.addLayer({
+                    ...santaMonicaParcels.layer, // The layer property is a preformatted maplibre layer, including a layer ID, source, source-layer, and paint/layout information.
+                    type:'fill',
+                    paint:{ // Override paint properties provided by service
+                        "fill-color": ['case',
+                            ['==', ['get','UseType'], 'Residential'], '#E8E191', // Yellow
+                            ['==', ['get','UseType'], 'Commercial'], '#E580A2', // Red
+                            ['==', ['get','UseType'], 'Government'], '#79E284', // Green
+                            ['==', ['get','UseType'], 'Industrial'], '#C080E5', // Purple
+                            ['==', ['get','UseType'], 'Institutional'], '#80BBE5', // Blue
+                            '#bfbfbf'
+                        ]
+                    }
+                });
+                
+                map.addLayer({
+                    ...santaMonicaParcels.layer,
+                    id:'custom-outline', // All Layer IDs must be unique
+                    type:'line',
+                    paint:{
+                        'line-color':'#000000',
+                        'line-width':0.25,
+                        'line-opacity':0.25
+                    }
+                });
+            });
+        </script>
+    </body>
+</html>
