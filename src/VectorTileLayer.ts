@@ -49,7 +49,7 @@ export class VectorTileLayer extends HostedLayer {
         if (!serviceUrlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
         
         if (options?.authentication) this.authentication = options.authentication;
-        else if (options?.accessToken) this.authentication = ApiKeyManager.fromKey(options.accessToken);
+        else if (options?.token) this.authentication = ApiKeyManager.fromKey(options.token);
 
         if (options?.attribution) this._customAttribution = options.attribution;
 
@@ -220,10 +220,10 @@ export class VectorTileLayer extends HostedLayer {
 
             // Provide authentication
             if (this.authentication) {
-                const accessToken = this.authentication.token;
+                const token = this.authentication.token;
 
-                if (source.url) source.url = `${source.url}?token=${accessToken}`;
-                if (source.tiles) source.tiles = source.tiles.map((tileUrl) => `${tileUrl}?token=${accessToken}`);
+                if (source.url) source.url = `${source.url}?token=${token}`;
+                if (source.tiles) source.tiles = source.tiles.map((tileUrl) => `${tileUrl}?token=${token}`);
             }
 
             // Provide attribution

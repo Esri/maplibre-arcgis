@@ -38,3 +38,4 @@ docs/
 typedoc/
 
 *.code-workspace
+.vscode

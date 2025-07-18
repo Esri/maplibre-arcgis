@@ -38,7 +38,7 @@ type BasemapStyleObject = {
 }
 
 type IBasemapStyleOptions = {
-    accessToken: string;
+    token: string;
     authentication: RestJSAuthenticationManager;
     language?: string;
     worldview?: string;
@@ -55,11 +55,10 @@ type BasemapPreferences = {
 export class BasemapStyle {
     // Type declarations
     style: string;
-    accessToken: string;
+    token: string;
     authentication: RestJSAuthenticationManager;
-    
+        
     preferences: BasemapPreferences;
-
     options: IBasemapStyleOptions;
     _isItemId: boolean;
     //_transformStyleFn?:TransformStyleFunction;
@@ -75,7 +74,7 @@ export class BasemapStyle {
 
         // Access token validation
         if (options.authentication) this.authentication = options.authentication;
-        else if (options.accessToken) this.authentication = ApiKeyManager.fromKey(options.accessToken);
+        else if (options.token) this.authentication = ApiKeyManager.fromKey(options.token);
         else throw new Error(
             'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
         )
@@ -176,11 +175,11 @@ export class BasemapStyle {
     }
     /**
      * Makes a \'/self\' request to the basemap styles service endpoint
-     * @param accessToken - An ArcGIS access token
+     * @param token - An ArcGIS access token
      */
-    static async getSelf (options:{accessToken?:string}) : Promise<BasemapSelfResponse> {
+    static async getSelf (options:{token?:string}) : Promise<BasemapSelfResponse> {
         return await request(`${BasemapStyle._baseUrl}/self`,{
-            authentication: options?.accessToken,
+            authentication: options?.token,
             httpMethod: 'GET'
         }) as BasemapSelfResponse;
     }

@@ -5,7 +5,7 @@ import type { RestJSAuthenticationManager } from './Util';
 type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpecification;
 
 export type HostedLayerOptions = {
-    accessToken?: string; // Access token as a string
+    token?: string; // Access token as a string
     authentication?: RestJSAuthenticationManager; // Authentication as a REST JS object
     portalUrl?: string;
     attribution?: string;

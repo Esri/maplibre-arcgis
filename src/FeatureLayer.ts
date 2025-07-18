@@ -86,7 +86,7 @@ export class FeatureLayer extends HostedLayer {
         super();
 
         if (options?.authentication) this.authentication = options.authentication;
-        else if (options?.accessToken) this.authentication = ApiKeyManager.fromKey(options.accessToken);
+        else if (options?.token) this.authentication = ApiKeyManager.fromKey(options.token);
         
         if (options?.attribution) this._customAttribution = options.attribution;
 
@@ -144,6 +144,7 @@ export class FeatureLayer extends HostedLayer {
                 authentication:this.authentication,
                 url: layerUrl,
                 outFields: [layerInfo.objectIdField],
+                ...this.query,
                 outStatistics: [
                     {
                         maxPointCount: 2000,

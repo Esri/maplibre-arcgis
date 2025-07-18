@@ -23,7 +23,7 @@
             const map = new maplibregl.Map({
                 container: "map", // the id of the div element
                 style: maplibreArcGIS.BasemapStyle.url('arcgis/streets', {
-                        accessToken: apiKey,
+                        token: apiKey,
                 }),
                 zoom: 8, // starting zoom
                 center: [-79.805, 34.027], // starting location [longitude, latitude]
