@@ -1,0 +1,241 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+      html,
+      body,
+      #map {
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #sessionTypePanel {
+        position: absolute;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        top: 15px;
+        left: 50%;
+        right: 50%;
+        margin-left: -200px;
+        margin-right: -200px;
+        width: 400px;
+        z-index: 1;
+        background-color: rgba(255, 255, 255, 0.75);
+        height: 32px;
+      }
+    </style>
+
+    <script type="module" src="https://js.arcgis.com/calcite-components/3.2.1/calcite.esm.js"></script>
+
+    <script src="https://unpkg.com/maplibre-gl@^5.6.1/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@^5.6.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <!-- <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script> -->
+    <!-- Maplibre ArcGIS -->
+    <script src="../dist/maplibre-arcgis-debug.js"></script>
+    <script src="../debug/apikey.js"></script>
+    <script type="module">
+      let init = true
+      const sessionDuration = 30 // seconds
+
+      const sessionTypeDiv = document.getElementById("sessionTypePanel")
+
+      const sessionDialog = document.getElementById("sessionDialog")
+
+      let currentToken = null
+
+      const map = new maplibregl.Map({
+        container: "map", // the id of the div element
+        zoom: 14, // starting zoom
+        center: [-117.805, 34.027], // starting location
+      })
+
+      const updateTiles = (oldToken, newToken) => {
+        console.log("Updating map tiles with new token...")
+
+        // replace token in the styles tiles with the new session token
+        for (const s of Object.keys(map.style.sourceCaches)) {
+          console.log(`\t Checking source ${s}...`)
+          const source = map.getSource(s)
+          // skip if we can't find the source or the source doesn't have tiles
+          if (!source || !source.tiles) {
+            console.log(`\t Skipping ${s}...`)
+            return
+          }
+
+          // Skip if the source doesn't have tiles that include the old token
+          if (!source.tiles.some((tileUrl) => tileUrl.includes(oldToken))) {
+            console.log(`\t Old token not found in ${tileUrl}, skipping.`)
+            return
+          }
+
+          const newTiles = source.tiles.map((tile) => {
+            console.log(`\t Replacing token in ${tile}...`)
+            return tile.includes(oldToken) ? tile.replace(oldToken, newToken) : tile
+          })
+
+          console.log("\t Updating tiles...")
+          source.setTiles(newTiles)
+        }
+
+        // replace the token in the glyph url, ensuring fonts continue loading
+        const glyphs = map.getGlyphs()
+        if (glyphs.includes(oldToken)) {
+          console.log("\t Replacing glyph tokens...")
+          map.setGlyphs(glyphs.replace(oldToken, newToken))
+        }
+
+        const sprites = map.getSprite()
+        for (const sprite of sprites) {
+          if (sprite.url.includes(oldToken)) {
+            map.setSprite(sprite.url.replace(oldToken, newToken))
+          }
+        }
+        console.log("Map tile update complete")
+        // map.triggerRepaint()
+      }
+
+      const getSession = async () => {
+        const getBasemapSession = async (accessToken) => {
+          console.log("Requesting new session token...")
+          let session = null
+          const params = new URLSearchParams({
+            styleFamily: "arcgis",
+            durationSeconds: sessionDuration,
+          })
+
+          try {
+            const response = await fetch(`https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start?${params.toString()}`, {
+              method: "GET",
+              headers: { Authorization: `Bearer ${accessToken}` },
+            })
+
+            session = await response.json()
+            console.log(`\tNew session acquired: ${JSON.stringify(session, null, 2)}`)
+          } catch (error) {
+            console.log(`\tFailed to create session token: ${error}`)
+          }
+
+          console.log("New session token request complete")
+          return session
+        }
+
+        const session = await getBasemapSession(apiKey)
+
+        setTimeout(() => {
+          sessionDialog.open = true
+        }, 25000)
+
+        return session
+      }
+
+      const setUsageUI = (type, endTime) => {
+        const msg = type === "tile" ? `${type} usage (no expiration)` : `${type} usage expires ${new Date(endTime).toLocaleString()}`
+        sessionTypeDiv.innerText = msg
+      }
+
+      const currentSession = await getSession()
+      setUsageUI("session", currentSession.endTime)
+
+      currentToken = currentSession.sessionToken
+
+      // Also supports item IDs for custom basemap styles
+      // Try: '9d94a890b76a417cad8a748df4f97336'
+
+      // OPTION 1 Add parameters and event callbacks to existing basemapstyle class to handle session
+      const style = new maplibreArcGIS.BasemapStyle("arcgis/navigation", {
+        accessToken: currentToken, // what usage do we start with?
+        // usageModel: { type: "sessions", duration: 30, autoRefresh: false},
+        // usageModel: { type: "tiles" }, //default
+        // sessions: bool || {duration: 43200, autoRefresh: false},
+      })
+      // console.log(style.authentication)
+      // console.log(style.session) // REST JS Object
+      style.applyStyleTo(map)
+
+      // style.setSessionToken() // update a session?
+      // style.getBasemapSession() //returns arcgis-rest-js object
+
+      // style.on("sessionExipired", (evt) => {
+      //   // what's returned here?
+      //   const newSession = style.getNewSession() // gets new session and updates tiles?
+      //   style.setSessionToken(newSession)
+      //   // style.updateSessionToken()
+      //   // What if I wanted to change the billing model here?
+      // })
+
+      // OPTION 2 create a Sub class basemapstyle
+      // parameters: style,basemapOptions, sessionOptions
+      // const styleSession = new maplibreArcGIS.BasemapStyleSession("arcgis/navigation", {IBasemapStyleOptions}, {
+      //   //ISessionOptions:{
+      //   duration: 43200,
+      //   autoRefresh: false,
+      //   timeOutPadding: 3, //seconds before timeout
+      // }})
+
+      // styleSession.setStyle() // change the basemap style mid session?
+      //
+      // styleSession.secondsRemaining // from pat's object
+      // styleSession.on("expired", (e)=>{
+      //   // e.session (REST JS SESSION OBJECT)
+      //   // Call styleSession.getNewSession() // function in Pat's object
+      // })
+      // styleSession.session // gets Pat's object
+
+      map.on("error", (err) => {
+        console.log(`Map error: ${err.error.message}`)
+      })
+
+      map.on("styledata", () => {
+        console.log("styledata")
+      })
+
+      sessionDialog.addEventListener("calciteDialogBeforeClose", async (e) => {
+        const usageType = document.getElementById("usageSelect").value
+
+        let newToken = apiKey
+        let endTime = null
+        if (usageType === "session") {
+          const newSession = await getSession()
+          endTime = newSession.endTime
+          newToken = newSession.sessionToken
+        }
+
+        updateTiles(currentToken, newToken)
+
+        setUsageUI(usageType, endTime)
+
+        currentToken = newToken
+      })
+
+      const closeButton = document.getElementById("closeDialog")
+      closeButton.addEventListener("click", (e) => {
+        sessionDialog.open = false
+      })
+
+      sessionTypeDiv.addEventListener("click", (e) => {
+        sessionDialog.open = true
+      })
+    </script>
+  </head>
+  <body>
+    <calcite-dialog id="sessionDialog" modal open close-disabled escape-disabled>
+      <p>Your session has expired.</p>
+      <p>To continue, select a basemap usage model?</p>
+
+      <calcite-label>
+        Basemap usage model:
+        <calcite-select id="usageSelect">
+          <calcite-option value="tile">Tiles</calcite-option>
+          <calcite-option value="session">Sessions</calcite-option>
+        </calcite-select>
+      </calcite-label>
+      <calcite-button id="closeDialog" slot="footer-end">Ok</calcite-button>
+    </calcite-dialog>
+    <div id="sessionTypePanel">Basemap usage model: session</div>
+    <div id="map"></div>
+  </body>
+</html>
