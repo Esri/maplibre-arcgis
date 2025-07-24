@@ -3,8 +3,8 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import html from 'eslint-plugin-html';
 import tsdoc from 'eslint-plugin-tsdoc';
-import vitest from 'eslint-plugin-vitest';
 import globals from "globals"
+import vitest from '@vitest/eslint-plugin'
 
 export default tseslint.config([
   {
