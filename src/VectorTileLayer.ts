@@ -1,10 +1,9 @@
-import type {LayerSpecification, VectorSourceSpecification, StyleSpecification} from '@maplibre/maplibre-gl-style-spec';
-import { checkServiceUrlType, checkItemId, warn, type ItemId} from './Util';
+import type { LayerSpecification, VectorSourceSpecification, StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
+import { checkServiceUrlType, checkItemId, warn, type ItemId } from './Util';
 import { HostedLayer } from './HostedLayer';
-import type { DataServiceInfo,ItemInfo,HostedLayerOptions } from './HostedLayer';
+import type { DataServiceInfo, ItemInfo, HostedLayerOptions } from './HostedLayer';
 import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import { getItem, getItemResources, getItemResource } from '@esri/arcgis-rest-portal';
-
 
 interface IVectorTileServiceDefinition {
     tiles: string[];
@@ -21,14 +20,13 @@ interface VectorTileServiceInfo extends DataServiceInfo {
     tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
 
-const SupportedInputTypes = ["ItemId","VectorTileService"];
+const SupportedInputTypes = ['ItemId', 'VectorTileService'];
 
 export class VectorTileLayer extends HostedLayer {
+    declare _serviceInfo: VectorTileServiceInfo;
+    declare _itemInfo: ItemInfo;
 
-    declare _serviceInfo : VectorTileServiceInfo;
-    declare _itemInfo : ItemInfo;
-    
-    declare _sources: {[_:string]:VectorSourceSpecification};
+    declare _sources: { [_: string]: VectorSourceSpecification };
     declare _layers: LayerSpecification[];
 
     _inputType: 'ItemId' | 'VectorTileService';
@@ -38,16 +36,15 @@ export class VectorTileLayer extends HostedLayer {
     _itemInfoLoaded: boolean;
     _serviceInfoLoaded: boolean;
 
-    constructor (serviceUrlOrId : string, options? : VectorTileLayerOptions) {
-
+    constructor(serviceUrlOrId: string, options?: VectorTileLayerOptions) {
         super();
         this._ready = false;
         this._styleLoaded = false;
         this._serviceInfoLoaded = false;
         this._itemInfoLoaded = false;
-        
+
         if (!serviceUrlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
-        
+
         if (options?.authentication) this.authentication = options.authentication;
         else if (options?.token) this.authentication = ApiKeyManager.fromKey(options.token);
 
@@ -60,26 +57,26 @@ export class VectorTileLayer extends HostedLayer {
             const isItem = checkItemId(serviceUrlOrId);
             const isValidUrl = checkServiceUrlType(serviceUrlOrId);
             if (isItem) this._inputType = isItem;
-            else if (isValidUrl  === 'VectorTileService') this._inputType = isValidUrl;
+            else if (isValidUrl === 'VectorTileService') this._inputType = isValidUrl;
             else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
         }
-
 
         if (this._inputType === 'ItemId') {
             this._itemInfo = {
                 itemId: serviceUrlOrId,
-                portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest'
+                portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest',
             };
         }
         else if (this._inputType === 'VectorTileService') {
             this._serviceInfo = {
-                serviceUrl: serviceUrlOrId
-            }
+                serviceUrl: serviceUrlOrId,
+            };
         }
     }
+
     // Loads the style from ArcGIS
-    async _loadStyle() : Promise<StyleSpecification> {
-        let styleInfo : StyleSpecification | null = null;
+    async _loadStyle(): Promise<StyleSpecification> {
+        let styleInfo: StyleSpecification | null = null;
 
         let styleSource = this._inputType;
         switch (styleSource) {
@@ -89,7 +86,7 @@ export class VectorTileLayer extends HostedLayer {
                 if (styleInfo) break;
                 else {
                     warn('Could not find a style resource associated with the provided item ID. Checking service URL instead...');
-                    styleSource = 'VectorTileService';  
+                    styleSource = 'VectorTileService';
                 } // falls through
             }
             case 'VectorTileService': {
@@ -105,30 +102,32 @@ export class VectorTileLayer extends HostedLayer {
         this._style = styleInfo;
         return this._style;
     }
-    async _loadStyleFromItemId() : Promise<StyleSpecification | null> {
+
+    async _loadStyleFromItemId(): Promise<StyleSpecification | null> {
         const params = {
-            authentication:this.authentication,
-            portal:this._itemInfo.portalUrl
-        }
+            authentication: this.authentication,
+            portal: this._itemInfo.portalUrl,
+        };
         // Load style info
-        let styleInfo : StyleSpecification | null = null;
+        let styleInfo: StyleSpecification | null = null;
         // Try loading default style name first
         try {
             const rootStyle = await getItemResource(this._itemInfo.itemId, {
                 ...params,
-                fileName:'styles/root.json',
-                readAs:'json'
+                fileName: 'styles/root.json',
+                readAs: 'json',
             }) as StyleSpecification;
             styleInfo = rootStyle;
-        // Check for other style resources associated with the item
-        } catch (e) {
+            // Check for other style resources associated with the item
+        }
+        catch (e) {
             const itemResources = await getItemResources(this._itemInfo.itemId, {
-                ...params
+                ...params,
             });
 
-            let styleFile : string | null = null;
+            let styleFile: string | null = null;
             if (itemResources.total > 0) {
-                itemResources.resources.forEach(entry => {
+                itemResources.resources.forEach((entry) => {
                     if (entry.resource.startsWith('styles')) {
                         styleFile = entry.resource;
                     }
@@ -137,37 +136,38 @@ export class VectorTileLayer extends HostedLayer {
             if (styleFile) {
                 const customStyle = await getItemResource(this._itemInfo.itemId, {
                     ...params,
-                    fileName:styleFile,
-                    readAs:'json'
+                    fileName: styleFile,
+                    readAs: 'json',
                 }) as StyleSpecification;
                 styleInfo = customStyle;
             }
         }
         return styleInfo;
     }
-    async _loadStyleFromServiceUrl() : Promise<StyleSpecification | null> {
+
+    async _loadStyleFromServiceUrl(): Promise<StyleSpecification | null> {
         if (!this._serviceInfo.serviceUrl) throw new Error('No data service provided');
 
-        const styleInfo = await request(`${this._serviceInfo.serviceUrl}/${this._serviceInfo.styleEndpoint}`,{
-            authentication:this.authentication,
+        const styleInfo = await request(`${this._serviceInfo.serviceUrl}/${this._serviceInfo.styleEndpoint}`, {
+            authentication: this.authentication,
         }) as StyleSpecification;
         return styleInfo;
     }
+
     /**
      * Retrieves information from the data service about data attribution, associated item IDs, and more.
      */
-    async _loadServiceInfo() : Promise<VectorTileServiceInfo> {
-        
-        const serviceResponse = await request(this._serviceInfo.serviceUrl,{
-            authentication:this.authentication
+    async _loadServiceInfo(): Promise<VectorTileServiceInfo> {
+        const serviceResponse = await request(this._serviceInfo.serviceUrl, {
+            authentication: this.authentication,
         }) as IVectorTileServiceDefinition;
 
         this._serviceInfo = {
             ...this._serviceInfo,
             tiles: serviceResponse.tiles,
             styleEndpoint: serviceResponse.defaultStyles,
-            copyrightText: serviceResponse.copyrightText
-        }
+            copyrightText: serviceResponse.copyrightText,
+        };
         this._serviceInfoLoaded = true;
         return this._serviceInfo;
     }
@@ -175,12 +175,11 @@ export class VectorTileLayer extends HostedLayer {
     /**
      * Retrieves information from the portal about item attribution and associated service URLs
      */
-    async _loadItemInfo() : Promise<ItemInfo> {
-
-        const itemResponse = await getItem(this._itemInfo.itemId,{
-            authentication:this.authentication,
-            portal:this._itemInfo.portalUrl
-        })
+    async _loadItemInfo(): Promise<ItemInfo> {
+        const itemResponse = await getItem(this._itemInfo.itemId, {
+            authentication: this.authentication,
+            portal: this._itemInfo.portalUrl,
+        });
 
         if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
 
@@ -188,8 +187,8 @@ export class VectorTileLayer extends HostedLayer {
         if (!this._serviceInfoLoaded) {
             this._serviceInfo = {
                 serviceUrl: itemResponse.url,
-                //serviceItemPortalUrl: this._itemInfo.portalUrl
-            }
+                // serviceItemPortalUrl: this._itemInfo.portalUrl
+            };
         }
         this._itemInfo = {
             ...this._itemInfo,
@@ -198,13 +197,14 @@ export class VectorTileLayer extends HostedLayer {
             description: itemResponse.description,
             access: itemResponse.access,
             orgId: itemResponse.orgId,
-            licenseInfo: itemResponse.licenseInfo
-        }
+            licenseInfo: itemResponse.licenseInfo,
+        };
         this._itemInfoLoaded = true;
         return this._itemInfo;
     }
-    _createSourcesAndLayers(style : StyleSpecification) : void {
-        if (!style) throw new Error('Vector tile style has not been loaded from ArcGIS.')
+
+    _createSourcesAndLayers(style: StyleSpecification): void {
+        if (!style) throw new Error('Vector tile style has not been loaded from ArcGIS.');
 
         // Finish creating sources
         for (const sourceId of Object.keys(style.sources)) {
@@ -223,19 +223,18 @@ export class VectorTileLayer extends HostedLayer {
                 const token = this.authentication.token;
 
                 if (source.url) source.url = `${source.url}?token=${token}`;
-                if (source.tiles) source.tiles = source.tiles.map((tileUrl) => `${tileUrl}?token=${token}`);
+                if (source.tiles) source.tiles = source.tiles.map(tileUrl => `${tileUrl}?token=${token}`);
             }
 
             // Provide attribution
             source.attribution = this._getAttribution(sourceId);
         }
         // Public API is read-only
-        this._sources = style.sources as {[_:string]:VectorSourceSpecification};
+        this._sources = style.sources as { [_: string]: VectorSourceSpecification };
         this._layers = style.layers;
     }
 
-    _getAttribution(sourceId : string) : string|null {
-        
+    _getAttribution(sourceId: string): string | null {
         // Custom attribution is highest priority
         if (this._customAttribution) return this._customAttribution;
         // Next, attribution from item info if available
@@ -250,35 +249,34 @@ export class VectorTileLayer extends HostedLayer {
         if (this._styleLoaded && sourceId && this._style.sources[sourceId] && (this._style.sources[sourceId] as VectorSourceSpecification).attribution) {
             return (this._style.sources[sourceId] as VectorSourceSpecification).attribution;
         }
-        return "";
+        return '';
     }
 
     // Public API
-    async initialize() : Promise<VectorTileLayer> {
+    async initialize(): Promise<VectorTileLayer> {
         const style = await this._loadStyle();
         this._createSourcesAndLayers(style);
         this._ready = true;
         return this;
     }
 
-    static async fromPortalItem (itemId: ItemId, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
-
+    static async fromPortalItem(itemId: ItemId, options: VectorTileLayerOptions): Promise<VectorTileLayer> {
         if (checkItemId(itemId) !== 'ItemId') throw new Error('Input is not a valid ArcGIS item ID.');
 
-        const vtl = new VectorTileLayer(itemId,{
+        const vtl = new VectorTileLayer(itemId, {
             ...options,
-            _inputType:'ItemId'
+            _inputType: 'ItemId',
         });
         await vtl.initialize();
         return vtl;
     }
-    static async fromUrl (serviceUrl: string, options : VectorTileLayerOptions) : Promise<VectorTileLayer> {
-        
+
+    static async fromUrl(serviceUrl: string, options: VectorTileLayerOptions): Promise<VectorTileLayer> {
         const urlType = checkServiceUrlType(serviceUrl);
-        if (urlType !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.')
+        if (urlType !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.');
         options._inputType = urlType;
 
-        const vtl = new VectorTileLayer(serviceUrl,options);
+        const vtl = new VectorTileLayer(serviceUrl, options);
         await vtl.initialize();
         return vtl;
     }

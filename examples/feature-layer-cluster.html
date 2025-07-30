@@ -1,74 +1,79 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <style>
-            html, body, #map {
-                padding:0;
-                margin:0;
-                width:100%;
-                height:100%;
-            }
-        </style>
-        <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet"/>
-        <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
-        <!-- Maplibre ArcGIS -->
-        <script src="../dist/maplibre-arcgis-debug.js"></script>
 
-    </head>
-    <body>
-        <div id="map"></div>
-        <script src="../debug/apikey.js"></script>
-        <script>
+<head>
+  <style>
+    html,
+    body,
+    #map {
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
+  <!-- Maplibre ArcGIS -->
+  <script src="../dist/maplibre-arcgis-debug.js"></script>
 
-            const map = new maplibregl.Map({
-                container: "map", // the id of the div element
-                zoom: 12, // starting zoom
-                center: [-118.805, 34.027] // starting location [longitude, latitude]
-            });
-            const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
-                token: apiKey
-            }).applyStyleTo(map);
+</head>
 
-            const pointService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
-           
-            map.on('load',async () => {
+<body>
+  <div id="map"></div>
+  <script src="../debug/apikey.js"></script>
+  <script>
 
-                // Load trailheads from service URL
-                const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointService);
-                
-                map.addSource(trailheads.sourceId,{
-                    ...trailheads.source,
-                    cluster: true,
-                    clusterRadius: 20, // cluster two trailheads if less than 20 pixels apart
-                    clusterMaxZoom: 14, // display all trailheads individually from zoom 14 up
-                });
+    const map = new maplibregl.Map({
+      container: "map", // the id of the div element
+      zoom: 12, // starting zoom
+      center: [-118.805, 34.027] // starting location [longitude, latitude]
+    });
+    const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
+      token: apiKey
+    }).applyStyleTo(map);
 
-                map.addLayer({
-                    source: trailheads.sourceId,
-                    id: "trailheads-circle",
-                    type: "circle",
-                    paint: {
-                        "circle-color": "hsla(0,0%,0%,0.75)",
-                        "circle-stroke-width": 1.5,
-                        "circle-stroke-color": "white",
-                        "circle-radius": ["case", ["get", "cluster"], 10, 5] // 10 pixels for clusters, 5 pixels otherwise
-                    }
-                });
+    const pointService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
 
-                map.addLayer({
-                    source: trailheads.sourceId,
-                    id: "trailheads-cluster-count",
-                    type: "symbol",
-                    layout: {
-                        "text-font": ["Arial Bold"],
-                        "text-field": ["get", "point_count"],
-                        "text-offset": [0, 0.1] // move the label vertically downwards slightly to improve centering
-                    },
-                    paint: {
-                        "text-color": "white"
-                    }
-                });
-            });
-        </script>
-    </body>
+    map.on('load', async () => {
+
+      // Load trailheads from service URL
+      const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointService);
+
+      map.addSource(trailheads.sourceId, {
+        ...trailheads.source,
+        cluster: true,
+        clusterRadius: 20, // cluster two trailheads if less than 20 pixels apart
+        clusterMaxZoom: 14, // display all trailheads individually from zoom 14 up
+      });
+
+      map.addLayer({
+        source: trailheads.sourceId,
+        id: "trailheads-circle",
+        type: "circle",
+        paint: {
+          "circle-color": "hsla(0,0%,0%,0.75)",
+          "circle-stroke-width": 1.5,
+          "circle-stroke-color": "white",
+          "circle-radius": ["case", ["get", "cluster"], 10, 5] // 10 pixels for clusters, 5 pixels otherwise
+        }
+      });
+
+      map.addLayer({
+        source: trailheads.sourceId,
+        id: "trailheads-cluster-count",
+        type: "symbol",
+        layout: {
+          "text-font": ["Arial Bold"],
+          "text-field": ["get", "point_count"],
+          "text-offset": [0, 0.1] // move the label vertically downwards slightly to improve centering
+        },
+        paint: {
+          "text-color": "white"
+        }
+      });
+    });
+  </script>
+</body>
+
 </html>
