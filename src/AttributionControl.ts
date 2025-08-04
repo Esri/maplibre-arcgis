@@ -1,30 +1,30 @@
 import {
     AttributionControl as MaplibreAttributionControl,
     type AttributionControlOptions as MaplibreAttributionControlOptions,
-    type Map
-} from "maplibre-gl";
+    type Map,
+} from 'maplibre-gl';
 
 interface AttributionControlOptions {
-    compact?:boolean;
+    compact?: boolean;
     minimize?: boolean;
 }
 
 export class AttributionControl extends MaplibreAttributionControl {
-    _minimized?:boolean;
-    constructor (options : AttributionControlOptions = {}) {
-        
-        const esriAttribution = "Powered by <a href=\"https://www.esri.com/\">Esri</a>";
-        const maplibreAttribution = "<a href=\"https://maplibre.org/\" >MapLibre</a>";
+    _minimized?: boolean;
+    constructor(options: AttributionControlOptions = {}) {
+        const esriAttribution = 'Powered by <a href="https://www.esri.com/">Esri</a>';
+        const maplibreAttribution = '<a href="https://maplibre.org/" >MapLibre</a>';
 
-        const attributionOptions : MaplibreAttributionControlOptions = {
+        const attributionOptions: MaplibreAttributionControlOptions = {
             compact: (options?.compact !== undefined) ? options.compact : true,
-            customAttribution: `${maplibreAttribution} | ${esriAttribution}`
-        }
+            customAttribution: `${maplibreAttribution} | ${esriAttribution}`,
+        };
 
         super(attributionOptions);
         this._minimized = options?.minimize;
     }
-    onAdd(map : Map) {
+
+    onAdd(map: Map) {
         const htmlElement = super.onAdd(map);
 
         if (this._minimized) {

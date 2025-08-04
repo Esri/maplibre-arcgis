@@ -1,109 +1,114 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <style>
-            html, body, #map {
-                padding:0;
-                margin:0;
-                width:100%;
-                height:100%;
-            }
-        </style>
-        <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet"/>
-        <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
-        <!-- Maplibre ArcGIS -->
-        <script src="../dist/maplibre-arcgis-debug.js"></script>
 
-    </head>
-    <body>
-        <div id="map"></div>
-        <script src="../debug/apikey.js"></script>
-        <script>
+<head>
+  <style>
+    html,
+    body,
+    #map {
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
+  <!-- Maplibre ArcGIS -->
+  <script src="../dist/maplibre-arcgis-debug.js"></script>
 
-            const map = new maplibregl.Map({
-                container: "map", // the id of the div element
-                zoom: 12, // starting zoom
-                center: [-118.805, 34.027] // starting location [longitude, latitude]
-            });
-            const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
-                token: apiKey
-            }).applyStyleTo(map);
+</head>
 
-            const polygonLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0";
-            const pointLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
-            const lineLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
+<body>
+  <div id="map"></div>
+  <script src="../debug/apikey.js"></script>
+  <script>
 
-            map.loadImage("https://static.arcgis.com/images/Symbols/NPS/npsPictograph_0231b.png").then((resp) => {
-                map.addImage("hiker-icon", resp.data);
-            });
+    const map = new maplibregl.Map({
+      container: "map", // the id of the div element
+      zoom: 12, // starting zoom
+      center: [-118.805, 34.027] // starting location [longitude, latitude]
+    });
+    const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
+      token: apiKey
+    }).applyStyleTo(map);
 
-            map.on('load',async () => {
+    const polygonLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0";
+    const pointLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
+    const lineLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
 
-                // Parks data
-                const parks = await maplibreArcGIS.FeatureLayer.fromUrl(polygonLayer);
-                parks.addSourcesTo(map);
-                map.addLayer({
-                    ...parks.layer, // The layer property contains a preformatted maplibre layer, including a layer ID and source.
-                    paint: { // Override default paint properties provided by parks.layer
-                        "fill-color": [
-                            "match", ["get", "TYPE"],
-                                "Natural Areas", "#9E559C",
-                                "Regional Open Space", "#A7C636",
-                                "Local Park", "#149ECE",
-                                "Regional Recreation Park", "#ED5151",
-                                "black"
-                        ],
-                        "fill-opacity": 0.2
-                    }
-                })
+    map.loadImage("https://static.arcgis.com/images/Symbols/NPS/npsPictograph_0231b.png").then((resp) => {
+      map.addImage("hiker-icon", resp.data);
+    });
 
-                // Trails data
-                const trails = await maplibreArcGIS.FeatureLayer.fromUrl(lineLayer);
-                trails.addSourcesTo(map);
-                map.addLayer({
-                    ...trails.layer,
-                    paint: {
-                        "line-color": "hsl(291, 44%, 60%)",
-                        "line-width": ["interpolate", ["linear"], ["get", "ELEV_GAIN"], 0, 3, 2300, 7],
-                        "line-opacity": 0.75
-                    }
-                });
-                map.addLayer({
-                    ...trails.layer,
-                    id:"bike-trails", // All layer IDs must be unique
-                    filter: ["==", ["get", "USE_BIKE"], "Yes"],
-                    paint: {
-                        "line-dasharray": [1, 2],
-                        "line-width": 2,
-                        "line-color": "hsl(300, 100%, 78.4%)"
-                    }
-                })
+    map.on('load', async () => {
 
-                
-                // Trailheads data
-                const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointLayer);
-                trailheads.addSourcesTo(map);
-                map.addLayer({
-                    ...trailheads.layer,
-                    type:"symbol",
-                    layout: {
-                        "icon-image": "hiker-icon",
-                        "icon-size": 0.3,
-                        "icon-allow-overlap": true,
-                        "text-font": ["Arial Italic"],
-                        "text-field": ["get", "TRL_NAME"],
-                        "text-size": 12,
-                        "text-anchor": "bottom",
-                        "text-offset": [0, -2]
-                        },
-                    paint: {
-                        "text-color": "white",
-                        "text-halo-color": "seagreen",
-                        "text-halo-width": 2
-                    }
-                });
-            });
-    
-        </script>
-    </body>
+      // Parks data
+      const parks = await maplibreArcGIS.FeatureLayer.fromUrl(polygonLayer);
+      parks.addSourcesTo(map);
+      map.addLayer({
+        ...parks.layer, // The layer property contains a preformatted maplibre layer, including a layer ID and source.
+        paint: { // Override default paint properties provided by parks.layer
+          "fill-color": [
+            "match", ["get", "TYPE"],
+            "Natural Areas", "#9E559C",
+            "Regional Open Space", "#A7C636",
+            "Local Park", "#149ECE",
+            "Regional Recreation Park", "#ED5151",
+            "black"
+          ],
+          "fill-opacity": 0.2
+        }
+      })
+
+      // Trails data
+      const trails = await maplibreArcGIS.FeatureLayer.fromUrl(lineLayer);
+      trails.addSourcesTo(map);
+      map.addLayer({
+        ...trails.layer,
+        paint: {
+          "line-color": "hsl(291, 44%, 60%)",
+          "line-width": ["interpolate", ["linear"], ["get", "ELEV_GAIN"], 0, 3, 2300, 7],
+          "line-opacity": 0.75
+        }
+      });
+      map.addLayer({
+        ...trails.layer,
+        id: "bike-trails", // All layer IDs must be unique
+        filter: ["==", ["get", "USE_BIKE"], "Yes"],
+        paint: {
+          "line-dasharray": [1, 2],
+          "line-width": 2,
+          "line-color": "hsl(300, 100%, 78.4%)"
+        }
+      })
+
+
+      // Trailheads data
+      const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointLayer);
+      trailheads.addSourcesTo(map);
+      map.addLayer({
+        ...trailheads.layer,
+        type: "symbol",
+        layout: {
+          "icon-image": "hiker-icon",
+          "icon-size": 0.3,
+          "icon-allow-overlap": true,
+          "text-font": ["Arial Italic"],
+          "text-field": ["get", "TRL_NAME"],
+          "text-size": 12,
+          "text-anchor": "bottom",
+          "text-offset": [0, -2]
+        },
+        paint: {
+          "text-color": "white",
+          "text-halo-color": "seagreen",
+          "text-halo-width": 2
+        }
+      });
+    });
+
+  </script>
+</body>
+
 </html>

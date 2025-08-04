@@ -1,4 +1,5 @@
-/* Copyright 2025 Esri
+/*
+ * Copyright 2025 Esri
  *
  * Licensed under the Apache License Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +24,7 @@ interface CustomWindow extends Window {
 }
 declare let window: CustomWindow;
 if (window.TEST_ENVIRONMENT) {
-    new EventSource('/esbuild').addEventListener('change', () => location.reload())
+    new EventSource('/esbuild').addEventListener('change', () => location.reload());
 }
 
 const version = packageInfo.version;
@@ -33,5 +34,5 @@ export {
     BasemapStyle,
     AttributionControl,
     VectorTileLayer,
-    FeatureLayer
-}
+    FeatureLayer,
+};
