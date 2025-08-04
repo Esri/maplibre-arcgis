@@ -120,12 +120,6 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
 
       const accessToken = apiKey
 
-      const map = new maplibregl.Map({
-        container: "map", // the id of the div element
-        zoom: 12, // starting zoom
-        center: [-118.805, 34.027], // starting location [longitude, latitude]
-      })
-
       const updateSessionInfo = () => {
         const sessionInfoElement = document.getElementById("currentSessionInfo")
         document.getElementById("styleFamilyInput").value =
@@ -141,7 +135,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
         document.getElementById("safetyMarginInput").value =
           `${basemapSession._session.safetyMargin} seconds`
         document.getElementById("expirationInput").value =
-          basemapSession._session.expires.toLocaleString()
+          basemapSession.expires.toLocaleString()
       }
 
       const updateStyle = async (e) => {
@@ -175,6 +169,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
 
       const getNewSession = async (styleFamily) => {
         // Start a session with the ArcGIS Basemap Style API
+        // const newSession = new maplibreArcGIS.BasemapStyleSession() // for autorefresh logic
         const newSession = await maplibreArcGIS.BasemapStyleSession.start({
           authentication: accessToken,
           duration: 30,
@@ -204,17 +199,89 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
 
       const initialBasemap = await setBasemapDropdown()
 
-      basemapSession = await getNewSession(initialBasemap.split("/")[0])
+      //**** CURRENT Implementation
+      basemapSession = new maplibreArcGIS.BasemapStyleSession({
+        token: accessToken,
+        safetyMargin: 0,
+        duration: 60,
+        autoRefresh: false,
+      })
 
-      /**
-       * Create a new BasemapStyle instance.
-       */
       style = new maplibreArcGIS.BasemapStyle(initialBasemap, {
         session: basemapSession,
       })
-      style.applyStyleTo(map)
 
-      updateSessionInfo()
+      const map = new maplibregl.Map({
+        container: "map", // the id of the div element
+        zoom: 12, // starting zoom
+        center: [-118.805, 34.027], // starting location [longitude, latitude]
+      })
+      map.on("load", () => {
+        //this won't fire until style.applyStyleTo runs`
+        console.log("Map loaded")
+      })
+      map.on("styledata", () => {
+        console.log("Style data loaded")
+        updateSessionInfo()
+      })
+      map.on("styledataerror", () => {
+        console.log("Style data error")
+      })
+      // style is going to start the session if it is not already started
+      // add state management to session
+      // optionally manually start session if not started
+      //await basemapSession.startSession()
+      try {
+        style.applyStyleTo(map) //1. start session if not started 2. fetch style and insert tokens into style
+      } catch (error) {
+        // you need a valid session to apply style
+        // await basemapSession.start()
+        // style.applyStyleTo(map)
+        console.error(error)
+      }
+
+      // autoRefresh=false listen for events on session object to manually refresh
+      basemapSession.on("BasemapStyleSessionExpired", () => {
+        console.log("Client: Session expired")
+        basemapSession.refresh().then(() => {
+          console.log("BasemapSession started...")
+          updateSessionInfo()
+        }) // gets a new session
+
+        // style.setSession(newSession)
+      })
+      basemapSession.on("BasemapStyleSessionRefreshed", () => {
+        console.log("Client: Session refreshed")
+        updateSessionInfo()
+      })
+      basemapSession.on("BasemapStyleSessionError", () => {
+        console.log("Client: Session error")
+      })
+
+      // basemapSession.autoRefresh(map) //starts the session and attaches the map to the session
+
+      // updateSessionInfo()
+
+      //**** OPTION 1 - synchronous default parameters
+      // basemapSession = new maplibreArcGIS.BasemapStyleSession({
+      //   authentication: accessToken,
+      // })
+      // basemapStyle = new maplibreArcGIS.BasemapStyle(initialBasemap, {
+      //   authentication: basemapSession,
+      // })
+      // const map = new maplibregl.Map({
+      //   container: "map", // the id of the div element
+      //   style: basemapStyle.styleUrl,
+      //   zoom: 12, // starting zoom
+      //   center: [-118.805, 34.027], // starting location [longitude, latitude]
+      //   transformRequest: function(url, resourceType) {
+      //     if (basemapStyle.shouldTransformRequest(){
+
+      //     })
+
+      //   },
+      // })
+      // basemapSession.autoRefresh(map)
     </script>
   </body>
 </html>

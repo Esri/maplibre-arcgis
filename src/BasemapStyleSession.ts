@@ -12,7 +12,7 @@ import mitt, { type Emitter } from "mitt"
  */
 interface IBasemapStyleSessionOptions {
   /** Authentication manager for handling auth requests */
-  authentication: RestJSAuthenticationManager
+  // authentication?: RestJSAuthenticationManager
   /** Optional token for authentication */
   token?: string
   /** Duration in seconds for the session */
@@ -20,16 +20,8 @@ interface IBasemapStyleSessionOptions {
   /** Style family for the session */
   styleFamily?: StyleFamily
   autoRefresh?: boolean
-  /** Safety margin in milliseconds to refresh the session before it expires */
-  saftyMargin?: number
-}
-
-/** Custom error class for session-related errors */
-export class BasemapStyleSessionError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = "BasemapStyleSessionError"
-  }
+  /** Safety margin in seconds to refresh the session before it expires */
+  safetyMargin?: number
 }
 
 type SessionResponse = {
@@ -57,73 +49,31 @@ export class BasemapStyleSession {
   private _session?: ArcgisRestBasemapStyleSession
   private readonly options: IBasemapStyleSessionOptions
   private readonly emitter: Emitter<BasemapSessionEventMap> = mitt()
+  private _auth: RestJSAuthenticationManager
 
   constructor(options: IBasemapStyleSessionOptions) {
-    this.options = options
-    if (options.token) {
-      this.options.authentication = ApiKeyManager.fromKey(options.token)
-    }
+    this.options = { ...options }
 
-    if (!this.options.authentication) {
-      throw new BasemapStyleSessionError(
-        "An authentication is required to start a session"
+    this._auth = ApiKeyManager.fromKey(this.options.token)
+
+    if (!this._auth) {
+      throw new Error(
+        "An valid authentication token is required to start a session"
       )
     }
   }
 
-  /**
-   * Creates and starts a new BasemapStyleSession
-   * @throws {BasemapStyleSessionError} If session creation fails
-   */
-  static async start(
-    options: IBasemapStyleSessionOptions
-  ): Promise<BasemapStyleSession> {
-    try {
-      const wrapper = new BasemapStyleSession(options)
-      wrapper._session = await ArcgisRestBasemapStyleSession.start({
-        ...options,
-        startSessionUrl:
-          "https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start",
-      })
-      wrapper.setupEventListeners()
-      return wrapper
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error)
-      throw new BasemapStyleSessionError(
-        `Failed to start session: ${errorMessage}`
-      )
-    }
-  }
-
-  async refreshSession(): Promise<void> {
-    // Ensure the session is initialized
-    await this._session.refreshCredentials()
-  }
-
-  private setupEventListeners(): void {
-    if (!this._session) return
-
-    this._session.on("expired", (e) => {
-      this.emitter.emit("BasemapStyleSessionExpired", e)
-    })
-
-    this._session.on("refreshed", (e) => {
-      this.emitter.emit("BasemapStyleSessionRefreshed", e)
-    })
-
-    this._session.on("error", (error) => {
-      this.emitter.emit("BasemapStyleSessionError", error)
-    })
+  get authentication(): RestJSAuthenticationManager {
+    return this._auth
   }
 
   /**
    * Gets the current session token
-   * @throws {BasemapStyleSessionError} If session is not initialized
+   * @throws If session is not initialized
    */
   get token(): string {
-    if (!this._session || !this._session.token) {
-      throw new BasemapStyleSessionError("Session not initialized")
+    if (!this._session?.token) {
+      throw new Error("Session token not available")
     }
     return this._session.token
   }
@@ -132,31 +82,90 @@ export class BasemapStyleSession {
     return this._session?.styleFamily
   }
 
-  set setSession(session: ArcgisRestBasemapStyleSession) {
-    this._session = session
-  }
-
   /**
    * Gets the session expiration date
-   * @throws {BasemapStyleSessionError} If session is not initialized
+   * @throws If session is not initialized
    */
   get expires(): Date {
     if (!this._session) {
-      throw new BasemapStyleSessionError("Session not initialized")
+      throw new Error(
+        "Unable to get session expiration. Session not initialized"
+      )
     }
     return this._session.expires
   }
 
-  // /**
-  //  * Gets the underlying ArcGIS REST session instance
-  //  * @throws {BasemapStyleSessionError} If session is not initialized
-  //  */
-  // getArcgisRestSession(): ArcgisRestBasemapStyleSession {
-  //   if (!this._session) {
-  //     throw new BasemapStyleSessionError("Session not initialized")
-  //   }
-  //   return this._session
-  // }
+  get isStarted(): boolean {
+    return Boolean(
+      this._session &&
+        this._session.token !== undefined &&
+        this._session.expires &&
+        this._session.expires > new Date()
+    )
+  }
+
+  /**
+   * Creates and starts a new BasemapStyleSession
+   * @throws If session creation fails
+   */
+  async start(): Promise<void> {
+    if (this._session) {
+      // Clean up existing session without disposing emitter
+      this._session.off("expired", this.expiredHandler)
+      this._session.off("refreshed", this.refreshedHandler)
+      this._session.off("error", this.errorHandler)
+    }
+    this._session = await ArcgisRestBasemapStyleSession.start({
+      ...this.options,
+      authentication: this._auth,
+    })
+    this.setupEventListeners()
+  }
+
+  async refresh(): Promise<void> {
+    if (!this._session) {
+      throw new Error("Session not initialized")
+    }
+    try {
+      this._session = await this._session.refreshCredentials()
+    } catch (error) {
+      this.emitter.emit("BasemapStyleSessionError", error as Error)
+      throw error
+    }
+  }
+
+  private setupEventListeners(): void {
+    if (!this._session) return
+
+    this._session.on("expired", this.expiredHandler)
+
+    this._session.on("refreshed", this.refreshedHandler)
+
+    this._session.on("error", this.errorHandler)
+  }
+
+  private expiredHandler = (e: SessionResponse): void => {
+    console.log(`Session expired ${e.token}`)
+    this.emitter.emit("BasemapStyleSessionExpired", e)
+  }
+  private refreshedHandler = (e: SessionRefreshedData): void => {
+    console.log("Session event handler refreshed")
+    this.emitter.emit("BasemapStyleSessionRefreshed", e)
+  }
+  private errorHandler = (e: Error): void => {
+    console.log("Session event handler error")
+    this.emitter.emit("BasemapStyleSessionError", e)
+  }
+
+  dispose(): void {
+    if (this._session) {
+      this._session.off("expired", this.expiredHandler)
+      this._session.off("refreshed", this.refreshedHandler)
+      this._session.off("error", this.errorHandler)
+    }
+    this.emitter.all.clear()
+    this._session = undefined
+  }
 
   /**
    * Registers an event handler

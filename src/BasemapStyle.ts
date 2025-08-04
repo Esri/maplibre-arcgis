@@ -7,7 +7,7 @@ import type {
 import { ApiKeyManager, request } from "@esri/arcgis-rest-request"
 import { AttributionControl } from "./AttributionControl"
 import type { RestJSAuthenticationManager } from "./Util"
-import { type BasemapStyleSession } from "./BasemapStyleSession"
+import type { BasemapStyleSession } from "./BasemapStyleSession"
 
 type BasemapSelfResponse = {
   customStylesUrl: string
@@ -68,13 +68,13 @@ export class BasemapStyle {
   preferences: BasemapPreferences
 
   options: IBasemapStyleOptions
-  session?: BasemapStyleSession
+  private _session?: BasemapStyleSession
   _isItemId: boolean
   //_transformStyleFn?:TransformStyleFunction;
   _map?: Map
   _baseUrl: string
   static _baseUrl: string =
-    "https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles"
+    "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles"
 
   /**
    *
@@ -89,7 +89,11 @@ export class BasemapStyle {
     } else if (options.token) {
       this.authentication = ApiKeyManager.fromKey(options.token)
     } else if (options.session) {
-      this.setSession(options.session)
+      // if it's an api keys
+      // new basemapStyleSession()
+      //this.setSession(options.session)
+      // void this.setSession(options.session)
+      this._session = options.session
     } else {
       throw new Error(
         "A valid token is required to access basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/."
@@ -124,13 +128,20 @@ export class BasemapStyle {
     return styleUrl
   }
 
-  applyStyleTo(map: Map): BasemapStyle {
+  async applyStyleTo(map: Map, updateAttribution: boolean): Promise<void> {
     this._map = map
+    // if this.session isn't started
+    if (this._session && !this._session.isStarted) {
+      await this.setSession(this._session)
+    }
+
     map.setStyle(this.styleUrl)
 
-    this._updateAttribution()
+    if (updateAttribution) {
+      this._updateAttribution()
+    }
 
-    return this
+    // return this // we don't need to return anything
   }
 
   _updateAttribution(): void {
@@ -193,16 +204,19 @@ export class BasemapStyle {
     }
   }
 
-  setSession(session: BasemapStyleSession) {
-    this.session = session
-    this.authentication = ApiKeyManager.fromKey(session.token) // this needs to be updated on refresh
-
-    this.session.on("BasemapStyleSessionRefreshed", (sessionData) => {
-      const oldToken = sessionData.previous.token as string
-      const newToken = sessionData.current.token as string
-      this.authentication = ApiKeyManager.fromKey(newToken) // update the authentication manager with the new token
-      this._updateTiles(oldToken, newToken)
-    })
+  async setSession(session: BasemapStyleSession): Promise<void> {
+    if (!this._session.isStarted) {
+      await this._session.start()
+      this.authentication = ApiKeyManager.fromKey(this._session.token)
+      //this.token = session.token
+      this._session.on("BasemapStyleSessionRefreshed", (sessionData) => {
+        console.debug("Style refresh...")
+        const oldToken = sessionData.previous.token
+        const newToken = sessionData.current.token
+        this.authentication = ApiKeyManager.fromKey(newToken) // update the authentication manager with the new token
+        this._updateTiles(oldToken, newToken)
+      })
+    }
   }
 
   setStyle(style: string): BasemapStyle {
