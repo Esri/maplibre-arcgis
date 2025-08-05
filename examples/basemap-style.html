@@ -26,18 +26,18 @@
 
     // Also supports item IDs for custom basemap styles
     // Try: '9d94a890b76a417cad8a748df4f97336'
-    const style = new maplibreArcGIS.BasemapStyle('arcgis/navigation', {
+    const arcgisBasemap = new maplibreArcGIS.BasemapStyle('arcgis/navigation', {
       token: apiKey
     });
 
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
-      attributionControl: style.attributionControl,
       zoom: 14, // starting zoom
       center: [-117.805, 34.027], // starting location
+      attributionControl: arcgisBasemap.attributionControl,
     });
 
-    style.applyStyleTo(map);
+    arcgisBasemap.applyStyleTo(map);
 
   </script>
 </body>
