@@ -6,7 +6,7 @@ type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpe
 
 export type HostedLayerOptions = {
     token?: string; // Access token as a string
-    authentication?: RestJSAuthenticationManager; // Authentication as a REST JS object
+    authentication?: RestJSAuthenticationManager | string; // Authentication as a REST JS object or access token string
     portalUrl?: string;
     attribution?: string;
 };
@@ -40,8 +40,11 @@ export abstract class HostedLayer {
     /**
      * An ArcGIS access token is required for accessing secure data layers. To get a token, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.
      */
-    authentication?: RestJSAuthenticationManager;
+    authentication?: RestJSAuthenticationManager | string;
 
+    /**
+     * Stores custom attribution text for the hosted layer
+     */
     protected _customAttribution: string;
 
     /**

@@ -2,7 +2,7 @@ import type { LayerSpecification, VectorSourceSpecification, StyleSpecification 
 import { checkServiceUrlType, checkItemId, warn, type ItemId } from './Util';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo, ItemInfo, HostedLayerOptions } from './HostedLayer';
-import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
+import { request } from '@esri/arcgis-rest-request';
 import { getItem, getItemResources, getItemResource } from '@esri/arcgis-rest-portal';
 
 interface IVectorTileServiceDefinition {
@@ -12,7 +12,8 @@ interface IVectorTileServiceDefinition {
 };
 
 interface VectorTileLayerOptions extends HostedLayerOptions {
-    _inputType?: 'ItemId' | 'VectorTileService';
+    itemId?: string;
+    url?: string;
 };
 
 interface VectorTileServiceInfo extends DataServiceInfo {
@@ -20,56 +21,49 @@ interface VectorTileServiceInfo extends DataServiceInfo {
     tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
 
-const SupportedInputTypes = ['ItemId', 'VectorTileService'];
-
 export class VectorTileLayer extends HostedLayer {
-    declare _serviceInfo: VectorTileServiceInfo;
-    declare _itemInfo: ItemInfo;
+    declare protected _serviceInfo: VectorTileServiceInfo;
+    declare protected _itemInfo: ItemInfo;
 
-    declare _sources: { [_: string]: VectorSourceSpecification };
-    declare _layers: LayerSpecification[];
+    declare protected _sources: { [_: string]: VectorSourceSpecification };
+    declare protected _layers: LayerSpecification[];
 
-    _inputType: 'ItemId' | 'VectorTileService';
+    private _inputType: 'ItemId' | 'VectorTileService';
+    private _styleLoaded: boolean;
+    private _itemInfoLoaded: boolean;
+    private _serviceInfoLoaded: boolean;
 
-    _style: StyleSpecification;
-    _styleLoaded: boolean;
-    _itemInfoLoaded: boolean;
-    _serviceInfoLoaded: boolean;
+    style: StyleSpecification;
 
-    constructor(serviceUrlOrId: string, options?: VectorTileLayerOptions) {
+    constructor(options: VectorTileLayerOptions) {
         super();
         this._ready = false;
         this._styleLoaded = false;
         this._serviceInfoLoaded = false;
         this._itemInfoLoaded = false;
 
-        if (!serviceUrlOrId) throw new Error('A service URL or Item ID is required for VectorTileLayer.');
+        if (!options || !(options.itemId || options.url)) throw new Error('Vector tile layer must be constructed with either an \'itemId\' or \'url\'.');
 
-        if (options?.authentication) this.authentication = options.authentication;
-        else if (options?.token) this.authentication = ApiKeyManager.fromKey(options.token);
+        if (options.authentication) this.authentication = options.authentication;
+        else if (options.token) this.authentication = options.token;
 
-        if (options?.attribution) this._customAttribution = options.attribution;
+        if (options.attribution) this._customAttribution = options.attribution;
 
-        if (options?._inputType && options._inputType in SupportedInputTypes) {
-            this._inputType = options._inputType;
-        }
-        else {
-            const isItem = checkItemId(serviceUrlOrId);
-            const isValidUrl = checkServiceUrlType(serviceUrlOrId);
-            if (isItem) this._inputType = isItem;
-            else if (isValidUrl === 'VectorTileService') this._inputType = isValidUrl;
-            else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
-        }
+        if (options.itemId && options.url) console.warn('Both an item ID and service URL have been passed to the constructor. The item ID will be preferred, and the URL ignored.');
+
+        if (options.itemId && checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
+        else if (options.url && checkServiceUrlType(options.url) == 'VectorTileService') this._inputType = 'VectorTileService';
+        else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
 
         if (this._inputType === 'ItemId') {
             this._itemInfo = {
-                itemId: serviceUrlOrId,
+                itemId: options.itemId,
                 portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest',
             };
         }
         else if (this._inputType === 'VectorTileService') {
             this._serviceInfo = {
-                serviceUrl: serviceUrlOrId,
+                serviceUrl: options.url,
             };
         }
     }
@@ -99,8 +93,8 @@ export class VectorTileLayer extends HostedLayer {
         if (!styleInfo) throw new Error('Unable to load style information from service URL or item ID.');
 
         this._styleLoaded = true;
-        this._style = styleInfo;
-        return this._style;
+        this.style = styleInfo;
+        return this.style;
     }
 
     async _loadStyleFromItemId(): Promise<StyleSpecification | null> {
@@ -220,7 +214,7 @@ export class VectorTileLayer extends HostedLayer {
 
             // Provide authentication
             if (this.authentication) {
-                const token = this.authentication.token;
+                const token = typeof this.authentication == 'string' ? this.authentication : this.authentication.token;
 
                 if (source.url) source.url = `${source.url}?token=${token}`;
                 if (source.tiles) source.tiles = source.tiles.map(tileUrl => `${tileUrl}?token=${token}`);
@@ -246,8 +240,8 @@ export class VectorTileLayer extends HostedLayer {
             return this._serviceInfo.copyrightText;
         }
         // 3. Finally, attribution from style object
-        if (this._styleLoaded && sourceId && this._style.sources[sourceId] && (this._style.sources[sourceId] as VectorSourceSpecification).attribution) {
-            return (this._style.sources[sourceId] as VectorSourceSpecification).attribution;
+        if (this._styleLoaded && sourceId && this.style.sources[sourceId] && (this.style.sources[sourceId] as VectorSourceSpecification).attribution) {
+            return (this.style.sources[sourceId] as VectorSourceSpecification).attribution;
         }
         return '';
     }
@@ -263,20 +257,23 @@ export class VectorTileLayer extends HostedLayer {
     static async fromPortalItem(itemId: ItemId, options: VectorTileLayerOptions): Promise<VectorTileLayer> {
         if (checkItemId(itemId) !== 'ItemId') throw new Error('Input is not a valid ArcGIS item ID.');
 
-        const vtl = new VectorTileLayer(itemId, {
+        const vtl = new VectorTileLayer({
+            itemId: itemId,
             ...options,
-            _inputType: 'ItemId',
         });
+
         await vtl.initialize();
         return vtl;
     }
 
     static async fromUrl(serviceUrl: string, options: VectorTileLayerOptions): Promise<VectorTileLayer> {
-        const urlType = checkServiceUrlType(serviceUrl);
-        if (urlType !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.');
-        options._inputType = urlType;
+        if (checkServiceUrlType(serviceUrl) !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.');
 
-        const vtl = new VectorTileLayer(serviceUrl, options);
+        const vtl = new VectorTileLayer({
+            url: serviceUrl,
+            ...options,
+        });
+
         await vtl.initialize();
         return vtl;
     }

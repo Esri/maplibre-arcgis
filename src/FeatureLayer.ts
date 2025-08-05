@@ -12,7 +12,7 @@ import {
     type SpatialRelationship,
 } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
-import { ApiKeyManager, type IParams } from '@esri/arcgis-rest-request';
+import { type IParams } from '@esri/arcgis-rest-request';
 
 /*
  *const geoJSONDefaultStyleMap = {
@@ -33,6 +33,7 @@ const esriGeometryDefaultStyleMap: { [_: string]: 'circle' | 'line' | 'fill' } =
     esriGeometryEnvelope: 'fill',
     esriGeometryMultiPatch: 'fill',
 };
+
 const defaultLayerPaintMap = {
     circle: {
         'circle-color': 'rgb(0,0,0)',
@@ -47,7 +48,8 @@ const defaultLayerPaintMap = {
     }, // "Esri blue" alternates: #0064ff #6e6e6e
 };
 interface GeoJSONLayerOptions extends HostedLayerOptions {
-    _inputType?: ISupportedInputTypes;
+    itemId?: string;
+    url?: string;
     query?: QueryOptions;
 }
 
@@ -65,60 +67,50 @@ interface QueryOptions {
 }
 
 type ISupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
-const SupportedInputTypes = ['ItemId', 'FeatureService', 'FeatureLayer'];
 
 export class FeatureLayer extends HostedLayer {
+    declare protected _sources: { [_: string]: GeoJSONSourceSpecification };
+    declare protected _layers: LayerSpecification[];
+
     private _inputType: ISupportedInputTypes;
-
-    // private _serviceInfoLoaded: boolean;
-
-    /*
-     * accessToken?:string;
-     * _ready: boolean;
-     * _map?: Map;
-     */
-
-    declare _sources: { [_: string]: GeoJSONSourceSpecification };
-    declare _layers: LayerSpecification[];
 
     query?: QueryOptions;
 
-    constructor(serviceUrlOrId: string, options: GeoJSONLayerOptions) {
+    constructor(options: GeoJSONLayerOptions) {
         super();
 
+        if (!options || !(options.itemId || options.url)) throw new Error('Feature layer must be constructed with either an \'itemId\' or \'url\'.');
+
         if (options?.authentication) this.authentication = options.authentication;
-        else if (options?.token) this.authentication = ApiKeyManager.fromKey(options.token);
+        else if (options?.token) this.authentication = options.token;
 
         if (options?.attribution) this._customAttribution = options.attribution;
 
-        // Determine input type
-        if (options?._inputType && options._inputType in SupportedInputTypes) {
-            this._inputType = options._inputType;
-        }
+        if (options.itemId && options.url) console.warn('Both an item ID and service URL have been passed to the constructor. The item ID will be preferred, and the URL ignored.');
+
+        if (options.itemId && checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
         else {
-            const isItem = checkItemId(serviceUrlOrId);
-            const isValidUrl = checkServiceUrlType(serviceUrlOrId);
-            if (isItem) this._inputType = isItem;
-            else if (isValidUrl === 'FeatureLayer' || isValidUrl === 'FeatureService') this._inputType = isValidUrl;
+            const urlType = checkServiceUrlType(options.url);
+            if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
             else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
         }
 
         // Set up
         if (this._inputType == 'ItemId') {
             this._itemInfo = {
-                itemId: serviceUrlOrId,
+                itemId: options.itemId,
                 portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest',
             };
         }
         else if (this._inputType === 'FeatureLayer') {
             this._serviceInfo = {
-                serviceUrl: cleanUrl(serviceUrlOrId),
+                serviceUrl: cleanUrl(options.url),
             };
         }
         else if (this._inputType === 'FeatureService') {
             warn('The provided service URL does not point to any specific feature layer. Layer \'/0\' will be loaded from the service automatically.');
             this._serviceInfo = {
-                serviceUrl: `${cleanUrl(serviceUrlOrId)}0`,
+                serviceUrl: `${cleanUrl(options.url)}0`,
             };
             this._inputType = 'FeatureLayer';
         }
@@ -248,6 +240,7 @@ export class FeatureLayer extends HostedLayer {
                 dataSource = 'FeatureService';
                 // falls through
             }
+            // This case is not currently in use
             case 'FeatureService': {
                 const serviceInfo = await getService({
                     url: this._serviceInfo.serviceUrl,
@@ -262,13 +255,13 @@ export class FeatureLayer extends HostedLayer {
                         console.warn('Feature layers with sublayers are not supported. This layer will not be added.');
                         return;
                     }
-                    await this._loadLayer(`${cleanUrl(this._serviceInfo.serviceUrl)}${i}/`); // TODO test on a layer with tables
+                    await this._loadLayer(`${cleanUrl(this._serviceInfo.serviceUrl)}${i}/`);
                 }
                 break;
             }
             case 'FeatureLayer': {
                 // Add single layer
-                await this._loadLayer(this._serviceInfo.serviceUrl);
+                await this._loadLayer(this._serviceInfo.serviceUrl); // TODO test on a layer with tables
                 break;
             }
         }
@@ -294,12 +287,13 @@ export class FeatureLayer extends HostedLayer {
 
     static async fromUrl(serviceUrl: string, options: GeoJSONLayerOptions): Promise<FeatureLayer> {
         const inputType = checkServiceUrlType(serviceUrl);
-        if (inputType !== 'FeatureService' && inputType !== 'FeatureLayer') throw new Error('Must provide a valid feature layer URL.');
+        if (!inputType || !(inputType === 'FeatureService' || inputType === 'FeatureLayer')) throw new Error('Must provide a valid feature layer URL.');
 
-        const geojsonLayer = new FeatureLayer(serviceUrl, {
+        const geojsonLayer = new FeatureLayer({
+            url: serviceUrl,
             ...options,
-            _inputType: inputType,
         });
+
         await geojsonLayer.initialize();
         return geojsonLayer;
     }
@@ -307,10 +301,11 @@ export class FeatureLayer extends HostedLayer {
     static async fromPortalItem(itemId: string, options: GeoJSONLayerOptions): Promise<FeatureLayer> {
         if (checkItemId(itemId) !== 'ItemId') throw new Error('Must provide a valid item ID for an ArcGIS hosted feature layer.');
 
-        const geojsonLayer = new FeatureLayer(itemId, {
+        const geojsonLayer = new FeatureLayer({
+            itemId: itemId,
             ...options,
-            _inputType: 'ItemId',
         });
+
         await geojsonLayer.initialize();
         return geojsonLayer;
     }
