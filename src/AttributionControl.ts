@@ -9,18 +9,27 @@ interface AttributionControlOptions {
     minimize?: boolean;
 }
 
-export const esriAttribution = 'Powered by <a href="https://www.esri.com/">Esri</a>';
-export const maplibreAttribution = '<a href="https://maplibre.org/">MapLibre</a>';
+const esriAttributionString = 'Powered by <a href="https://www.esri.com/">Esri</a>';
+const maplibreAttributionString = '<a href="https://maplibre.org/">MapLibre</a>';
+
+export const EsriAttribution = {
+    customAttribution: `${maplibreAttributionString} | ${esriAttributionString}`,
+    compact: true,
+};
 
 export class AttributionControl extends MaplibreAttributionControl {
     _minimized?: boolean;
+    attributionOptions: MaplibreAttributionControlOptions;
+
     constructor(options: AttributionControlOptions = {}) {
-        const attributionOptions: MaplibreAttributionControlOptions = {
+        const attributionOptions = {
             compact: (options?.compact !== undefined) ? options.compact : true,
-            customAttribution: `${maplibreAttribution} | ${esriAttribution}`,
+            customAttribution: `${maplibreAttributionString} | ${esriAttributionString}`,
         };
 
         super(attributionOptions);
+
+        this.attributionOptions = attributionOptions;
         this._minimized = options?.minimize;
     }
 
@@ -31,6 +40,11 @@ export class AttributionControl extends MaplibreAttributionControl {
             this._updateCompactMinimize();
         }
         return htmlElement;
+    }
+
+    static get esriAttribution(): MaplibreAttributionControlOptions {
+        const defaultAttribution = new AttributionControl();
+        return defaultAttribution.attributionOptions;
     }
 }
 

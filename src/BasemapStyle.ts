@@ -1,6 +1,6 @@
 import type { AttributionControlOptions, Map, StyleOptions, StyleSpecification, StyleSwapOptions } from 'maplibre-gl';
 import { request } from '@esri/arcgis-rest-request';
-import { esriAttribution, maplibreAttribution } from './AttributionControl';
+import { EsriAttribution } from './AttributionControl';
 import type { RestJSAuthenticationManager } from './Util';
 
 type BasemapSelfResponse = {
@@ -57,7 +57,7 @@ type BasemapPreferences = {
 };
 
 const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
-const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
+// const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 
 export class BasemapStyle {
     // Type declarations
@@ -68,11 +68,10 @@ export class BasemapStyle {
 
     preferences: BasemapPreferences;
     options: IBasemapStyleOptions;
-    _isItemId: boolean;
-    // _transformStyleFn?:TransformStyleFunction;
-    _map?: Map;
-    _baseUrl: string;
-    static _baseUrl: string = '';
+    private _isItemId: boolean;
+    // private _transformStyleFn?:TransformStyleFunction;
+    private _map?: Map;
+    private _baseUrl: string;
 
     /**
      *
@@ -89,17 +88,13 @@ export class BasemapStyle {
         this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
         this.styleId = styleId;
 
-        // Language param
         this._updatePreferences({
             language: options?.language,
             worldview: options?.worldview,
             places: options?.places,
         });
 
-        this.attributionControl = {
-            compact: true,
-            customAttribution: `${maplibreAttribution} | ${esriAttribution}`,
-        };
+        this.attributionControl = EsriAttribution;
     }
 
     get styleUrl(): string {
@@ -147,39 +142,22 @@ export class BasemapStyle {
     }
 
     private _updatePreferences(preferences: BasemapPreferences) {
+        if (!preferences) return;
+
+        if (this._isItemId) {
+            console.warn('Preferences such as \'language\', \'places\', and \'worldview\' are not supported with custom basemaps IDs. These parameters will be ignored.');
+            return;
+        }
+
         if (!this.preferences) this.preferences = {};
 
-        if (preferences.language) {
-            if (this._isItemId) console.warn('The \'language\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-            else this.preferences.language = preferences.language;
-        }
-
-        if (preferences.places) {
-            if (this._isItemId) console.warn('The \'places\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-            else this.preferences.places = preferences.places;
-        }
-
-        if (preferences.worldview) {
-            if (this._isItemId) console.warn('The \'worldview\' option of basemap styles is not supported with custom basemaps. This parameter will be ignored.');
-            else this.preferences.worldview = preferences.worldview;
-        }
+        if (preferences.language) this.preferences.language = preferences.language;
+        if (preferences.places) this.preferences.places = preferences.places;
+        if (preferences.worldview) this.preferences.worldview = preferences.worldview;
     }
 
     private get token(): string {
         return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
-    }
-
-    /**
-     * Makes a \'/self\' request to the basemap styles service endpoint
-     * @param token - An ArcGIS access token
-     */
-    static async getSelf(options: { token?: string; baseUrl?: string }): Promise<BasemapSelfResponse> {
-        const basemapServiceUrl = options?.baseUrl ? options.baseUrl : DEFAULT_BASE_URL;
-
-        return await request(`${basemapServiceUrl}/self`, {
-            authentication: options?.token,
-            httpMethod: 'GET',
-        }) as BasemapSelfResponse;
     }
 
     async loadStyle(): Promise<void> {
@@ -210,6 +188,19 @@ export class BasemapStyle {
         await style.loadStyle();
 
         return style;
+    }
+
+    /**
+     * Makes a \'/self\' request to the basemap styles service endpoint
+     * @param token - An ArcGIS access token
+     */
+    static async getSelf(options: { token?: string; baseUrl?: string }): Promise<BasemapSelfResponse> {
+        const basemapServiceUrl = options?.baseUrl ? options.baseUrl : DEFAULT_BASE_URL;
+
+        return await request(`${basemapServiceUrl}/self`, {
+            authentication: options?.token,
+            httpMethod: 'GET',
+        }) as BasemapSelfResponse;
     }
 }
 

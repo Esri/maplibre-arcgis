@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import BasemapStyle from './BasemapStyle';
-import AttributionControl from './AttributionControl';
+import { AttributionControl, EsriAttribution } from './AttributionControl';
 import VectorTileLayer from './VectorTileLayer';
 import FeatureLayer from './FeatureLayer';
 import packageInfo from '../package.json';
@@ -33,6 +33,7 @@ export {
     version as VERSION,
     BasemapStyle,
     AttributionControl,
+    EsriAttribution,
     VectorTileLayer,
     FeatureLayer,
 };
