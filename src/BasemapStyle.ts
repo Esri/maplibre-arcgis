@@ -57,7 +57,7 @@ type BasemapPreferences = {
 };
 
 const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
-const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
+// const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 
 export class BasemapStyle {
     // Type declarations
@@ -85,7 +85,7 @@ export class BasemapStyle {
         else throw new Error(
             'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
         );
-        this._baseUrl = options?.baseUrl || DEV_URL;
+        this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
         this.styleId = styleId;
 
         this._updatePreferences({
