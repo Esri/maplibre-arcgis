@@ -1,5 +1,5 @@
 import type { LayerSpecification, VectorSourceSpecification, StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
-import { checkServiceUrlType, checkItemId, warn, type ItemId } from './Util';
+import { checkServiceUrlType, checkItemId, toCdnUrl, isRelativePath, parseRelativeUrl, warn, type ItemId, cleanUrl } from './Util';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo, ItemInfo, HostedLayerOptions } from './HostedLayer';
 import { request } from '@esri/arcgis-rest-request';
@@ -63,7 +63,7 @@ export class VectorTileLayer extends HostedLayer {
         }
         else if (this._inputType === 'VectorTileService') {
             this._serviceInfo = {
-                serviceUrl: options.url,
+                serviceUrl: cleanUrl(options.url),
             };
         }
     }
@@ -197,15 +197,49 @@ export class VectorTileLayer extends HostedLayer {
         return this._itemInfo;
     }
 
-    _createSourcesAndLayers(style: StyleSpecification): void {
+    _cleanStyle(style: StyleSpecification): void {
         if (!style) throw new Error('Vector tile style has not been loaded from ArcGIS.');
 
-        // Finish creating sources
+        const styleUrl = `${this._serviceInfo.serviceUrl}resources/styles/`;
+
+        // Validate glyphs
+        if (style.glyphs) {
+            if (isRelativePath(style.glyphs)) style.glyphs = parseRelativeUrl(style.glyphs, styleUrl);
+            style.glyphs = toCdnUrl(style.glyphs);
+        }
+
+        // Validate sprite
+        if (style.sprite) {
+            if (Array.isArray(style.sprite)) {
+                for (let spriteIndex = 0; spriteIndex < style.sprite.length; spriteIndex++) {
+                    const sprite = style.sprite[spriteIndex];
+
+                    if (isRelativePath(sprite.url)) sprite.url = parseRelativeUrl(sprite.url, styleUrl);
+                    sprite.url = toCdnUrl(sprite.url);
+                }
+            }
+            else {
+                if (isRelativePath(style.sprite)) style.sprite = parseRelativeUrl(style.sprite, styleUrl);
+                style.sprite = toCdnUrl(style.sprite);
+            };
+        }
+
+        // Validate layers
+        for (let layerIndex = 0; layerIndex < style.layers.length; layerIndex++) {
+            const layer = style.layers[layerIndex];
+
+            // Fix fonts: https://maplibre.org/maplibre-style-spec/layers/#text-font
+            if (layer.layout && layer.layout['text-font'] && (layer.layout['text-font'] as string[]).length > 1) {
+                layer.layout['text-font'] = layer.layout['text-font'] as string[][0];
+            }
+        }
+
+        // Validate sources: https://maplibre.org/maplibre-style-spec/sources/
         for (const sourceId of Object.keys(style.sources)) {
             const source = style.sources[sourceId] as VectorSourceSpecification;
 
             // Fix service URL
-            if (source.url == '../../') source.url = this._serviceInfo.serviceUrl;
+            if (isRelativePath(source.url)) source.url = parseRelativeUrl(source.url, styleUrl);
             // Format tiles
             if (!source.tiles) {
                 if (this._serviceInfo.tiles) source.tiles = [`${source.url}/${this._serviceInfo.tiles[0]}`];
@@ -226,6 +260,8 @@ export class VectorTileLayer extends HostedLayer {
         // Public API is read-only
         this._sources = style.sources as { [_: string]: VectorSourceSpecification };
         this._layers = style.layers;
+
+        console.log('AFTER: ', style);
     }
 
     _getAttribution(sourceId: string): string | null {
@@ -249,7 +285,7 @@ export class VectorTileLayer extends HostedLayer {
     // Public API
     async initialize(): Promise<VectorTileLayer> {
         const style = await this._loadStyle();
-        this._createSourcesAndLayers(style);
+        this._cleanStyle(style);
         this._ready = true;
         return this;
     }
