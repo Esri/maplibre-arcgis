@@ -11,6 +11,10 @@ A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps
 
 ...
 
+## Features
+
+MapLibre ArcGIS allows seamless integration of ArcGIS services into MapLibre GL JS.
+
 ## Quick start
 
 The easiest way to get started is to load MapLibre ArcGIS via CDN. For a complete example, go here: [Maplibre ArcGIS quick start](https://developers.arcgis.com/maplibre-gl-js/get-started/).
@@ -28,11 +32,17 @@ TODO
 
 ## Issues
 
-TODO
+Find a bug? Want a new feature? Let us know by submitting an [issue](https://github.com/ArcGIS/maplibre-arcgis/issues).
+
+For more help, you can post on the open source forum of [Esri Community](https://community.esri.com/t5/open-source-mapping-libraries/ct-p/open-source-mapping-libraries) or contact [Esri Technical Support](https://support.esri.com/en-us/contact).
 
 ## Dependencies
 
-TODO
+* [maplibre-gl-js](https://github.com/maplibre/maplibre-gl-js/) is a required peer dependency.
+* ArcGIS REST JS is used internally:
+    * [arcgis-rest-request](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-request)
+    * [arcgis-rest-feature-service](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-feature-service)
+    * [arcgis-rest-portal](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-portal)
 
 ---
 
@@ -42,13 +52,16 @@ Esri welcomes contributions from anyone and everyone. Please see our [guidelines
 
 ## Development instructions
 
-### Development Quick start
+To start developing locally:
 
-TODO
+1. [Fork and clone this repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo).
+2. `cd` into the `maplibre-arcgis` folder.
+3. Install build dependencies with `npm install`.
+4. Use `npm run build:dev` to build the files locally for development. Output is saved to the `/dist` folder.
+5. Alternatively, use `npm run start:dev` to start a development server. Files are rebuilt automatically when changes to the source code are made.
+6. Change the library as desired and use `npm run test` to validate.
 
-### Advanced Development
-
-TODO
+If you'd like to contribute to this repository, create a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request) containing your work.
 
 ## Versioning
 
@@ -58,7 +71,12 @@ For more information on SemVer, please visit http://semver.org/.
 
 ## Credit
 
-TODO
+This project was inspired by several existing bodies of work, including:
+* The [ArcGIS x MapLibre GL JS developer guide](https://developers.arcgis.com/maplibre-gl-js/)
+* The [mapbox-gl-esri-sources](https://github.com/frontiersi/mapbox-gl-esri-sources) and [mapbox-gl-arcgis-featureserver](https://github.com/rowanwins/mapbox-gl-arcgis-featureserver) plugins
+* The [ArcGIS Maps SDK for JavaScript](https://developers.arcgis.com/javascript/latest/)
+
+Concepts and programming patterns were used for inspiration, but all code is original.
 
 ## Licensing
 
