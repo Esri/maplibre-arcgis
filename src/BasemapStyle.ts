@@ -164,10 +164,35 @@ export class BasemapStyle {
         const style = await (request(`${this._baseUrl}/${this.styleId}`, {
             authentication: this.authentication,
             httpMethod: 'GET',
-            params: this.preferences,
+            params: {
+                ...this.preferences,
+                echoToken: false,
+            },
         }) as Promise<StyleSpecification>);
 
-        // process echoToken locally
+        // Handle glyphs
+        style.glyphs = `${style.glyphs}?token=${this.token}`;
+
+        // Handle sprite
+        if (Array.isArray(style.sprite)) {
+            style.sprite.forEach((sprite, id, spriteArray) => {
+                spriteArray[id].url = `${sprite.url}?token=${this.token}`;
+            });
+        }
+        else {
+            style.sprite = `${style.sprite}?token=${this.token}`;
+        }
+
+        // Handle sources
+        Object.keys(style.sources).forEach((sourceId) => {
+            const source = style.sources[sourceId];
+
+            if (source.type === 'raster' || source.type === 'vector' || source.type === 'raster-dem') {
+                if (source.tiles.length > 0) {
+                    for (let i = 0; i < source.tiles.length; i++) source.tiles[i] = `${source.tiles[i]}?token=${this.token}`;
+                }
+            }
+        });
 
         this.style = style;
         return;

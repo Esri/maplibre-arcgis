@@ -6,7 +6,7 @@ import {
 
 interface AttributionControlOptions {
     compact?: boolean;
-    minimize?: boolean;
+    closed?: boolean;
 }
 
 const esriAttributionString = 'Powered by <a href="https://www.esri.com/">Esri</a>';
@@ -18,10 +18,13 @@ export const EsriAttribution = {
 };
 
 export class AttributionControl extends MaplibreAttributionControl {
-    _minimized?: boolean;
+    _closed?: boolean;
     attributionOptions: MaplibreAttributionControlOptions;
 
     constructor(options: AttributionControlOptions = {}) {
+        // Incompatible options - 'closed' overrides 'compact'
+        if ((!options?.compact) && options?.closed) options.compact = true;
+
         const attributionOptions = {
             compact: (options?.compact !== undefined) ? options.compact : true,
             customAttribution: `${maplibreAttributionString} | ${esriAttributionString}`,
@@ -30,14 +33,14 @@ export class AttributionControl extends MaplibreAttributionControl {
         super(attributionOptions);
 
         this.attributionOptions = attributionOptions;
-        this._minimized = options?.minimize;
+        this._closed = options?.closed;
     }
 
     onAdd(map: Map) {
         const htmlElement = super.onAdd(map);
 
-        if (this._minimized) {
-            this._updateCompactMinimize();
+        if (this._closed && this._container.classList.contains('maplibregl-compact-show')) {
+            this._container.classList.remove('maplibregl-compact-show');
         }
         return htmlElement;
     }

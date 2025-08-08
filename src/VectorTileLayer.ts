@@ -248,10 +248,8 @@ export class VectorTileLayer extends HostedLayer {
 
             // Provide authentication
             if (this.authentication) {
-                const token = typeof this.authentication == 'string' ? this.authentication : this.authentication.token;
-
-                if (source.url) source.url = `${source.url}?token=${token}`;
-                if (source.tiles) source.tiles = source.tiles.map(tileUrl => `${tileUrl}?token=${token}`);
+                if (source.url) source.url = `${source.url}?token=${this.token}`;
+                if (source.tiles) source.tiles = source.tiles.map(tileUrl => `${tileUrl}?token=${this.token}`);
             }
 
             // Provide attribution
