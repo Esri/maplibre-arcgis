@@ -98,7 +98,7 @@ export default tseslint.config([
             '@typescript-eslint/no-redeclare': ['error'],
             "no-warning-comments": ['warn'],
             '@stylistic/semi': ['error', "always"],
-            '@stylistic/indent': ['error', 4],
+            '@stylistic/indent': ['error', 2],
             "@stylistic/member-delimiter-style": ['error', {
                 "multiline": {
                     "delimiter": "semi",
