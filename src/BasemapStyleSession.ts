@@ -112,6 +112,7 @@ export class BasemapStyleSession {
       this._session.off("expired", this.expiredHandler)
       this._session.off("refreshed", this.refreshedHandler)
       this._session.off("error", this.errorHandler)
+      this.emitter.all.clear()
     }
     this._session = await ArcgisRestBasemapStyleSession.start({
       ...this.options,
@@ -128,7 +129,6 @@ export class BasemapStyleSession {
       this._session = await this._session.refreshCredentials()
     } catch (error) {
       this.emitter.emit("BasemapStyleSessionError", error as Error)
-      throw error
     }
   }
 
@@ -146,10 +146,12 @@ export class BasemapStyleSession {
     console.log(`Session expired ${e.token}`)
     this.emitter.emit("BasemapStyleSessionExpired", e)
   }
+
   private refreshedHandler = (e: SessionRefreshedData): void => {
     console.log("Session event handler refreshed")
     this.emitter.emit("BasemapStyleSessionRefreshed", e)
   }
+
   private errorHandler = (e: Error): void => {
     console.log("Session event handler error")
     this.emitter.emit("BasemapStyleSessionError", e)
