@@ -1,0 +1,1 @@
+{"version":3,"file":"StyleFamily.js","sourceRoot":"","sources":["../../../src/types/StyleFamily.ts"],"names":[],"mappings":"","sourcesContent":["/**\n * Defines the style family for basemap sessions.\n */\nexport type StyleFamily = \"open\" | \"arcgis\";\n"]}
