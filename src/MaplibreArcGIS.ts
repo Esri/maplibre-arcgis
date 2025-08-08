@@ -21,21 +21,21 @@ import FeatureLayer from './FeatureLayer';
 import packageInfo from '../package.json';
 
 interface CustomWindow extends Window {
-    TEST_ENVIRONMENT: string | null;
+  TEST_ENVIRONMENT: string | null;
 }
 declare let window: CustomWindow;
 if (window.TEST_ENVIRONMENT) {
-    new EventSource('/esbuild').addEventListener('change', () => location.reload());
+  new EventSource('/esbuild').addEventListener('change', () => location.reload());
 }
 
 const version = packageInfo.version;
 
 export {
-    version as VERSION,
-    BasemapStyle,
-    BasemapStyleSession,
-    AttributionControl,
-    EsriAttribution,
-    VectorTileLayer,
-    FeatureLayer,
+  version as VERSION,
+  BasemapStyle,
+  BasemapStyleSession,
+  AttributionControl,
+  EsriAttribution,
+  VectorTileLayer,
+  FeatureLayer,
 };
