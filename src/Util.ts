@@ -47,7 +47,6 @@ export const isRelativePath = (path: string): boolean => {
 };
 
 export const parseRelativeUrl = (relativePath: string, base: string): string => {
-    console.log('url:',relativePath,base)
     const parsedResult = URL.parse(relativePath, base);
     return parsedResult.href;
 };
@@ -84,7 +83,7 @@ const normalizeArcGISOnlineOrgDomain = (url: string): string => {
     }
 
     return url;
-}
+};
 
 export const warn = (...args: any[]) => {
     if (console && console.warn) {

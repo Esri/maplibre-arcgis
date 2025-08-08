@@ -206,6 +206,7 @@ export class VectorTileLayer extends HostedLayer {
         if (style.glyphs) {
             if (isRelativePath(style.glyphs)) style.glyphs = parseRelativeUrl(style.glyphs, styleUrl);
             style.glyphs = toCdnUrl(style.glyphs);
+            if (this.authentication) style.glyphs = `${style.glyphs}?token=${this.token}`;
         }
 
         // Validate sprite
@@ -216,11 +217,14 @@ export class VectorTileLayer extends HostedLayer {
 
                     if (isRelativePath(sprite.url)) sprite.url = parseRelativeUrl(sprite.url, styleUrl);
                     sprite.url = toCdnUrl(sprite.url);
+
+                    if (this.authentication) sprite.url = `${sprite.url}?token=${this.token}`;
                 }
             }
             else {
                 if (isRelativePath(style.sprite)) style.sprite = parseRelativeUrl(style.sprite, styleUrl);
                 style.sprite = toCdnUrl(style.sprite);
+                if (this.authentication) style.sprite = `${style.sprite}?token=${this.token}`;
             };
         }
 
@@ -240,10 +244,11 @@ export class VectorTileLayer extends HostedLayer {
 
             // Fix service URL
             if (isRelativePath(source.url)) source.url = parseRelativeUrl(source.url, styleUrl);
+            source.url = cleanUrl(source.url);
             // Format tiles
             if (!source.tiles) {
-                if (this._serviceInfo.tiles) source.tiles = [`${source.url}/${this._serviceInfo.tiles[0]}`];
-                else source.tiles = [`${source.url}/tile/{z}/{y}/{x}.pbf`]; // Just take our best guess
+                if (this._serviceInfo.tiles) source.tiles = [`${source.url}${this._serviceInfo.tiles[0]}`];
+                else source.tiles = [`${source.url}tile/{z}/{y}/{x}.pbf`]; // Just take our best guess
             }
 
             // Provide authentication
@@ -258,8 +263,6 @@ export class VectorTileLayer extends HostedLayer {
         // Public API is read-only
         this._sources = style.sources as { [_: string]: VectorSourceSpecification };
         this._layers = style.layers;
-
-        console.log('AFTER: ', style);
     }
 
     _getAttribution(sourceId: string): string | null {
