@@ -19,7 +19,7 @@ import { globalExternals } from '@fal-works/esbuild-plugin-global-externals';
 var copyright = '/* ' + pkg.name + ' - v' + pkg.version + ' - ' + new Date().toString() + '\n' +
                 ' * Copyright (c) ' + new Date().getFullYear() + ' Environmental Systems Research Institute, Inc.\n' +
                 ' * ' + pkg.license + ' */';
-
+console.log(process.argv);
 const BUILD_MODE = process.argv[2];
 const LIVE_RELOAD = process.argv.length > 3 && process.argv[3] == 'watch';
 

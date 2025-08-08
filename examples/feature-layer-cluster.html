@@ -34,30 +34,44 @@
     }).applyStyleTo(map);
 
     const pointService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
-    const lineService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
-
-    const polygonService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0";
-    // query?where=1%3D1&outFields=*&returnGeometry=true&f=pgeojson
-
 
     map.on('load', async () => {
 
       // Load trailheads from service URL
       const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointService);
-      trailheads.addSourcesAndLayersTo(map);
 
-      // Load trails from service URL and query
-      const trails = await maplibreArcGIS.FeatureLayer.fromUrl(lineService, {
-        query: { // Query parameter supported with layer URLs
-          outFields: ['TRL_ID', 'ELEV_MIN', 'ELEV_MAX'],
-          where: 'ELEV_MIN > 200'
+      map.addSource(trailheads.sourceId, {
+        ...trailheads.source,
+        cluster: true,
+        clusterRadius: 20, // cluster two trailheads if less than 20 pixels apart
+        clusterMaxZoom: 14, // display all trailheads individually from zoom 14 up
+      });
+
+      map.addLayer({
+        source: trailheads.sourceId,
+        id: "trailheads-circle",
+        type: "circle",
+        paint: {
+          "circle-color": "hsla(0,0%,0%,0.75)",
+          "circle-stroke-width": 1.5,
+          "circle-stroke-color": "white",
+          "circle-radius": ["case", ["get", "cluster"], 10, 5] // 10 pixels for clusters, 5 pixels otherwise
         }
       });
-      trails.addSourcesAndLayersTo(map);
 
-      // Load parks from from portal item ID
-      const parks = await maplibreArcGIS.FeatureLayer.fromPortalItem('f2ea5d874dad427294641d2d45097c0e');
-      parks.addSourcesAndLayersTo(map);
+      map.addLayer({
+        source: trailheads.sourceId,
+        id: "trailheads-cluster-count",
+        type: "symbol",
+        layout: {
+          "text-font": ["Arial Bold"],
+          "text-field": ["get", "point_count"],
+          "text-offset": [0, 0.1] // move the label vertically downwards slightly to improve centering
+        },
+        paint: {
+          "text-color": "white"
+        }
+      });
     });
   </script>
 </body>

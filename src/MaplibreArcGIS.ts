@@ -1,4 +1,5 @@
-/* Copyright 2025 Esri
+/*
+ * Copyright 2025 Esri
  *
  * Licensed under the Apache License Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,31 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import BasemapStyle from "./BasemapStyle"
-import BasemapStyleSession from "./BasemapStyleSession"
-
-import AttributionControl from "./AttributionControl"
-import VectorTileLayer from "./VectorTileLayer"
-import FeatureLayer from "./FeatureLayer"
-import packageInfo from "../package.json"
+import BasemapStyle from './BasemapStyle';
+import BasemapStyleSession from './BasemapStyleSession';
+import { AttributionControl, EsriAttribution } from './AttributionControl';
+import VectorTileLayer from './VectorTileLayer';
+import FeatureLayer from './FeatureLayer';
+import packageInfo from '../package.json';
 
 interface CustomWindow extends Window {
-  TEST_ENVIRONMENT: string | null
+    TEST_ENVIRONMENT: string | null;
 }
-declare let window: CustomWindow
+declare let window: CustomWindow;
 if (window.TEST_ENVIRONMENT) {
-  new EventSource("/esbuild").addEventListener("change", () =>
-    location.reload()
-  )
+    new EventSource('/esbuild').addEventListener('change', () => location.reload());
 }
 
-const version = packageInfo.version
+const version = packageInfo.version;
 
 export {
-  version as VERSION,
-  BasemapStyle,
-  BasemapStyleSession,
-  AttributionControl,
-  VectorTileLayer,
-  FeatureLayer,
-}
+    version as VERSION,
+    BasemapStyle,
+    BasemapStyleSession,
+    AttributionControl,
+    EsriAttribution,
+    VectorTileLayer,
+    FeatureLayer,
+};
