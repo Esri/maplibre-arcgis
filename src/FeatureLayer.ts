@@ -170,8 +170,7 @@ export class FeatureLayer extends HostedLayer {
             }
         }
         else {
-            // TODO how to request data for enterprise, etc where exceedsLimit queries don't work?
-            throw new Error('Layer does not support exceeds limit query');
+            throw new Error('Feature layers hosted in old versions of ArcGIS Enterprise are not currently supported in this plugin. Support will be added in a future release: https://github.com/ArcGIS/maplibre-arcgis/issues/5');
         }
         if (!layerData) throw new Error('Unable to load data.');
 
