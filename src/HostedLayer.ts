@@ -42,6 +42,10 @@ export abstract class HostedLayer {
      */
     authentication?: RestJSAuthenticationManager | string;
 
+    protected get token(): string {
+        return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
+    }
+
     /**
      * Stores custom attribution text for the hosted layer
      */
