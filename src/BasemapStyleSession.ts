@@ -1,7 +1,7 @@
 import {
   BasemapStyleSession as ArcgisRestBasemapStyleSession,
   type StyleFamily,
-} from '@esri/arcgis-rest-basemap-session';
+} from './arcgis-rest-basemap-session'; // TODO update this to the remote package
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
 
 import { type RestJSAuthenticationManager } from './Util';
@@ -18,7 +18,7 @@ interface IBasemapStyleSessionOptions {
   /** Duration in seconds for the session */
   duration?: number;
   /** Style family for the session */
-  styleFamily?: StyleFamily;
+  styleFamily: StyleFamily;
   autoRefresh?: boolean;
   /** Safety margin in seconds to refresh the session before it expires */
   safetyMargin?: number;
@@ -77,7 +77,7 @@ export class BasemapStyleSession {
   }
 
   get styleFamily(): StyleFamily | undefined {
-    return this._session?.styleFamily
+    return this._session?.styleFamily;
   }
 
   /**
@@ -86,20 +86,18 @@ export class BasemapStyleSession {
    */
   get expires(): Date {
     if (!this._session) {
-      throw new Error(
-        'Unable to get session expiration. Session not initialized';
-      )
+      throw new Error('Unable to get session expiration. Session not initialized.');
     }
-    return this._session.expires
+    return this._session.expires;
   }
 
   get isStarted(): boolean {
     return Boolean(
-      this._session &&
-        this._session.token !== undefined &&
-        this._session.expires &&
-        this._session.expires > new Date()
-    )
+      this._session
+      && this._session.token !== undefined
+      && this._session.expires
+      && this._session.expires > new Date()
+    );
   }
 
   /**
@@ -109,62 +107,63 @@ export class BasemapStyleSession {
   async start(): Promise<void> {
     if (this._session) {
       // Clean up existing session without disposing emitter
-      this._session.off("expired", this.expiredHandler)
-      this._session.off("refreshed", this.refreshedHandler)
-      this._session.off("error", this.errorHandler)
-      this.emitter.all.clear()
+      this._session.off('expired', this.expiredHandler);
+      this._session.off('refreshed', this.refreshedHandler);
+      this._session.off('error', this.errorHandler);
+      this.emitter.all.clear();
     }
     this._session = await ArcgisRestBasemapStyleSession.start({
       ...this.options,
       authentication: this._auth,
-    })
-    this.setupEventListeners()
+    });
+    this.setupEventListeners();
   }
 
   async refresh(): Promise<void> {
     if (!this._session) {
-      throw new Error("Session not initialized")
+      throw new Error('Session not initialized');
     }
     try {
-      this._session = await this._session.refreshCredentials()
-    } catch (error) {
-      this.emitter.emit("BasemapStyleSessionError", error as Error)
+      this._session = await this._session.refreshCredentials();
+    }
+    catch (error) {
+      this.emitter.emit('BasemapStyleSessionError', error as Error);
     }
   }
 
   private setupEventListeners(): void {
-    if (!this._session) return
+    if (!this._session) return;
 
-    this._session.on("expired", this.expiredHandler)
+    this._session.on('expired', this.expiredHandler);
 
-    this._session.on("refreshed", this.refreshedHandler)
+    this._session.on('refreshed', this.refreshedHandler);
 
-    this._session.on("error", this.errorHandler)
+    this._session.on('error', this.errorHandler);
   }
 
   private expiredHandler = (e: SessionResponse): void => {
-    console.log(`Session expired ${e.token}`)
-    this.emitter.emit("BasemapStyleSessionExpired", e)
-  }
+    console.log(`Session expired ${e.token}`);
+    this.emitter.emit('BasemapStyleSessionExpired', e);
+  };
 
   private refreshedHandler = (e: SessionRefreshedData): void => {
-    console.log("Session event handler refreshed")
-    this.emitter.emit("BasemapStyleSessionRefreshed", e)
-  }
+    console.log('Session event handler refreshed');
+    this.emitter.emit('BasemapStyleSessionRefreshed', e);
+  };
 
   private errorHandler = (e: Error): void => {
-    console.log("Session event handler error")
-    this.emitter.emit("BasemapStyleSessionError", e)
-  }
+    console.log('Session event handler error');
+    this.emitter.emit('BasemapStyleSessionError', e);
+  };
 
   dispose(): void {
     if (this._session) {
-      this._session.off("expired", this.expiredHandler)
-      this._session.off("refreshed", this.refreshedHandler)
-      this._session.off("error", this.errorHandler)
+      this._session.off('expired', this.expiredHandler);
+      this._session.off('refreshed', this.refreshedHandler);
+      this._session.off('error', this.errorHandler);
     }
-    this.emitter.all.clear()
-    this._session = undefined
+    this.emitter.all.clear();
+    this._session = undefined;
   }
 
   /**
@@ -174,7 +173,7 @@ export class BasemapStyleSession {
     eventName: K,
     handler: (data: BasemapSessionEventMap[K]) => void
   ): void {
-    this.emitter.on(eventName, handler)
+    this.emitter.on(eventName, handler);
   }
 
   /**
@@ -184,8 +183,8 @@ export class BasemapStyleSession {
     eventName: K,
     handler: (data: BasemapSessionEventMap[K]) => void
   ): void {
-    this.emitter.off(eventName, handler)
+    this.emitter.off(eventName, handler);
   }
 }
 
-export default BasemapStyleSession
+export default BasemapStyleSession;
