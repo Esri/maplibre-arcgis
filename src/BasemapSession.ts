@@ -1,6 +1,7 @@
-import type { Map, VectorTileSource } from "maplibre-gl"
-import { request } from "@esri/arcgis-rest-request"
-import type { RestJSAuthenticationManager } from "./Util"
+import type { Map, VectorTileSource } from 'maplibre-gl';
+import { request } from '@esri/arcgis-rest-request';
+import type { RestJSAuthenticationManager } from './Util';
+import type { StyleFamily } from './BasemapStyle';
 
 type SessionResponse = {
   sessionToken: string
@@ -9,46 +10,46 @@ type SessionResponse = {
   styleFamily: string
 }
 
-type StyleFamily = "arcgis" | "open" | "osm"
-
-type ServiceType = "static" | "style"
+type ServiceType = 'static' | 'style';
 
 type BasemapSessionOptions = {
-  serviceType: ServiceType
-  token: RestJSAuthenticationManager
-  duration: number // mayber a range type? 0 -> 43200
-  autoRefresh: boolean
-  autoStart: boolean
-}
+  serviceType: ServiceType;
+  authentication?: string | RestJSAuthenticationManager;
+  token?: string;
+  duration?: number; // mayber a range type? 0 -> 43200
+  autoRefresh?: boolean;
+  autoStart?: boolean;
+};
 
 export class BasemapSession {
-  serviceType?: ServiceType
-  serviceFamily?: StyleFamily
-  token: string
-  authentication: RestJSAuthenticationManager
-  options: BasemapSessionOptions
-  sessionToken: string
-  session: SessionResponse
+  serviceType?: ServiceType;
+  serviceFamily?: StyleFamily;
+  authentication: string | RestJSAuthenticationManager;
+  sessionToken: string;
+  session: SessionResponse;
 
-  private styleStartURL: string = "https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start"
-  private staticStartURL: string = ""
+  options: BasemapSessionOptions;
+
+  private styleStartURL: string = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start';
+  private staticStartURL: string = '';
 
   constructor(family: StyleFamily, options: BasemapSessionOptions) {
-    this.options = options
-    this.authentication = options.token
-    this.serviceFamily = family
-    this.session = null
+    this.options = options;
+    this.authentication = options.token;
+    this.serviceFamily = family;
+    this.session = null;
     // creates new session
+
     // constructor starts a new session or should it be called?
-    console.log("BasemapStyleSession constructor")
+    console.log('BasemapStyleSession constructor');
     if (this.options.autoStart) {
       this.startSession().then(
         (response) => {
-          this.session = response
-          console.log("BasemapSession constructor")
+          this.session = response;
+          console.log('BasemapSession constructor');
         },
         (err) => {
-          throw err
+          throw err;
         }
       )
     }

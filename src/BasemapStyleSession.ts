@@ -1,11 +1,11 @@
 import {
   BasemapStyleSession as ArcgisRestBasemapStyleSession,
   type StyleFamily,
-} from "@esri/arcgis-rest-basemap-session"
-import { ApiKeyManager } from "@esri/arcgis-rest-request"
+} from '@esri/arcgis-rest-basemap-session';
+import { ApiKeyManager } from '@esri/arcgis-rest-request';
 
-import { type RestJSAuthenticationManager } from "./Util"
-import mitt, { type Emitter } from "mitt"
+import { type RestJSAuthenticationManager } from './Util';
+import mitt, { type Emitter } from 'mitt';
 
 /**
  * Options for initializing a BasemapStyleSession
@@ -14,57 +14,55 @@ interface IBasemapStyleSessionOptions {
   /** Authentication manager for handling auth requests */
   // authentication?: RestJSAuthenticationManager
   /** Optional token for authentication */
-  token?: string
+  token?: string;
   /** Duration in seconds for the session */
-  duration?: number
+  duration?: number;
   /** Style family for the session */
-  styleFamily?: StyleFamily
-  autoRefresh?: boolean
+  styleFamily?: StyleFamily;
+  autoRefresh?: boolean;
   /** Safety margin in seconds to refresh the session before it expires */
-  safetyMargin?: number
+  safetyMargin?: number;
 }
 
 type SessionResponse = {
-  token: string
-  endTime: Date
-  startTime: Date
-  expires: Date
-}
+  token: string;
+  endTime: Date;
+  startTime: Date;
+  expires: Date;
+};
 
 type SessionRefreshedData = {
-  previous: SessionResponse
-  current: SessionResponse
-}
+  previous: SessionResponse;
+  current: SessionResponse;
+};
 
 type BasemapSessionEventMap = {
-  BasemapStyleSessionRefreshed: SessionRefreshedData
-  BasemapStyleSessionExpired: SessionResponse
-  BasemapStyleSessionError: Error
-}
+  BasemapStyleSessionRefreshed: SessionRefreshedData;
+  BasemapStyleSessionExpired: SessionResponse;
+  BasemapStyleSessionError: Error;
+};
 
 /**
  * Manages basemap style sessions with automatic refresh and event handling
  */
 export class BasemapStyleSession {
-  private _session?: ArcgisRestBasemapStyleSession
-  private readonly options: IBasemapStyleSessionOptions
-  private readonly emitter: Emitter<BasemapSessionEventMap> = mitt()
-  private _auth: RestJSAuthenticationManager
+  private _session?: ArcgisRestBasemapStyleSession;
+  private readonly options: IBasemapStyleSessionOptions;
+  private readonly emitter: Emitter<BasemapSessionEventMap> = mitt();
+  private _auth: RestJSAuthenticationManager;
 
   constructor(options: IBasemapStyleSessionOptions) {
-    this.options = { ...options }
+    this.options = { ...options };
 
-    this._auth = ApiKeyManager.fromKey(this.options.token)
+    this._auth = ApiKeyManager.fromKey(this.options.token);
 
     if (!this._auth) {
-      throw new Error(
-        "An valid authentication token is required to start a session"
-      )
+      throw new Error('An valid authentication token is required to start a session');
     }
   }
 
   get authentication(): RestJSAuthenticationManager {
-    return this._auth
+    return this._auth;
   }
 
   /**
@@ -73,9 +71,9 @@ export class BasemapStyleSession {
    */
   get token(): string {
     if (!this._session?.token) {
-      throw new Error("Session token not available")
+      throw new Error('Session token not available');
     }
-    return this._session.token
+    return this._session.token;
   }
 
   get styleFamily(): StyleFamily | undefined {
@@ -89,7 +87,7 @@ export class BasemapStyleSession {
   get expires(): Date {
     if (!this._session) {
       throw new Error(
-        "Unable to get session expiration. Session not initialized"
+        'Unable to get session expiration. Session not initialized';
       )
     }
     return this._session.expires
