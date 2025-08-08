@@ -173,10 +173,19 @@ export class BasemapStyle {
         // Handle glyphs
         style.glyphs = `${style.glyphs}?token=${this.token}`;
 
+        // Handle sprite
+        if (Array.isArray(style.sprite)) {
+            style.sprite.forEach((sprite, id, spriteArray) => {
+                spriteArray[id].url = `${sprite.url}?token=${this.token}`;
+            });
+        }
+        else {
+            style.sprite = `${style.sprite}?token=${this.token}`;
+        }
+
         // Handle sources
         Object.keys(style.sources).forEach((sourceId) => {
             const source = style.sources[sourceId];
-            console.log(sourceId, source);
 
             if (source.type === 'raster' || source.type === 'vector' || source.type === 'raster-dem') {
                 if (source.tiles.length > 0) {
