@@ -148,10 +148,12 @@ export class BasemapStyleSession {
     console.log(`Session expired ${e.token}`)
     this.emitter.emit("BasemapStyleSessionExpired", e)
   }
+
   private refreshedHandler = (e: SessionRefreshedData): void => {
     console.log("Session event handler refreshed")
     this.emitter.emit("BasemapStyleSessionRefreshed", e)
   }
+
   private errorHandler = (e: Error): void => {
     console.log("Session event handler error")
     this.emitter.emit("BasemapStyleSessionError", e)
