@@ -24,13 +24,11 @@
   <script src="../debug/apikey.js"></script>
   <script type="module">
 
-    const basemapSession = new maplibreArcGIS.BasemapStyleSession({
+    const basemapSession = new maplibreArcGIS.BasemapSession({
       styleFamily: 'arcgis',
       token: sessionKey2,
-      duration: 60,
-      autoRefresh: false
+      duration:30
     });
-    await basemapSession.start();
 
     const arcgisBasemap = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
       session: basemapSession
@@ -38,12 +36,13 @@
 
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
+      style: arcgisBasemap.style,
       zoom: 14, // starting zoom
       center: [-117.805, 34.027], // starting location
     });
-
-    arcgisBasemap.applyStyleTo(map);
-  </script>
+    // option 1
+    arcgisBasemap.updateStyle('arcgis/outdoor', map);
+</script>
 </body>
 
 </html>

@@ -2,7 +2,7 @@ import type { AttributionControlOptions, Map, StyleOptions, StyleSpecification, 
 import { request } from '@esri/arcgis-rest-request';
 import { EsriAttribution } from './AttributionControl';
 import type { RestJSAuthenticationManager } from './Util';
-import type BasemapStyleSession from './BasemapStyleSession';
+import type BasemapStyleSession from './BasemapSession';
 
 type BasemapSelfResponse = {
   customStylesUrl: string;
@@ -168,12 +168,7 @@ export class BasemapStyle {
   private async _setSession(map?: Map): Promise<void> {
     if (!this._session) throw new Error('No session was provided to the constructor.');
     if (!this._session.isStarted) {
-      if (this._session.autoRefresh) {
-        await this._session.start();
-      }
-      else {
-        throw new Error('The provided basemap session has not been started. Either start it manually or set \'autoRefresh: true\' to initialize automatically.');
-      }
+      await this._session.start();
     }
 
     this.authentication = this._session.token;

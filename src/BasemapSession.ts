@@ -8,7 +8,7 @@ import mitt, { type Emitter } from 'mitt';
 /**
  * Options for initializing a BasemapStyleSession
  */
-interface IBasemapStyleSessionOptions {
+interface IBasemapSessionOptions {
   /** Access token for authentication. The token must be from an ArcGIS Location Platform account and have the Basemaps privelege. */
   token?: string;
   /** Duration in seconds for the session. */
@@ -50,19 +50,19 @@ type BasemapSessionEventMap = {
 /**
  * Manages basemap style sessions with automatic refresh and event handling
  */
-export class BasemapStyleSession {
+export class BasemapSession {
   private _session?: ArcgisRestBasemapStyleSession;
-  private readonly _options: IBasemapStyleSessionOptions;
+  private readonly _options: IBasemapSessionOptions;
   private readonly _emitter: Emitter<BasemapSessionEventMap> = mitt();
   private _parentToken: string;
 
   autoRefresh: boolean;
 
-  constructor(options: IBasemapStyleSessionOptions) {
+  constructor(options: IBasemapSessionOptions) {
     if (!options?.token) throw new Error('An valid ArcGIS access token is required to start a session.');
 
     this._parentToken = options.token;
-    this.autoRefresh = options.autoRefresh;
+    this.autoRefresh = options.autoRefresh ? true : false;
     this._options = options;
   }
 
@@ -128,7 +128,7 @@ export class BasemapStyleSession {
 
     const sessionParams: IStartSessionParams = {
       authentication: this._parentToken,
-      autoRefresh: this._options.autoRefresh,
+      autoRefresh: this.autoRefresh,
       duration: this._options.duration,
       safetyMargin: this._options.safetyMargin,
       styleFamily: this._options.styleFamily,
@@ -210,4 +210,4 @@ export class BasemapStyleSession {
   }
 }
 
-export default BasemapStyleSession;
+export default BasemapSession;
