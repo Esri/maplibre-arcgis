@@ -127,6 +127,7 @@ export class BasemapStyle {
     if (!this.style) {
       await this.loadStyle();
     }
+    this._map = map;
 
     map.setStyle(this.style, setStyleOptions);
 
@@ -164,10 +165,15 @@ export class BasemapStyle {
     if (preferences.worldview) this.preferences.worldview = preferences.worldview;
   }
 
-  async setSession(map?: Map): Promise<void> {
+  private async _setSession(map?: Map): Promise<void> {
     if (!this._session) throw new Error('No session was provided to the constructor.');
     if (!this._session.isStarted) {
-      await this._session.start();
+      if (this._session.autoRefresh) {
+        await this._session.start();
+      }
+      else {
+        throw new Error('The provided basemap session has not been started. Either start it manually or set \'autoRefresh: true\' to initialize automatically.');
+      }
     }
 
     this.authentication = this._session.token;
@@ -224,9 +230,9 @@ export class BasemapStyle {
 
   async loadStyle(): Promise<void> {
     if (this._session) {
-      await this.setSession();
+      await this._setSession();
     }
-
+    // Request style JSON
     const style = await (request(`${this._baseUrl}/${this.styleId}`, {
       authentication: this.authentication,
       httpMethod: 'GET',
@@ -239,16 +245,6 @@ export class BasemapStyle {
     // Handle glyphs
     style.glyphs = `${style.glyphs}?token=${this.token}`;
 
-    // Handle sprite
-    if (Array.isArray(style.sprite)) {
-      style.sprite.forEach((sprite, id, spriteArray) => {
-        spriteArray[id].url = `${sprite.url}?token=${this.token}`;
-      });
-    }
-    else {
-      style.sprite = `${style.sprite}?token=${this.token}`;
-    }
-
     // Handle sources
     Object.keys(style.sources).forEach((sourceId) => {
       const source = style.sources[sourceId];
@@ -259,6 +255,18 @@ export class BasemapStyle {
         }
       }
     });
+
+    if (!this._session) {
+      // Handle sprite
+      if (Array.isArray(style.sprite)) {
+        style.sprite.forEach((sprite, id, spriteArray) => {
+          spriteArray[id].url = `${sprite.url}?token=${this.token}`;
+        });
+      }
+      else {
+        style.sprite = `${style.sprite}?token=${this.token}`;
+      }
+    }
 
     this.style = style;
     return;

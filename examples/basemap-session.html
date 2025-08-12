@@ -22,16 +22,17 @@
 <body>
   <div id="map"></div>
   <script src="../debug/apikey.js"></script>
-  <script>
+  <script type="module">
 
     const basemapSession = new maplibreArcGIS.BasemapStyleSession({
       styleFamily: 'arcgis',
-      token: sessionKey,
-      duration: 60
-    })
-    // Also supports item IDs for custom basemap styles
-    // Try: '9d94a890b76a417cad8a748df4f97336'
-    const arcgisBasemap = new maplibreArcGIS.BasemapStyle('arcgis/navigation', {
+      token: sessionKey2,
+      duration: 60,
+      autoRefresh: false
+    });
+    await basemapSession.start();
+
+    const arcgisBasemap = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
       session: basemapSession
     });
 
@@ -39,11 +40,9 @@
       container: "map", // the id of the div element
       zoom: 14, // starting zoom
       center: [-117.805, 34.027], // starting location
-      attributionControl: arcgisBasemap.attributionControl,
     });
 
     arcgisBasemap.applyStyleTo(map);
-
   </script>
 </body>
 

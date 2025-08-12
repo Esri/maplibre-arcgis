@@ -1,27 +1,32 @@
 import {
   BasemapStyleSession as ArcgisRestBasemapStyleSession,
-  type StyleFamily,
-} from './arcgis-rest-basemap-session'; // TODO update this to the remote package
-import { ApiKeyManager } from '@esri/arcgis-rest-request';
+  type StyleFamily, type IStartSessionParams,
+} from '@esri/arcgis-rest-basemap-sessions';
 
-import { type RestJSAuthenticationManager } from './Util';
 import mitt, { type Emitter } from 'mitt';
 
 /**
  * Options for initializing a BasemapStyleSession
  */
 interface IBasemapStyleSessionOptions {
-  /** Authentication manager for handling auth requests */
-  // authentication?: RestJSAuthenticationManager
-  /** Optional token for authentication */
+  /** Access token for authentication. The token must be from an ArcGIS Location Platform account and have the Basemaps privelege. */
   token?: string;
-  /** Duration in seconds for the session */
+  /** Duration in seconds for the session. */
   duration?: number;
-  /** Style family for the session */
+  /** Style family for the session. */
   styleFamily: StyleFamily;
+  /** Toggles auto-refresh functionality. */
   autoRefresh?: boolean;
-  /** Safety margin in seconds to refresh the session before it expires */
+  /** Safety margin in seconds to refresh the session before it expires. */
   safetyMargin?: number;
+  /**
+   * @internal
+   */
+  startSessionUrl?: string;
+
+  endTime: Date;
+  expires: Date;
+  startTime: Date;
 }
 
 type SessionResponse = {
@@ -47,22 +52,18 @@ type BasemapSessionEventMap = {
  */
 export class BasemapStyleSession {
   private _session?: ArcgisRestBasemapStyleSession;
-  private readonly options: IBasemapStyleSessionOptions;
-  private readonly emitter: Emitter<BasemapSessionEventMap> = mitt();
-  private _auth: RestJSAuthenticationManager;
+  private readonly _options: IBasemapStyleSessionOptions;
+  private readonly _emitter: Emitter<BasemapSessionEventMap> = mitt();
+  private _parentToken: string;
+
+  autoRefresh: boolean;
 
   constructor(options: IBasemapStyleSessionOptions) {
-    this.options = { ...options };
+    if (!options?.token) throw new Error('An valid ArcGIS access token is required to start a session.');
 
-    this._auth = ApiKeyManager.fromKey(this.options.token);
-
-    if (!this._auth) {
-      throw new Error('An valid authentication token is required to start a session');
-    }
-  }
-
-  get authentication(): RestJSAuthenticationManager {
-    return this._auth;
+    this._parentToken = options.token;
+    this.autoRefresh = options.autoRefresh;
+    this._options = options;
   }
 
   /**
@@ -91,6 +92,18 @@ export class BasemapStyleSession {
     return this._session.expires;
   }
 
+  /**
+   * Gets the session start time.
+   * @throws If session is not initialized.
+   */
+  get startTime(): Date {
+    if (!this._session) throw new Error('Unable to fetch start time. Session not initialized.');
+    return this._session.startTime;
+  }
+
+  /**
+   * Returns 'true' if the session is started, and false otherwise.
+   */
   get isStarted(): boolean {
     return Boolean(
       this._session
@@ -101,7 +114,7 @@ export class BasemapStyleSession {
   }
 
   /**
-   * Creates and starts a new BasemapStyleSession
+   * Starts a new BasemapStyleSession
    * @throws If session creation fails
    */
   async start(): Promise<void> {
@@ -110,12 +123,22 @@ export class BasemapStyleSession {
       this._session.off('expired', this.expiredHandler);
       this._session.off('refreshed', this.refreshedHandler);
       this._session.off('error', this.errorHandler);
-      this.emitter.all.clear();
+      this._emitter.all.clear();
     }
-    this._session = await ArcgisRestBasemapStyleSession.start({
-      ...this.options,
-      authentication: this._auth,
-    });
+
+    const sessionParams: IStartSessionParams = {
+      authentication: this._parentToken,
+      autoRefresh: this._options.autoRefresh,
+      duration: this._options.duration,
+      safetyMargin: this._options.safetyMargin,
+      styleFamily: this._options.styleFamily,
+    };
+
+    if (sessionParams.autoRefresh) {
+      console.warn('Auto-refresh is enabled. Your basemap session will automatically refresh once the \'duration\' elapses.');
+    }
+
+    this._session = await ArcgisRestBasemapStyleSession.start(sessionParams);
     this.setupEventListeners();
   }
 
@@ -127,7 +150,7 @@ export class BasemapStyleSession {
       this._session = await this._session.refreshCredentials();
     }
     catch (error) {
-      this.emitter.emit('BasemapStyleSessionError', error as Error);
+      this._emitter.emit('BasemapStyleSessionError', error as Error);
     }
   }
 
@@ -143,17 +166,17 @@ export class BasemapStyleSession {
 
   private expiredHandler = (e: SessionResponse): void => {
     console.log(`Session expired ${e.token}`);
-    this.emitter.emit('BasemapStyleSessionExpired', e);
+    this._emitter.emit('BasemapStyleSessionExpired', e);
   };
 
   private refreshedHandler = (e: SessionRefreshedData): void => {
     console.log('Session event handler refreshed');
-    this.emitter.emit('BasemapStyleSessionRefreshed', e);
+    this._emitter.emit('BasemapStyleSessionRefreshed', e);
   };
 
   private errorHandler = (e: Error): void => {
     console.log('Session event handler error');
-    this.emitter.emit('BasemapStyleSessionError', e);
+    this._emitter.emit('BasemapStyleSessionError', e);
   };
 
   dispose(): void {
@@ -162,7 +185,7 @@ export class BasemapStyleSession {
       this._session.off('refreshed', this.refreshedHandler);
       this._session.off('error', this.errorHandler);
     }
-    this.emitter.all.clear();
+    this._emitter.all.clear();
     this._session = undefined;
   }
 
@@ -173,7 +196,7 @@ export class BasemapStyleSession {
     eventName: K,
     handler: (data: BasemapSessionEventMap[K]) => void
   ): void {
-    this.emitter.on(eventName, handler);
+    this._emitter.on(eventName, handler);
   }
 
   /**
@@ -183,7 +206,7 @@ export class BasemapStyleSession {
     eventName: K,
     handler: (data: BasemapSessionEventMap[K]) => void
   ): void {
-    this.emitter.off(eventName, handler);
+    this._emitter.off(eventName, handler);
   }
 }
 
