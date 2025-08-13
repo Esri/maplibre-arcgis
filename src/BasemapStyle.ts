@@ -1,6 +1,6 @@
-import type { AttributionControlOptions, Map, StyleOptions, StyleSpecification, StyleSwapOptions } from 'maplibre-gl';
+import type { AttributionControl as MapLibreAttributionControl, AttributionControlOptions, Map, StyleOptions, StyleSpecification, StyleSwapOptions, IControl } from 'maplibre-gl';
 import { request } from '@esri/arcgis-rest-request';
-import { EsriAttribution } from './AttributionControl';
+import { AttributionControl as EsriAttributionControl, EsriAttribution } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
 type BasemapSelfResponse = {
@@ -139,8 +139,24 @@ export class BasemapStyle {
     }
     this._map = map;
     this._map.setStyle(this.style, setStyleOptions);
+    this._setEsriAttribution();
 
     return this.style;
+  }
+
+  private _setEsriAttribution(map?: Map) {
+    this._map = map;
+    if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
+
+    if (this._map._controls.length > 0) {
+      this._map._controls.forEach((control: IControl) => {
+        if ((control as MapLibreAttributionControl).options?.customAttribution !== undefined) {
+          // squash maplibre attribution control
+          this._map.removeControl(control);
+        }
+      });
+      this._map.addControl(new EsriAttributionControl());
+    }
   }
 
   private _updatePreferences(preferences: BasemapPreferences) {
