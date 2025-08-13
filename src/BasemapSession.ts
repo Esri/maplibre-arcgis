@@ -42,9 +42,9 @@ type SessionRefreshedData = {
 };
 
 type BasemapSessionEventMap = {
-  BasemapStyleSessionRefreshed: SessionRefreshedData;
-  BasemapStyleSessionExpired: SessionResponse;
-  BasemapStyleSessionError: Error;
+  BasemapSessionRefreshed: SessionRefreshedData;
+  BasemapSessionExpired: SessionResponse;
+  BasemapSessionError: Error;
 };
 
 /**
@@ -150,7 +150,7 @@ export class BasemapSession {
       this._session = await this._session.refreshCredentials();
     }
     catch (error) {
-      this._emitter.emit('BasemapStyleSessionError', error as Error);
+      this._emitter.emit('BasemapSessionError', error as Error);
     }
   }
 
@@ -166,17 +166,17 @@ export class BasemapSession {
 
   private expiredHandler = (e: SessionResponse): void => {
     console.log(`Session expired ${e.token}`);
-    this._emitter.emit('BasemapStyleSessionExpired', e);
+    this._emitter.emit('BasemapSessionExpired', e);
   };
 
   private refreshedHandler = (e: SessionRefreshedData): void => {
     console.log('Session event handler refreshed');
-    this._emitter.emit('BasemapStyleSessionRefreshed', e);
+    this._emitter.emit('BasemapSessionRefreshed', e);
   };
 
   private errorHandler = (e: Error): void => {
     console.log('Session event handler error');
-    this._emitter.emit('BasemapStyleSessionError', e);
+    this._emitter.emit('BasemapSessionError', e);
   };
 
   dispose(): void {

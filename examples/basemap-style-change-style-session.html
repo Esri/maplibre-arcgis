@@ -118,7 +118,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
       let style = null
       let basemapSession = null
 
-      const accessToken = apiKey
+      const accessToken = sessionKey2;
 
       const updateSessionInfo = () => {
         const sessionInfoElement = document.getElementById("currentSessionInfo")
@@ -146,7 +146,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
           basemapSession = await getNewSession(selectedStyleFamily)
           style.setSession(basemapSession)
         }
-        style.setStyle(selectedItem)
+        style.updateStyle(selectedItem,map);
         updateSessionInfo()
       }
 
@@ -169,7 +169,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
 
       const initialBasemap = await setBasemapDropdown()
 
-      basemapSession = new maplibreArcGIS.BasemapStyleSession({
+      basemapSession = new maplibreArcGIS.BasemapSession({
         token: accessToken,
         safetyMargin: 0,
         duration: 60,
@@ -202,7 +202,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
         console.log("Style data error")
       })
 
-      basemapSession.on("BasemapStyleSessionExpired", () => {
+      basemapSession.on("BasemapSessionExpired", () => {
         console.log("Client: Session expired")
         basemapSession.refresh().then(() => {
           console.log("BasemapSession started...")
@@ -210,12 +210,12 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
         }) // gets a new session
       })
 
-      basemapSession.on("BasemapStyleSessionRefreshed", () => {
+      basemapSession.on("BasemapSessionRefreshed", () => {
         console.log("Client: Session refreshed")
         updateSessionInfo()
       })
 
-      basemapSession.on("BasemapStyleSessionError", () => {
+      basemapSession.on("BasemapSessionError", () => {
         console.log("Client: Session error")
       })
     </script>

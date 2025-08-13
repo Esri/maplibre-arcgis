@@ -1,4 +1,5 @@
-import type { AttributionControlOptions, Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
+import type { Map } from 'maplibre-gl';
+import type { AttributionControlOptions, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import { request } from '@esri/arcgis-rest-request';
 import { EsriAttribution } from './AttributionControl';
 import type { RestJSAuthenticationManager } from './Util';
@@ -125,7 +126,7 @@ export class BasemapStyle {
 
   async applyStyleTo(map: Map, setStyleOptions: StyleSwapOptions & StyleOptions): Promise<StyleSpecification> {
     if (!this.style) {
-      await this.loadStyle();
+      await this._loadStyle();
     }
     this._map = map;
 
@@ -133,21 +134,41 @@ export class BasemapStyle {
 
     return this.style;
   }
+  async updateStyle(styleId: string, map?: Map);
+  async updateStyle(styleId: string, preferences?: BasemapPreferences, map?: Map);
+  async updateStyle(preferences: BasemapPreferences, map?: Map);
 
-  async updateStyle(styleId: string, preferences?: BasemapPreferences);
-  async updateStyle(preferences: BasemapPreferences);
-  async updateStyle(styleIdOrPreferences: string | BasemapPreferences, preferences?: BasemapPreferences) {
+  async updateStyle(styleIdOrPreferences: string | BasemapPreferences, preferencesOrMap?: BasemapPreferences | Map, map?: Map): Promise<StyleSpecification> {
+    let mapObject = this._map;
+
     if (typeof styleIdOrPreferences === 'string') {
       // If it's a style ID or enum, change the style
       this.styleId = styleIdOrPreferences;
-      this._updatePreferences(preferences);
+
+      if (preferencesOrMap !== undefined) {
+        if ((preferencesOrMap as Map).version !== undefined) {
+          // Second argument is a map
+          mapObject = preferencesOrMap as Map;
+        }
+        else {
+          // Second argument is preferences
+          this._updatePreferences(preferencesOrMap as BasemapPreferences);
+          if (map !== undefined) mapObject = map;
+        }
+      }
     }
     else {
       // If it's preferences, update them
       this._updatePreferences(styleIdOrPreferences);
+      if (map !== undefined) mapObject = map;
     }
 
-    return this.loadStyle();
+    await this._loadStyle();
+
+    if (mapObject) {
+      mapObject.setStyle(this.style);
+    }
+    return this.style;
   }
 
   private _updatePreferences(preferences: BasemapPreferences) {
@@ -173,7 +194,7 @@ export class BasemapStyle {
 
     this.authentication = this._session.token;
 
-    this._session.on('BasemapStyleSessionRefreshed', (sessionData) => {
+    this._session.on('BasemapSessionRefreshed', (sessionData) => {
       console.debug('Style refresh...');
       const oldToken = sessionData.previous.token;
       const newToken = sessionData.current.token;
@@ -223,7 +244,7 @@ export class BasemapStyle {
     }
   }
 
-  async loadStyle(): Promise<void> {
+  async _loadStyle(): Promise<void> {
     if (this._session) {
       await this._setSession();
     }
@@ -285,7 +306,7 @@ export class BasemapStyle {
    */
   static async createBasemapStyle(style: string, options: IBasemapStyleOptions): Promise<BasemapStyle> {
     const basemapStyle = new BasemapStyle(style, options);
-    await basemapStyle.loadStyle();
+    await basemapStyle._loadStyle();
 
     return basemapStyle;
   }
