@@ -117,7 +117,7 @@ export class BasemapSession {
    * Starts a new BasemapStyleSession
    * @throws If session creation fails
    */
-  async start(): Promise<void> {
+  async initialize(): Promise<void> {
     if (this._session) {
       // Clean up existing session without disposing emitter
       this._session.off('expired', this.expiredHandler);
@@ -214,10 +214,10 @@ export class BasemapSession {
    * @param options - Options for constructing the basemap session.
    * @returns - a BasemapSession object.
    */
-  static async startNewSession(options: IBasemapSessionOptions): Promise<BasemapSession> {
+  static async start(options: IBasemapSessionOptions): Promise<BasemapSession> {
     const basemapSession = new BasemapSession(options);
 
-    await basemapSession.start();
+    await basemapSession.initialize();
 
     return basemapSession;
   }
