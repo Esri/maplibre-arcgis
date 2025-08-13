@@ -165,17 +165,17 @@ export class BasemapSession {
   }
 
   private expiredHandler = (e: SessionResponse): void => {
-    console.log(`Session expired ${e.token}`);
+    // console.debug(`Session expired ${e.token}`);
     this._emitter.emit('BasemapSessionExpired', e);
   };
 
   private refreshedHandler = (e: SessionRefreshedData): void => {
-    console.log('Session event handler refreshed');
+    // console.debug('Session event handler refreshed');
     this._emitter.emit('BasemapSessionRefreshed', e);
   };
 
   private errorHandler = (e: Error): void => {
-    console.log('Session event handler error');
+    console.error('Basemap session event handler error');
     this._emitter.emit('BasemapSessionError', e);
   };
 
@@ -207,6 +207,19 @@ export class BasemapSession {
     handler: (data: BasemapSessionEventMap[K]) => void
   ): void {
     this._emitter.off(eventName, handler);
+  }
+
+  /**
+   * Factory method that creates a new basemap session and starts it.
+   * @param options - Options for constructing the basemap session.
+   * @returns - a BasemapSession object.
+   */
+  static async startNewSession(options: IBasemapSessionOptions): Promise<BasemapSession> {
+    const basemapSession = new BasemapSession(options);
+
+    await basemapSession.start();
+
+    return basemapSession;
   }
 }
 
