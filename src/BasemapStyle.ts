@@ -1,7 +1,7 @@
 import type { AttributionControlOptions, Map, StyleOptions, StyleSpecification, StyleSwapOptions } from 'maplibre-gl';
 import { request } from '@esri/arcgis-rest-request';
 import { EsriAttribution } from './AttributionControl';
-import type { RestJSAuthenticationManager } from './Util';
+import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
 type BasemapSelfResponse = {
   customStylesUrl: string;
@@ -88,6 +88,8 @@ export class BasemapStyle {
     this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
     this.styleId = styleId;
 
+    this._isItemId = checkItemId(this.styleId) == 'ItemId' ? true : false;
+
     this._updatePreferences({
       language: options?.language,
       worldview: options?.worldview,
@@ -98,7 +100,7 @@ export class BasemapStyle {
   }
 
   get styleUrl(): string {
-    let styleUrl = `${this._baseUrl}/${this.styleId}`;
+    let styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
     styleUrl += `?token=${this.token}`;
 
@@ -161,7 +163,8 @@ export class BasemapStyle {
   }
 
   async loadStyle(): Promise<void> {
-    const style = await (request(`${this._baseUrl}/${this.styleId}`, {
+    const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
+    const style = await (request(styleUrl, {
       authentication: this.authentication,
       httpMethod: 'GET',
       params: {
