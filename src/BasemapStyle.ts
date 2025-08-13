@@ -189,7 +189,7 @@ export class BasemapStyle {
   private async _setSession(map?: Map): Promise<void> {
     if (!this._session) throw new Error('No session was provided to the constructor.');
     if (!this._session.isStarted) {
-      await this._session.start();
+      await this._session.initialize();
     }
 
     this.authentication = this._session.token;
