@@ -1,9 +1,8 @@
-import type { Map } from 'maplibre-gl';
-import type { AttributionControlOptions, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
+import type { Map, AttributionControl as MapLibreAttributionControl, AttributionControlOptions, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource, IControl } from 'maplibre-gl';
 import { request } from '@esri/arcgis-rest-request';
-import { EsriAttribution } from './AttributionControl';
-import type { RestJSAuthenticationManager } from './Util';
 import type BasemapStyleSession from './BasemapSession';
+import { AttributionControl as EsriAttributionControl, EsriAttribution } from './AttributionControl';
+import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
 type BasemapSelfResponse = {
   customStylesUrl: string;
@@ -93,6 +92,8 @@ export class BasemapStyle {
     this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
     this.styleId = styleId;
 
+    this._isItemId = checkItemId(this.styleId) == 'ItemId' ? true : false;
+
     this._updatePreferences({
       language: options?.language,
       worldview: options?.worldview,
@@ -103,7 +104,7 @@ export class BasemapStyle {
   }
 
   get styleUrl(): string {
-    let styleUrl = `${this._baseUrl}/${this.styleId}`;
+    let styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
     styleUrl += `?token=${this.token}`;
 
@@ -129,8 +130,8 @@ export class BasemapStyle {
       await this._loadStyle();
     }
     this._map = map;
-
-    map.setStyle(this.style, setStyleOptions);
+    this._map.setStyle(this.style, setStyleOptions);
+    this._setEsriAttribution();
 
     return this.style;
   }
@@ -169,6 +170,21 @@ export class BasemapStyle {
       mapObject.setStyle(this.style);
     }
     return this.style;
+  }
+
+  private _setEsriAttribution(map?: Map) {
+    this._map = map;
+    if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
+
+    if (this._map._controls.length > 0) {
+      this._map._controls.forEach((control: IControl) => {
+        if ((control as MapLibreAttributionControl).options?.customAttribution !== undefined) {
+          // squash maplibre attribution control
+          this._map.removeControl(control);
+        }
+      });
+      this._map.addControl(new EsriAttributionControl());
+    }
   }
 
   private _updatePreferences(preferences: BasemapPreferences) {
@@ -246,7 +262,8 @@ export class BasemapStyle {
       await this._setSession();
     }
     // Request style JSON
-    const style = await (request(`${this._baseUrl}/${this.styleId}`, {
+    const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
+    const style = await (request(styleUrl, {
       authentication: this.authentication,
       httpMethod: 'GET',
       params: {
