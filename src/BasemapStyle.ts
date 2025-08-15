@@ -1,5 +1,5 @@
 import type { Map, AttributionControl as MapLibreAttributionControl, AttributionControlOptions, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource, IControl } from 'maplibre-gl';
-import { request } from '@esri/arcgis-rest-request';
+import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import type BasemapStyleSession from './BasemapSession';
 import { AttributionControl as EsriAttributionControl, EsriAttribution } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
@@ -39,12 +39,15 @@ type BasemapStyleObject = {
 };
 
 type IBasemapStyleOptions = {
+  style: StyleEnum;
+  map: Map;
   token?: string;
   session?: BasemapStyleSession;
   authentication?: string | RestJSAuthenticationManager;
   language?: string;
   worldview?: string;
   places?: PlacesOptions;
+  setStyleOptions?: StyleOptions & StyleSwapOptions;
   /**
    * @internal
    */
@@ -70,6 +73,7 @@ export class BasemapStyle {
   _session: BasemapStyleSession;
   preferences: BasemapPreferences;
   options: IBasemapStyleOptions;
+  setStyleOptions?: StyleOptions & StyleSwapOptions;
   private _isItemId: boolean;
   // private _transformStyleFn?:TransformStyleFunction;
   private _map?: Map;
@@ -80,18 +84,20 @@ export class BasemapStyle {
    * @param style - The basemap style enumeration
    * @param options - Additional options, including access token and style preferences
    */
-  constructor(styleId: string, options: IBasemapStyleOptions) {
+  constructor(options: IBasemapStyleOptions) {
+    if (!options || !options.style) throw new Error('BasemapStyle must be initialized with a style enumeration, such as \'arcgis/streets\' or \'arcgis/outdoor\'.');
     // Access token validation
     if (options.session) this._session = options.session;
     else if (options.authentication) this.authentication = options.authentication;
     else if (options.token) this.authentication = options.token;
-
     else throw new Error(
       'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
     );
-    this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
-    this.styleId = styleId;
 
+    if (options.map) this._map = options.map;
+
+    this.styleId = options.style;
+    this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
     this._isItemId = checkItemId(this.styleId) == 'ItemId' ? true : false;
 
     this._updatePreferences({
@@ -125,55 +131,44 @@ export class BasemapStyle {
     return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
   }
 
-  async applyStyleTo(map: Map, setStyleOptions: StyleSwapOptions & StyleOptions): Promise<StyleSpecification> {
-    if (!this.style) {
-      await this._loadStyle();
-    }
+  setMap(map: Map): BasemapStyle {
     this._map = map;
-    this._map.setStyle(this.style, setStyleOptions);
+    return this;
+  }
+
+  applyToMap(): Map {
+    if (!this._map) throw new Error('Unable to apply style: Basemap style was not initialized with a \'Map\' object.');
+
+    this._map.setStyle(this.style, this.setStyleOptions);
     this._setEsriAttribution();
 
-    return this.style;
+    return this._map;
   }
-  async updateStyle(styleId: string, map?: Map);
-  async updateStyle(styleId: string, preferences?: BasemapPreferences, map?: Map);
-  async updateStyle(preferences: BasemapPreferences, map?: Map);
 
-  async updateStyle(styleIdOrPreferences: string | BasemapPreferences, preferencesOrMap?: BasemapPreferences | Map, map?: Map): Promise<StyleSpecification> {
-    let mapObject = this._map;
-
+  async updateStyle(styleId: string, preferences?: BasemapPreferences);
+  async updateStyle(preferences: BasemapPreferences);
+  async updateStyle(styleIdOrPreferences: string | BasemapPreferences, preferences?: BasemapPreferences): Promise<StyleSpecification> {
     if (typeof styleIdOrPreferences === 'string') {
       // If it's a style ID or enum, change the style
       this.styleId = styleIdOrPreferences;
 
-      if (preferencesOrMap !== undefined) {
-        if ((preferencesOrMap as Map).version !== undefined) {
-          // Second argument is a map
-          mapObject = preferencesOrMap as Map;
-        }
-        else {
-          // Second argument is preferences
-          this._updatePreferences(preferencesOrMap as BasemapPreferences);
-          if (map !== undefined) mapObject = map;
-        }
+      if (preferences !== undefined) {
+        this._updatePreferences(preferences);
       }
     }
     else {
       // If it's preferences, update them
       this._updatePreferences(styleIdOrPreferences);
-      if (map !== undefined) mapObject = map;
     }
 
-    await this._loadStyle();
+    await this.loadStyle();
+    this.applyToMap();
 
-    if (mapObject) {
-      mapObject.setStyle(this.style);
-    }
     return this.style;
   }
 
   private _setEsriAttribution(map?: Map) {
-    this._map = map;
+    if (map) this._map = map;
     if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
 
     if (this._map._controls.length > 0) {
@@ -257,14 +252,15 @@ export class BasemapStyle {
     }
   }
 
-  async _loadStyle(): Promise<void> {
+  async loadStyle(): Promise<BasemapStyle> {
     if (this._session) {
       await this._setSession();
     }
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
+    const authentication = typeof this.authentication == 'string' ? ApiKeyManager.fromKey(this.authentication) : this.authentication; // TODO why can't we just pass a string here?
     const style = await (request(styleUrl, {
-      authentication: this.authentication,
+      authentication: authentication,
       httpMethod: 'GET',
       params: {
         ...this.preferences,
@@ -299,7 +295,7 @@ export class BasemapStyle {
     }
 
     this.style = style;
-    return;
+    return this;
   }
 
   /**
@@ -308,19 +304,25 @@ export class BasemapStyle {
    * @param options - Additional parameters including an ArcGIS access token
    * @returns The URL of the specified ArcGIS basemap style with all included parameters
    */
-  static url(style: string, options: IBasemapStyleOptions): string {
-    return new BasemapStyle(style, options).styleUrl;
+  static url(options: IBasemapStyleOptions): string {
+    return new BasemapStyle(options).styleUrl;
   }
 
   /**
-   * Factory method that creates a BasemapStyle and loads style JSON
-   * @param style - The basemap style enumeration to load
-   * @param options - Additional parameters including authentication
-   * @returns BasemapStyle object
+   * Creates, loads, and applies a new BasemapStyle to a maplibre map.
+   * @param map - A maplibre-gl map to apply the basemap style to.
+   * @param options - Style options, including a style ID and authentication
+   * @returns - BasemapStyle object
    */
-  static async createBasemapStyle(style: string, options: IBasemapStyleOptions): Promise<BasemapStyle> {
-    const basemapStyle = new BasemapStyle(style, options);
-    await basemapStyle._loadStyle();
+  static applyStyle(map: Map, options: IBasemapStyleOptions): BasemapStyle {
+    if (!map) throw new Error('Must provide a maplibre-gl \'Map\' to apply style to.');
+    options.map = map;
+
+    const basemapStyle = new BasemapStyle(options);
+
+    basemapStyle.loadStyle().then((basemapStyle) => {
+      basemapStyle.applyToMap();
+    }).catch((e) => { throw e; });
 
     return basemapStyle;
   }

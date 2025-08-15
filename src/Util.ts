@@ -1,11 +1,10 @@
 import type { ApiKeyManager, ApplicationCredentialsManager, ArcGISIdentityManager } from '@esri/arcgis-rest-request';
 
-export type ItemId = string;
 export type RestJSAuthenticationManager = ApiKeyManager | ArcGISIdentityManager | ApplicationCredentialsManager;
 
 type SupportedServiceType = 'FeatureService' | 'FeatureLayer' | 'VectorTileService' | 'VectorTileLayer';
 
-export const checkItemId = (itemId: ItemId): 'ItemId' | null => {
+export const checkItemId = (itemId: string): 'ItemId' | null => {
   if (itemId.length == 32) return 'ItemId';
 
   return null;
