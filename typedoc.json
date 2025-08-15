@@ -1,8 +1,43 @@
 {
-    "out":"typedoc",
-    "json":"docs/build/typedoc.json",
-    "logLevel": "Verbose",
-    "excludeInternal": true,
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": [
+        "./src/MaplibreArcGIS.ts"
+    ],
+    "out": "typedoc",
+    "json": "docs/build/typedoc.json",
+    "name": "@esri/maplibre-arcgis",
     "excludePrivate": true,
-    "excludeProtected": true
+    "excludeInternal": true,
+    "excludeProtected": true,
+    "excludeExternals": false,
+    "includeVersion": true,
+    "categorizeByGroup": true,
+    "skipErrorChecking": true,
+    "exclude": [
+        "node_modules",
+        "dist",
+        "**/*.spec.ts",
+        "**/*.test.ts"
+    ],
+    "externalPattern": [
+        "node_modules"
+    ],
+    "tsconfig": "./tsconfig.json",
+    "navigationLinks": {
+        "GitHub": "https://github.com/Esri/maplibre-arcgis",
+        "MapLibre GL JS": "https://maplibre.org/maplibre-gl-js/docs/"
+    },
+    "readme": "./README.md",
+    "outputs": [
+        {
+            "name": "html",
+            "path": "index.html"
+        },
+        {
+            "name": "json",
+            "path": "api.json"
+        }
+    ],
+    "theme": "default",
+    "hideGenerator": true,
 }
