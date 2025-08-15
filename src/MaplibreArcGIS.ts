@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import BasemapStyle from './BasemapStyle';
+import BasemapSession from './BasemapSession';
 import { AttributionControl, EsriAttribution } from './AttributionControl';
 import VectorTileLayer from './VectorTileLayer';
 import FeatureLayer from './FeatureLayer';
@@ -32,6 +33,7 @@ const version = packageInfo.version;
 export {
   version as VERSION,
   BasemapStyle,
+  BasemapSession,
   AttributionControl,
   EsriAttribution,
   VectorTileLayer,

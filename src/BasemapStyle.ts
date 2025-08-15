@@ -1,5 +1,6 @@
-import type { AttributionControl as MapLibreAttributionControl, AttributionControlOptions, Map, StyleOptions, StyleSpecification, StyleSwapOptions, IControl } from 'maplibre-gl';
+import type { Map, AttributionControl as MapLibreAttributionControl, AttributionControlOptions, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource, IControl } from 'maplibre-gl';
 import { request } from '@esri/arcgis-rest-request';
+import type BasemapStyleSession from './BasemapSession';
 import { AttributionControl as EsriAttributionControl, EsriAttribution } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
@@ -18,7 +19,7 @@ type CodeNamePair = {
   name: string;
 };
 type PlacesOptions = 'all' | 'attributed' | 'none';
-type StyleFamily = 'arcgis' | 'open' | 'osm';
+export type StyleFamily = 'arcgis' | 'open' | 'osm';
 type StyleEnum = `${StyleFamily}/${string}`;
 
 type BasemapStyleObject = {
@@ -38,8 +39,9 @@ type BasemapStyleObject = {
 };
 
 type IBasemapStyleOptions = {
-  token: string;
-  authentication: RestJSAuthenticationManager;
+  token?: string;
+  session?: BasemapStyleSession;
+  authentication?: string | RestJSAuthenticationManager;
   language?: string;
   worldview?: string;
   places?: PlacesOptions;
@@ -64,8 +66,8 @@ export class BasemapStyle {
   style: StyleSpecification;
   styleId: string;
   attributionControl: AttributionControlOptions;
-  authentication: RestJSAuthenticationManager | string;
-
+  authentication: string | RestJSAuthenticationManager;
+  _session: BasemapStyleSession;
   preferences: BasemapPreferences;
   options: IBasemapStyleOptions;
   private _isItemId: boolean;
@@ -80,8 +82,10 @@ export class BasemapStyle {
    */
   constructor(styleId: string, options: IBasemapStyleOptions) {
     // Access token validation
-    if (options.authentication) this.authentication = options.authentication;
+    if (options.session) this._session = options.session;
+    else if (options.authentication) this.authentication = options.authentication;
     else if (options.token) this.authentication = options.token;
+
     else throw new Error(
       'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
     );
@@ -117,30 +121,54 @@ export class BasemapStyle {
     return styleUrl;
   }
 
-  async updateStyle(styleId: string, preferences?: BasemapPreferences);
-  async updateStyle(preferences: BasemapPreferences);
-  async updateStyle(styleIdOrPreferences: string | BasemapPreferences, preferences?: BasemapPreferences) {
-    if (typeof styleIdOrPreferences === 'string') {
-      // If it's a style ID or enum, change the style
-      this.styleId = styleIdOrPreferences;
-      this._updatePreferences(preferences);
-    }
-    else {
-      // If it's preferences, update them
-      this._updatePreferences(styleIdOrPreferences);
-    }
-
-    return this.loadStyle();
+  private get token(): string {
+    return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
   }
 
   async applyStyleTo(map: Map, setStyleOptions: StyleSwapOptions & StyleOptions): Promise<StyleSpecification> {
     if (!this.style) {
-      await this.loadStyle();
+      await this._loadStyle();
     }
     this._map = map;
     this._map.setStyle(this.style, setStyleOptions);
     this._setEsriAttribution();
 
+    return this.style;
+  }
+  async updateStyle(styleId: string, map?: Map);
+  async updateStyle(styleId: string, preferences?: BasemapPreferences, map?: Map);
+  async updateStyle(preferences: BasemapPreferences, map?: Map);
+
+  async updateStyle(styleIdOrPreferences: string | BasemapPreferences, preferencesOrMap?: BasemapPreferences | Map, map?: Map): Promise<StyleSpecification> {
+    let mapObject = this._map;
+
+    if (typeof styleIdOrPreferences === 'string') {
+      // If it's a style ID or enum, change the style
+      this.styleId = styleIdOrPreferences;
+
+      if (preferencesOrMap !== undefined) {
+        if ((preferencesOrMap as Map).version !== undefined) {
+          // Second argument is a map
+          mapObject = preferencesOrMap as Map;
+        }
+        else {
+          // Second argument is preferences
+          this._updatePreferences(preferencesOrMap as BasemapPreferences);
+          if (map !== undefined) mapObject = map;
+        }
+      }
+    }
+    else {
+      // If it's preferences, update them
+      this._updatePreferences(styleIdOrPreferences);
+      if (map !== undefined) mapObject = map;
+    }
+
+    await this._loadStyle();
+
+    if (mapObject) {
+      mapObject.setStyle(this.style);
+    }
     return this.style;
   }
 
@@ -174,11 +202,66 @@ export class BasemapStyle {
     if (preferences.worldview) this.preferences.worldview = preferences.worldview;
   }
 
-  private get token(): string {
-    return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
+  private async _setSession(map?: Map): Promise<void> {
+    if (!this._session) throw new Error('No session was provided to the constructor.');
+    if (!this._session.isStarted) {
+      await this._session.initialize();
+    }
+
+    this.authentication = this._session.token;
+
+    this._session.on('BasemapSessionRefreshed', (sessionData) => {
+      const oldToken = sessionData.previous.token;
+      const newToken = sessionData.current.token;
+      this.authentication = newToken; // update the class with the new token
+      this._updateTiles(oldToken, newToken, map); // update the map with the new token
+    });
   }
 
-  async loadStyle(): Promise<void> {
+  private _updateTiles(fromToken: string, toToken: string, map?: Map): void {
+    if (map) this._map = map;
+
+    if (!this._map) throw new Error('Unable to update map tiles with new session token: Session does not have access to the map.');
+
+    // replace token in the styles tiles with the new session token
+    for (const sourceCaches of Object.keys(this._map.style.sourceCaches)) {
+      const source: VectorTileSource = this._map.getSource(sourceCaches);
+      // skip if we can't find the source or the source doesn't have tiles
+      if (!source || !source.tiles) {
+        return;
+      }
+
+      // Skip if the source doesn't have tiles that include the old token
+      if (!source.tiles.some(tileUrl => tileUrl.includes(fromToken))) {
+        return;
+      }
+
+      const newTiles = source.tiles.map((tile) => {
+        return tile.includes(fromToken) ? tile.replace(fromToken, toToken) : tile;
+      });
+
+      source.setTiles(newTiles);
+    }
+
+    // replace the token in the glyph url, ensuring fonts continue loading
+    const glyphs = this._map.getGlyphs();
+    if (glyphs.includes(fromToken)) {
+      this._map.setGlyphs(glyphs.replace(fromToken, toToken));
+    }
+
+    const sprites = this._map.getSprite();
+    for (const sprite of sprites) {
+      if (sprite.url.includes(fromToken)) {
+        this._map.setSprite(sprite.url.replace(fromToken, toToken));
+      }
+    }
+  }
+
+  async _loadStyle(): Promise<void> {
+    if (this._session) {
+      await this._setSession();
+    }
+    // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
     const style = await (request(styleUrl, {
       authentication: this.authentication,
@@ -192,16 +275,6 @@ export class BasemapStyle {
     // Handle glyphs
     style.glyphs = `${style.glyphs}?token=${this.token}`;
 
-    // Handle sprite
-    if (Array.isArray(style.sprite)) {
-      style.sprite.forEach((sprite, id, spriteArray) => {
-        spriteArray[id].url = `${sprite.url}?token=${this.token}`;
-      });
-    }
-    else {
-      style.sprite = `${style.sprite}?token=${this.token}`;
-    }
-
     // Handle sources
     Object.keys(style.sources).forEach((sourceId) => {
       const source = style.sources[sourceId];
@@ -212,6 +285,18 @@ export class BasemapStyle {
         }
       }
     });
+
+    if (!this._session) {
+      // Handle sprite
+      if (Array.isArray(style.sprite)) {
+        style.sprite.forEach((sprite, id, spriteArray) => {
+          spriteArray[id].url = `${sprite.url}?token=${this.token}`;
+        });
+      }
+      else {
+        style.sprite = `${style.sprite}?token=${this.token}`;
+      }
+    }
 
     this.style = style;
     return;
@@ -227,11 +312,17 @@ export class BasemapStyle {
     return new BasemapStyle(style, options).styleUrl;
   }
 
-  static async createBasemapStyle(styleId: string, options: IBasemapStyleOptions): Promise<BasemapStyle> {
-    const style = new BasemapStyle(styleId, options);
-    await style.loadStyle();
+  /**
+   * Factory method that creates a BasemapStyle and loads style JSON
+   * @param style - The basemap style enumeration to load
+   * @param options - Additional parameters including authentication
+   * @returns BasemapStyle object
+   */
+  static async createBasemapStyle(style: string, options: IBasemapStyleOptions): Promise<BasemapStyle> {
+    const basemapStyle = new BasemapStyle(style, options);
+    await basemapStyle._loadStyle();
 
-    return style;
+    return basemapStyle;
   }
 
   /**
