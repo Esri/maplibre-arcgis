@@ -195,7 +195,6 @@ export class BasemapStyle {
     this.authentication = this._session.token;
 
     this._session.on('BasemapSessionRefreshed', (sessionData) => {
-      console.debug('Style refresh...');
       const oldToken = sessionData.previous.token;
       const newToken = sessionData.current.token;
       this.authentication = newToken; // update the class with the new token
@@ -204,8 +203,6 @@ export class BasemapStyle {
   }
 
   private _updateTiles(fromToken: string, toToken: string, map?: Map): void {
-    console.log('Updating map tiles with new token...');
-
     if (map) this._map = map;
 
     if (!this._map) throw new Error('Unable to update map tiles with new session token: Session does not have access to the map.');

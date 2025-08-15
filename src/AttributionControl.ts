@@ -12,7 +12,7 @@ interface AttributionControlOptions {
 const esriAttributionString = 'Powered by <a href="https://www.esri.com/">Esri</a>';
 const maplibreAttributionString = '<a href="https://maplibre.org/">MapLibre</a>';
 
-export const EsriAttribution = {
+export const EsriAttribution: MaplibreAttributionControlOptions = {
   customAttribution: `${maplibreAttributionString} | ${esriAttributionString}`,
   compact: true,
 };

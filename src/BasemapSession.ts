@@ -2,6 +2,7 @@ import {
   BasemapStyleSession as ArcgisRestBasemapStyleSession,
   type StyleFamily, type IStartSessionParams,
 } from '@esri/arcgis-rest-basemap-sessions';
+import { ApiKeyManager } from '@esri/arcgis-rest-request';
 
 import mitt, { type Emitter } from 'mitt';
 
@@ -127,7 +128,7 @@ export class BasemapSession {
     }
 
     const sessionParams: IStartSessionParams = {
-      authentication: this._parentToken,
+      authentication: ApiKeyManager.fromKey(this._parentToken),
       autoRefresh: this.autoRefresh,
       duration: this._options.duration,
       safetyMargin: this._options.safetyMargin,
@@ -165,29 +166,16 @@ export class BasemapSession {
   }
 
   private expiredHandler = (e: SessionResponse): void => {
-    // console.debug(`Session expired ${e.token}`);
     this._emitter.emit('BasemapSessionExpired', e);
   };
 
   private refreshedHandler = (e: SessionRefreshedData): void => {
-    // console.debug('Session event handler refreshed');
     this._emitter.emit('BasemapSessionRefreshed', e);
   };
 
   private errorHandler = (e: Error): void => {
-    console.error('Basemap session event handler error');
     this._emitter.emit('BasemapSessionError', e);
   };
-
-  dispose(): void {
-    if (this._session) {
-      this._session.off('expired', this.expiredHandler);
-      this._session.off('refreshed', this.refreshedHandler);
-      this._session.off('error', this.errorHandler);
-    }
-    this._emitter.all.clear();
-    this._session = undefined;
-  }
 
   /**
    * Registers an event handler
