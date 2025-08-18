@@ -1,8 +1,9 @@
-import type { Map, AttributionControl as MapLibreAttributionControl, AttributionControlOptions, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource, IControl } from 'maplibre-gl';
+import type { Map, AttributionControl as MapLibreAttributionControl, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource, IControl } from 'maplibre-gl';
 import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import type BasemapStyleSession from './BasemapSession';
-import { AttributionControl as EsriAttributionControl, EsriAttribution } from './AttributionControl';
+import { AttributionControl as EsriAttributionControl } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
+import mitt, { type Emitter } from 'mitt';
 
 type BasemapSelfResponse = {
   customStylesUrl: string;
@@ -38,27 +39,75 @@ type BasemapStyleObject = {
   baseUrl?: string;
 };
 
-type IBasemapStyleOptions = {
-  style: StyleEnum;
-  map: Map;
+type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
+
+interface IBasemapStyleOptions {
+  /**
+   * A basemap style enumeration or item ID.
+   */
+  style: string;
   token?: string;
   session?: BasemapStyleSession;
   authentication?: string | RestJSAuthenticationManager;
-  language?: string;
-  worldview?: string;
-  places?: PlacesOptions;
-  setStyleOptions?: StyleOptions & StyleSwapOptions;
   /**
-   * @internal
+   * Customize the language of the basemap.
+   */
+  language?: string;
+  /**
+   * Customize the political worldview of the basemap.
+   */
+  worldview?: string;
+  /**
+   * Enable or disable basemap places.
+   */
+  places?: PlacesOptions;
+  /**
+   * The maplibre-gl map to apply the basemap style to.
+   */
+  map?: Map;
+  /**
+   * Passthrough options for maplibre-gl map.setStyle()
+   */
+  maplibreStyleOptions?: MaplibreStyleOptions;
+  /**
+   * @internal For setting the service url to QA, devext, etc.
    */
   baseUrl?: string;
   // transformStyle?:TransformStyleFunction;
 };
+interface UpdateStyleOptions {
+  /**
+   * A basemap style enumeration or item ID.
+   */
+  style?: string;
+  /**
+   * Customize the language of the basemap.
+   */
+  language?: string;
+  /**
+   * Customize the political worldview of the basemap.
+   */
+  worldview?: string;
+  /**
+   * Enable or disable basemap places.
+   */
+  places?: PlacesOptions;
+  /**
+   * Passthrough options for maplibre-gl map.setStyle()
+   */
+  maplibreStyleOptions?: MaplibreStyleOptions;
+}
 
 type BasemapPreferences = {
   places?: PlacesOptions;
   worldview?: string;
   language?: string;
+};
+
+type BasemapStyleEventMap = {
+  BasemapStyleLoad: StyleSpecification;
+  BasemapAttributionLoad: EsriAttributionControl;
+  BasemapStyleError: Error;
 };
 
 const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
@@ -68,16 +117,17 @@ export class BasemapStyle {
   // Type declarations
   style: StyleSpecification;
   styleId: string;
-  attributionControl: AttributionControlOptions;
+  attributionControl: EsriAttributionControl;
   authentication: string | RestJSAuthenticationManager;
-  _session: BasemapStyleSession;
   preferences: BasemapPreferences;
   options: IBasemapStyleOptions;
-  setStyleOptions?: StyleOptions & StyleSwapOptions;
-  private _isItemId: boolean;
   // private _transformStyleFn?:TransformStyleFunction;
+  maplibreStyleOptions?: MaplibreStyleOptions;
+  private _isItemId: boolean;
+  private _session: BasemapStyleSession;
   private _map?: Map;
   private _baseUrl: string;
+  private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
 
   /**
    *
@@ -99,14 +149,13 @@ export class BasemapStyle {
     this.styleId = options.style;
     this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
     this._isItemId = checkItemId(this.styleId) == 'ItemId' ? true : false;
+    if (options.maplibreStyleOptions) this.maplibreStyleOptions = options.maplibreStyleOptions;
 
     this._updatePreferences({
       language: options?.language,
       worldview: options?.worldview,
       places: options?.places,
     });
-
-    this.attributionControl = EsriAttribution;
   }
 
   get styleUrl(): string {
@@ -131,34 +180,42 @@ export class BasemapStyle {
     return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
   }
 
+  /**
+   * Associates the BasemapStyle with a maplibre-gl map.
+   * @param map - A maplibre-gl map.
+   * @returns The BasemapStyle object.
+   */
   setMap(map: Map): BasemapStyle {
     this._map = map;
     return this;
   }
 
-  applyToMap(): Map {
-    if (!this._map) throw new Error('Unable to apply style: Basemap style was not initialized with a \'Map\' object.');
+  /**
+   * Applies the basemap style to a maplibre-gl map.
+   * @param map - A maplibre-gl map. The map may either be passed here or in the constructor.
+   * @param maplibreStyleOptions - Optional style object for maplibre-gl, including the `transformStyle` function.
+   * @returns - The maplibre-gl map that the style was applied to.
+   */
+  applyToMap(map?: Map, maplibreStyleOptions?: MaplibreStyleOptions): Map {
+    if (map) this._map = map;
+    if (!this._map) throw new Error('Unable to apply basemap style: No \'Map\' object was provided.');
 
-    this._map.setStyle(this.style, this.setStyleOptions);
+    if (maplibreStyleOptions) this.maplibreStyleOptions = maplibreStyleOptions;
+    this._map.setStyle(this.style, this.maplibreStyleOptions);
     this._setEsriAttribution();
 
     return this._map;
   }
 
-  async updateStyle(styleId: string, preferences?: BasemapPreferences);
-  async updateStyle(preferences: BasemapPreferences);
-  async updateStyle(styleIdOrPreferences: string | BasemapPreferences, preferences?: BasemapPreferences): Promise<StyleSpecification> {
-    if (typeof styleIdOrPreferences === 'string') {
-      // If it's a style ID or enum, change the style
-      this.styleId = styleIdOrPreferences;
+  /**
+   * Updates the basemap style with new options and applies it to the current map.
+   * @param options - Options to customize the style enumeration and preferences such as language.
+   */
+  async updateStyle(options: UpdateStyleOptions): Promise<StyleSpecification> {
+    if (options.style) this.styleId = options.style;
 
-      if (preferences !== undefined) {
-        this._updatePreferences(preferences);
-      }
-    }
-    else {
-      // If it's preferences, update them
-      this._updatePreferences(styleIdOrPreferences);
+    if (options.worldview || options.places || options.language) {
+      this._updatePreferences(options);
     }
 
     await this.loadStyle();
@@ -167,10 +224,10 @@ export class BasemapStyle {
     return this.style;
   }
 
-  private _setEsriAttribution(map?: Map) {
+  private _setEsriAttribution(map?: Map): void {
     if (map) this._map = map;
     if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
-
+    this.attributionControl = new EsriAttributionControl();
     if (this._map._controls.length > 0) {
       this._map._controls.forEach((control: IControl) => {
         if ((control as MapLibreAttributionControl).options?.customAttribution !== undefined) {
@@ -180,6 +237,7 @@ export class BasemapStyle {
       });
       this._map.addControl(new EsriAttributionControl());
     }
+    this._attributionLoadHandler(this.attributionControl);
   }
 
   private _updatePreferences(preferences: BasemapPreferences) {
@@ -252,7 +310,11 @@ export class BasemapStyle {
     }
   }
 
-  async loadStyle(): Promise<BasemapStyle> {
+  /**
+   * Loads the basemap style from the basemap styles service.
+   * @returns The maplibre style specification of the basemap style, formatted properly.
+   */
+  async loadStyle(): Promise<StyleSpecification> {
     if (this._session) {
       await this._setSession();
     }
@@ -266,7 +328,11 @@ export class BasemapStyle {
         ...this.preferences,
         echoToken: false,
       },
-    }) as Promise<StyleSpecification>);
+    }) as Promise<StyleSpecification>)
+      .catch((e: Error) => {
+        this._styleErrorHandler(e);
+        throw e;
+      });
 
     // Handle glyphs
     style.glyphs = `${style.glyphs}?token=${this.token}`;
@@ -295,7 +361,38 @@ export class BasemapStyle {
     }
 
     this.style = style;
-    return this;
+    this._styleLoadHandler(this.style);
+    return this.style;
+  }
+
+  private _styleLoadHandler = (e: StyleSpecification): void => {
+    this._emitter.emit('BasemapStyleLoad', e);
+  };
+
+  private _styleErrorHandler = (e: Error): void => {
+    this._emitter.emit('BasemapStyleError', e);
+  };
+
+  private _attributionLoadHandler = (e: EsriAttributionControl): void => {
+    this._emitter.emit('BasemapAttributionLoad', e);
+  };
+
+  /**
+   * Registers an event handler
+   * @param eventName - A basemap style event
+   * @param handler - Custom handler function
+   */
+  on<K extends keyof BasemapStyleEventMap>(eventName: K, handler: (data: BasemapStyleEventMap[K]) => void): void {
+    this._emitter.on(eventName, handler);
+  }
+
+  /**
+   * Deregisters an event handler
+   * @param eventName - A basemap style event
+   * @param handler - Custom handler function
+   */
+  off<K extends keyof BasemapStyleEventMap>(eventName: K, handler: (data: BasemapStyleEventMap[K]) => void): void {
+    this._emitter.off(eventName, handler);
   }
 
   /**
@@ -320,7 +417,7 @@ export class BasemapStyle {
 
     const basemapStyle = new BasemapStyle(options);
 
-    basemapStyle.loadStyle().then((basemapStyle) => {
+    basemapStyle.loadStyle().then((_) => {
       basemapStyle.applyToMap();
     }).catch((e) => { throw e; });
 
