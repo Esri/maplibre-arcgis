@@ -1,7 +1,7 @@
 import type { Map, AttributionControl as MapLibreAttributionControl, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource, IControl } from 'maplibre-gl';
 import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import type BasemapStyleSession from './BasemapSession';
-import { AttributionControl as EsriAttributionControl } from './AttributionControl';
+import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 import mitt, { type Emitter } from 'mitt';
 
@@ -70,10 +70,13 @@ interface IBasemapStyleOptions {
    */
   maplibreStyleOptions?: MaplibreStyleOptions;
   /**
+   * Options for customizing the maplibre-gl attribution control.
+   */
+  attributionControl?: EsriAttributionControlOptions;
+  /**
    * @internal For setting the service url to QA, devext, etc.
    */
   baseUrl?: string;
-  // transformStyle?:TransformStyleFunction;
 };
 interface UpdateStyleOptions {
   /**
@@ -123,6 +126,7 @@ export class BasemapStyle {
   options: IBasemapStyleOptions;
   // private _transformStyleFn?:TransformStyleFunction;
   maplibreStyleOptions?: MaplibreStyleOptions;
+  private _attributionControlOptions: EsriAttributionControlOptions;
   private _isItemId: boolean;
   private _session: BasemapStyleSession;
   private _map?: Map;
@@ -150,6 +154,7 @@ export class BasemapStyle {
     this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
     this._isItemId = checkItemId(this.styleId) == 'ItemId' ? true : false;
     if (options.maplibreStyleOptions) this.maplibreStyleOptions = options.maplibreStyleOptions;
+    if (options.attributionControl) this._attributionControlOptions = options.attributionControl;
 
     this._updatePreferences({
       language: options?.language,
@@ -228,16 +233,25 @@ export class BasemapStyle {
     if (map) this._map = map;
     if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
     this.attributionControl = new EsriAttributionControl();
+    let hasAttribution = false;
     if (this._map._controls.length > 0) {
       this._map._controls.forEach((control: IControl) => {
         if ((control as MapLibreAttributionControl).options?.customAttribution !== undefined) {
-          // squash maplibre attribution control
-          this._map.removeControl(control);
+          hasAttribution = true;
+          // Throw error on default attribution
+          if ((control as MapLibreAttributionControl).options.customAttribution === '<a href="https://maplibre.org/" target="_blank">MapLibre</a>') {
+            throw new Error('This maplibre-gl map is using the default attribution control. To enable automatic Esri attribution, please disable the default attribution by setting \'attributionControl: false\' on your map');
+          }
+          else {
+            console.error('Your map\'s custom attribution is not configured properly. Please refer to the documentation for custom attribution with Esri: '); // TODO api reference link here
+          }
         }
       });
-      this._map.addControl(new EsriAttributionControl());
     }
-    this._attributionLoadHandler(this.attributionControl);
+    if (!hasAttribution) {
+      this._map.addControl(new EsriAttributionControl(this._attributionControlOptions));
+      this._attributionLoadHandler(this.attributionControl);
+    }
   }
 
   private _updatePreferences(preferences: BasemapPreferences) {

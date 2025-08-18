@@ -4,7 +4,8 @@ import {
   type Map,
 } from 'maplibre-gl';
 
-interface AttributionControlOptions {
+export interface AttributionControlOptions {
+  customAttribution?: string | Array<string>;
   compact?: boolean;
   closed?: boolean;
 }
@@ -25,11 +26,30 @@ export class AttributionControl extends MaplibreAttributionControl {
     // Incompatible options - 'closed' overrides 'compact'
     if ((!options?.compact) && options?.closed) options.compact = true;
 
+    const esriAttributions: Array<string> = [
+      maplibreAttributionString,
+      esriAttributionString,
+    ];
+
+    if (options.customAttribution) {
+      // Append user-provided custom attribution
+      if (Array.isArray(options.customAttribution)) {
+        esriAttributions.concat(
+          options.customAttribution.map((attribution) => {
+            if (typeof attribution !== 'string') return '';
+            return attribution;
+          })
+        );
+      }
+      else if (typeof options.customAttribution === 'string') {
+        esriAttributions.push(options.customAttribution);
+      }
+    }
+
     const attributionOptions = {
       compact: (options?.compact !== undefined) ? options.compact : true,
-      customAttribution: `${maplibreAttributionString} | ${esriAttributionString}`,
+      customAttribution: esriAttributions.join(' | '),
     };
-
     super(attributionOptions);
 
     this.attributionOptions = attributionOptions;
