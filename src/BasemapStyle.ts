@@ -182,6 +182,7 @@ export class BasemapStyle {
   }
 
   private get token(): string {
+    if (!this.authentication) return undefined;
     return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
   }
 
@@ -236,10 +237,11 @@ export class BasemapStyle {
     let hasAttribution = false;
     if (this._map._controls.length > 0) {
       this._map._controls.forEach((control: IControl) => {
-        if ((control as MapLibreAttributionControl).options?.customAttribution !== undefined) {
+        if ('_toggleAttribution' in control) {
           hasAttribution = true;
           // Throw error on default attribution
-          if ((control as MapLibreAttributionControl).options.customAttribution === '<a href="https://maplibre.org/" target="_blank">MapLibre</a>') {
+          const defaultAttributionString = '<a href="https://maplibre.org/" target="_blank">MapLibre</a>';
+          if ((control as MapLibreAttributionControl).options.customAttribution === defaultAttributionString) {
             throw new Error('This maplibre-gl map is using the default attribution control. To enable automatic Esri attribution, please disable the default attribution by setting \'attributionControl: false\' on your map');
           }
           else {

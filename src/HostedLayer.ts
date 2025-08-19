@@ -4,7 +4,7 @@ import type { RestJSAuthenticationManager } from './Util';
 
 type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpecification;
 
-export type HostedLayerOptions = {
+export interface HostedLayerOptions {
   token?: string; // Access token as a string
   authentication?: RestJSAuthenticationManager | string; // Authentication as a REST JS object or access token string
   portalUrl?: string;
@@ -43,6 +43,7 @@ export abstract class HostedLayer {
   authentication?: RestJSAuthenticationManager | string;
 
   protected get token(): string {
+    if (!this.authentication) return undefined;
     return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
   }
 

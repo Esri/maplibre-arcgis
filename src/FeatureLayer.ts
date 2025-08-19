@@ -3,13 +3,14 @@ import { HostedLayer } from './HostedLayer';
 import type { HostedLayerOptions } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, warn } from './Util';
 import {
-  queryFeatures, getLayer, getService,
-  type IQueryFeaturesResponse,
+  getLayer, getService,
   type ILayerDefinition,
   type IGeometry,
   type GeometryType,
   type ISpatialReference,
   type SpatialRelationship,
+  queryAllFeatures,
+  type IQueryAllFeaturesResponse,
 } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
 import { type IParams } from '@esri/arcgis-rest-request';
@@ -52,6 +53,12 @@ interface GeoJSONLayerOptions extends HostedLayerOptions {
   url?: string;
   query?: QueryOptions;
 }
+
+type EsriGeoJSON = GeoJSON.GeoJSON & {
+  properties: {
+    exceededTransferLimit: boolean;
+  };
+};
 
 interface QueryOptions {
   gdbVersion?: string;
@@ -130,43 +137,23 @@ export class FeatureLayer extends HostedLayer {
     if (!layerInfo.capabilities.includes('Query')) throw new Error('Feature service does not support queries.');
     if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('Feature service does not support pagination in queries');
 
-    let layerData: GeoJSON.GeoJSON;
+    let layerData: EsriGeoJSON;
     if (layerInfo.supportsExceedsLimitStatistics) {
-      const exceedsLimitsResponse = await queryFeatures({
-        authentication: this.authentication,
-        url: layerUrl,
-        outFields: [layerInfo.objectIdField],
-        ...this.query,
-        outStatistics: [
-          {
-            maxPointCount: 2000,
-            maxRecordCount: 2000,
-            maxVertexCount: 250000,
-            outStatisticFieldName: 'exceedslimit',
-            // @ts-expect-error The "exceedslimit" statistic type has not yet been addeed to the REST API
-            statisticType: 'exceedslimit',
-          },
-        ],
-        returnGeometry: false,
-        spatialRel: 'esriSpatialRelIntersects', // no idea if this is neccessary
-        outSr: 102100, // no idea if this is neccessary
-        params: {
-          cacheHint: true, // I have no idea what this does
-        },
-      }) as IQueryFeaturesResponse;
-
-      if (exceedsLimitsResponse.features[0].attributes.exceedslimit === 0) {
-        // TODO paginate once nextPage is supported by REST JS
-        layerData = await queryFeatures({
-          authentication: this.authentication,
+      try {
+        layerData = await queryAllFeatures({
           url: layerUrl,
-          f: 'geojson',
+          authentication: this.token ? this.token : undefined,
           ...this.query,
-        }) as GeoJSON.GeoJSON;
+          returnExceededLimitFeatures: true,
+          f: 'geojson',
+        }) as unknown as EsriGeoJSON;
       }
-      else {
-        // TODO what do we actually do when the limit is exceeded?
-        throw new Error('Feature count exceeds the limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript.');
+      catch (e) {
+        console.error(e);
+      }
+
+      if (layerData.properties.exceededTransferLimit) {
+        console.error('This feature query exceeds the transfer limit supported by the plugin. Only the first 2000 features will be loaded.');
       }
     }
     else {
