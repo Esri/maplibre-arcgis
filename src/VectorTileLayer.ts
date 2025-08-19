@@ -1,9 +1,9 @@
-import type { LayerSpecification, VectorSourceSpecification, StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
-import { checkServiceUrlType, checkItemId, toCdnUrl, isRelativePath, parseRelativeUrl, warn, type ItemId, cleanUrl } from './Util';
-import { HostedLayer } from './HostedLayer';
-import type { DataServiceInfo, ItemInfo, HostedLayerOptions } from './HostedLayer';
+import { getItem, getItemResource, getItemResources } from '@esri/arcgis-rest-portal';
 import { request } from '@esri/arcgis-rest-request';
-import { getItem, getItemResources, getItemResource } from '@esri/arcgis-rest-portal';
+import type { LayerSpecification, StyleSpecification, VectorSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
+import type { DataServiceInfo, HostedLayerOptions, ItemInfo } from './HostedLayer';
+import { HostedLayer } from './HostedLayer';
+import { checkItemId, checkServiceUrlType, cleanUrl, isRelativePath, parseRelativeUrl, toCdnUrl, warn, type ItemId } from './Util';
 
 interface IVectorTileServiceDefinition {
   tiles: string[];
@@ -21,6 +21,11 @@ interface VectorTileServiceInfo extends DataServiceInfo {
   tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
 
+/**
+ * Class representing a vector tile layer for MapLibre GL JS.
+ * This class allows you to load and display [ArcGIS vector tile services](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/vector-tile-services/introduction/) as vector tile sources in MapLibre.
+ * It supports both item IDs from ArcGIS Online and vector tile service URLs.
+ */
 export class VectorTileLayer extends HostedLayer {
   declare protected _serviceInfo: VectorTileServiceInfo;
   declare protected _itemInfo: ItemInfo;
@@ -35,6 +40,16 @@ export class VectorTileLayer extends HostedLayer {
 
   style: StyleSpecification;
 
+  /**
+   *
+   * @param options Options for initializing the vector tile layer.
+   * @param options.itemId ArcGIS item ID for the vector tile service.
+   * @param options.url URL of the vector tile service.
+   * @param options.authentication Authentication manager or access token.
+   * @param options.portalUrl Portal URL for the ArcGIS item.
+   * @param options.attribution Custom attribution text for the layer.
+   * @throws Error if neither `itemId` nor `url` is provided, or if the provided `itemId` or `url` is invalid.
+   */
   constructor(options: VectorTileLayerOptions) {
     super();
     this._ready = false;

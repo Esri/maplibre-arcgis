@@ -1,9 +1,9 @@
+import { request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
-import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
-import type BasemapStyleSession from './BasemapSession';
-import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
-import { checkItemId, type RestJSAuthenticationManager } from './Util';
 import mitt, { type Emitter } from 'mitt';
+import { AttributionControl as EsriAttributionControl } from './AttributionControl';
+import type BasemapStyleSession from './BasemapSession';
+import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
 type BasemapSelfResponse = {
   customStylesUrl: string;
@@ -116,7 +116,10 @@ type BasemapStyleEventMap = {
 const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 // const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 
-export class BasemapStyle {
+/**
+ * Class representing a basemap style for MapLibre GL JS.
+ * This class allows you to load and apply [ArcGIS basemap styles](https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/introduction-basemap-styles-service/) to a MapLibre map.
+ */export class BasemapStyle {
   // Type declarations
   style: StyleSpecification;
   styleId: string;
@@ -134,9 +137,10 @@ export class BasemapStyle {
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
 
   /**
-   *
-   * @param style - The basemap style enumeration
-   * @param options - Additional options, including access token and style preferences
+   * Constructor for the BasemapStyle class.
+   * Initializes the basemap style with the provided style ID and options.
+   * @param styleId The ID or path of the basemap style to load.
+   * @param options
    */
   constructor(options: IBasemapStyleOptions) {
     if (!options || !options.style) throw new Error('BasemapStyle must be initialized with a style enumeration, such as \'arcgis/streets\' or \'arcgis/outdoor\'.');
@@ -425,8 +429,14 @@ export class BasemapStyle {
   }
 
   /**
-   * Makes a \'/self\' request to the basemap styles service endpoint
-   * @param token - An ArcGIS access token
+   * Static method that retrieves the current basemap styles available from the ArcGIS Basemap Styles service.
+   * @param options - Options for retrieving the basemap styles, including authentication and base URL.
+   * @returns A promise that resolves to a BasemapSelfResponse object containing the available styles and their metadata.
+   *
+   * ```javascript
+   * import { BasemapStyle } from '@esri/maplibre-arcgis';
+   * const styleResponse = await BasemapStyle.getSelf()
+   * ```
    */
   static async getSelf(options: { token?: string; baseUrl?: string }): Promise<BasemapSelfResponse> {
     const basemapServiceUrl = options?.baseUrl ? options.baseUrl : DEFAULT_BASE_URL;

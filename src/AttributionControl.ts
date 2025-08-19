@@ -1,8 +1,7 @@
 import {
   AttributionControl as MaplibreAttributionControl,
-  type AttributionControlOptions as MaplibreAttributionControlOptions,
   type Map,
-  type IControl,
+  type AttributionControlOptions as MaplibreAttributionControlOptions,
 } from 'maplibre-gl';
 
 export interface AttributionControlOptions {
@@ -20,6 +19,20 @@ export const EsriAttribution: MaplibreAttributionControlOptions = {
   compact: true,
 };
 
+/**
+ * Custom attribution control for MapLibre GL JS that includes Esri attribution.
+ * This control can be configured to be compact and closed by default.
+ * It extends the Maplibre attribution control to include custom attribution text.
+ * The `closed` option allows the control to be initialized in a closed state.
+ * The `compact` option determines whether the attribution is displayed in a compact format.
+ * The `customAttribution` option allows for additional attribution text to be included.
+ * The control can be added to a MapLibre map using the `addControl` method.
+ * The `onAdd` method is overridden to handle the addition of the control to the map.
+ * If the `closed` option is set to true, the control will not display the attribution
+ * when the map is first loaded, but it can be toggled open by the user.
+ * The `esriAttribution` static property provides a default attribution configuration
+ * that can be used when creating new instances of the control.
+ */
 export class AttributionControl extends MaplibreAttributionControl {
   _closed?: boolean;
   attributionOptions: MaplibreAttributionControlOptions;

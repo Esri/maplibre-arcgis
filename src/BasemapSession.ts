@@ -1,6 +1,7 @@
 import {
   BasemapStyleSession as ArcgisRestBasemapStyleSession,
-  type StyleFamily, type IStartSessionParams,
+  type IStartSessionParams,
+  type StyleFamily,
 } from '@esri/arcgis-rest-basemap-sessions';
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
 
@@ -49,7 +50,12 @@ type BasemapSessionEventMap = {
 };
 
 /**
- * Manages basemap style sessions with automatic refresh and event handling
+ * Class representing a session for ArcGIS Basemap Styles.
+ * This class manages the lifecycle of a basemap style session, including authentication and auto-refresh functionality.
+ * It provides methods to start, refresh, and handle events related to the session.
+ * The session can be used to apply basemap styles to MapLibre maps.
+ *
+ * Go to [Basemap Session](https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/introduction-basemap-styles-service/) for more information.
  */
 export class BasemapSession {
   private _session?: ArcgisRestBasemapStyleSession;

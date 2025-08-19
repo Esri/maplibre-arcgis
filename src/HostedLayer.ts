@@ -36,6 +36,12 @@ const throwReadOnlyError = (propertyName: string) => {
   throw new Error(`${propertyName} is a read-only property.`);
 };
 
+/**
+ * Abstract class representing a [hosted layer](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/types-of-data-services/) for MapLibre GL JS.
+ * This class provides a common interface for layers that are hosted on ArcGIS, such as feature layers, tile layers, and basemap styles.
+ * It includes methods for managing authentication, sources, layers, and adding them to a MapLibre map.
+ * Subclasses must implement the `initialize` method to load data from ArcGIS.
+ */
 export abstract class HostedLayer {
   /**
    * An ArcGIS access token is required for accessing secure data layers. To get a token, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.
