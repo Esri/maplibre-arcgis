@@ -1,3 +1,4 @@
+import { getItem, getItemResource, getItemResources } from '@esri/arcgis-rest-portal';
 import { request } from '@esri/arcgis-rest-request';
 import type { LayerSpecification, StyleSpecification, VectorSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { DataServiceInfo, HostedLayerOptions, ItemInfo } from './HostedLayer';

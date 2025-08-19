@@ -1,4 +1,4 @@
-import { AttributionControl as MaplibreAttributionControl, type AttributionControlOptions as MaplibreAttributionControlOptions, type Map, type IControl } from 'maplibre-gl';
+import { AttributionControl as MaplibreAttributionControl, type IControl, type Map, type AttributionControlOptions as MaplibreAttributionControlOptions } from 'maplibre-gl';
 
 /**
  * Supported options for the attribution control.

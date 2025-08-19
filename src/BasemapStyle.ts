@@ -1,7 +1,7 @@
-import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
+import { request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
-import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
-import type BasemapSession from './BasemapSession';
+import mitt, { type Emitter } from 'mitt';
+import { AttributionControl as EsriAttributionControl } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
 /**
@@ -136,11 +136,8 @@ export interface IBasemapPreferences {
 /**
  * Class representing a basemap style for MapLibre GL JS.
  * This class allows you to load and apply [ArcGIS basemap styles](https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/introduction-basemap-styles-service/) to a MapLibre map.
- */
-export class BasemapStyle {
-  /**
-   * The basemap style, formatted as MapLibre style specification JSON.
-   */
+ */export class BasemapStyle {
+  // Type declarations
   style: StyleSpecification;
   /**
    * The ID of the saved style.
@@ -174,8 +171,10 @@ export class BasemapStyle {
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
 
   /**
-   * Initializes a new instance of the BasemapStyle class.
-   * @param options - The options for the BasemapStyle instance.
+   * Constructor for the BasemapStyle class.
+   * Initializes the basemap style with the provided style ID and options.
+   * @param styleId The ID or path of the basemap style to load.
+   * @param options
    */
   constructor(options: IBasemapStyleOptions) {
     if (!options || !options.style) throw new Error('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');

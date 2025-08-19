@@ -1,5 +1,12 @@
-import type { GeometryType, IGeometry, ILayerDefinition, IQueryResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
-import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arcgis-rest-feature-service';
+import {
+  getLayer, getService,
+  queryAllFeatures,
+  type GeometryType,
+  type IGeometry,
+  type ILayerDefinition,
+  type ISpatialReference,
+  type SpatialRelationship,
+} from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
 import { type IParams } from '@esri/arcgis-rest-request';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';

@@ -69,50 +69,12 @@ export type BasemapSessionEventMap = {
 const DEFAULT_START_BASEMAP_STYLE_SESSION_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start';
 const DEV_STYLE_SESSION_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start';
 /**
- * Manages the creation and lifecycle of a basemap session for use with {@link BasemapStyle}.
+ * Class representing a session for ArcGIS Basemap Styles.
+ * This class manages the lifecycle of a basemap style session, including authentication and auto-refresh functionality.
+ * It provides methods to start, refresh, and handle events related to the session.
+ * The session can be used to apply basemap styles to MapLibre maps.
  *
- * An [access token](https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions. The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
- *
- * The `BasemapSession` class provides:
- * - Session token management with auto-refresh capabilities
- * - Event handling for session lifecycle (refresh, expiration, errors)
- * - Integration with ArcGIS Basemap Styles Service
- *
- *
- *
- * More info here to describe the overview of the class and its functionality.
- *
- * @remarks
- *
- * @example
- * ```javascript
- * // Create and start a session
- * const basemapSession = await BasemapSession.start({
- *   token: "your-arcgis-token",
- *   styleFamily: "arcgis",
- *   duration: 3600,
- *   autoRefresh: true
- * });
- *
- * // Listen for session events
- * basemapSession.on("BasemapSessionRefreshed", (e) => {
- *   console.log("Session refreshed", e.current.token);
- * });
- *
- * basemapSession.on("BasemapSessionExpired", (e) => {
- *   console.log("Session expired", e.token);
- * });
- *
- * basemapSession.on("BasemapSessionError", (e) => {
- *   console.error("Session error", e);
- * });
- * ```
- *
- * @see {@link IBasemapSessionOptions} for configuration options
- * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys} for more information on ArcGIS Authentication.
- * @see {@link https://basemap-sessions-preview.gha.afd.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/basemap-usage-styles/ | Basemap usage} for more information on the session usage models.
- * @see {@link https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/maps/display-a-map-with-a-basemap-session/ | Display a map with a basemap session tutorial}
- *
+ * Go to [Basemap Session](https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/introduction-basemap-styles-service/) for more information.
  */
 export class BasemapSession {
   private _session?: ArcgisRestBasemapStyleSession;
