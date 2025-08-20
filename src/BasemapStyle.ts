@@ -335,7 +335,7 @@ export class BasemapStyle {
       });
 
     // Handle glyphs
-    style.glyphs = `${style.glyphs}?token=${this.token}`;
+    if (style.glyphs) style.glyphs = `${style.glyphs}?token=${this.token}`;
 
     // Handle sources
     Object.keys(style.sources).forEach((sourceId) => {
@@ -348,7 +348,7 @@ export class BasemapStyle {
       }
     });
 
-    if (!this._session) {
+    if (style.sprite && !this._session) {
       // Handle sprite
       if (Array.isArray(style.sprite)) {
         style.sprite.forEach((sprite, id, spriteArray) => {

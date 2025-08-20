@@ -24,17 +24,24 @@
   <script src="../debug/apikey.js"></script>
   <script>
 
+    const styleUrl = maplibreArcGIS.BasemapStyle.url({
+      style: 'arcgis/streets',
+      token: apiKey
+    });
+
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
-      style: maplibreArcGIS.BasemapStyle.url('arcgis/streets', {
-        token: apiKey,
-      }),
+      style: styleUrl,
       zoom: 8, // starting zoom
       center: [-79.805, 34.027], // starting location [longitude, latitude]
       attributionControl: false
     });
 
-    map.addControl(new maplibreArcGIS.AttributionControl({ closed:true }));
+    // Attribution is handled automatically by BasemapStyle.applyStyle. This is usually not necessary
+    map.addControl(new maplibreArcGIS.AttributionControl({
+      customAttribution: "Your custom attribution here.",
+      closed:true
+    }));
 
   </script>
 </body>

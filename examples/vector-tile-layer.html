@@ -31,10 +31,10 @@
       zoom: 13, // starting zoom
       center: [-118.498, 34.014], // starting location [longitude, latitude]
     });
-    const style = new maplibreArcGIS.BasemapStyle('arcgis/light-gray', {
-      token: basemapsKey
+    const basemapStyle = new maplibreArcGIS.BasemapStyle.applyStyle(map, {
+      style: 'arcgis/light-gray',
+      token: apiKey
     });
-    style.applyStyleTo(map);
 
     map.on('load', async () => {
       const vectorLayer = await maplibreArcGIS.VectorTileLayer.fromPortalItem('f0298e881b5b4743bbdf2c7d378acc84');

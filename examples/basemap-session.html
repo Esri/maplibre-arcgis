@@ -23,23 +23,27 @@
   <div id="map"></div>
   <script src="../debug/apikey.js"></script>
   <script type="module">
-
-    const basemapSession = maplibreArcGIS.BasemapSession.start({
-      styleFamily: 'arcgis',
-      token: sessionKey2,
-      duration:30
-    });
-
-    const arcgisBasemap = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
-      session: basemapSession
-    });
-
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
       zoom: 14, // starting zoom
       center: [-117.805, 34.027], // starting location
     });
-    arcgisBasemap.applyStyleTo(map);
+
+    const basemapSession = maplibreArcGIS.BasemapSession.start({
+      styleFamily: 'arcgis',
+      token: sessionKey2,
+      duration:30 // Only valid for 30 seconds, for testing
+    });
+
+    const arcgisBasemap = maplibreArcGIS.BasemapStyle.applyStyle(map, {
+      style: 'arcgis/outdoor',
+      session: basemapSession
+    });
+
+    // Refresh token automatically on expiration
+    basemapSession.on("BasemapSessionExpired", () => {
+      basemapSession.refresh()
+    })
 
 </script>
 </body>

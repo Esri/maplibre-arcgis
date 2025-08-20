@@ -29,9 +29,10 @@
       zoom: 6, // starting zoom
       center: [-120.504, 50.925] // starting location [longitude, latitude]
     });
-    const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
+    const basemapStyle = new maplibreArcGIS.BasemapStyle.applyStyle(map, {
+      style: 'arcgis/outdoor',
       token: apiKey
-    }).applyStyleTo(map);
+    });
 
     map.on('load', async () => {
       // This item contains 4 layers: https://www.arcgis.com/home/item.html?id=44299709cce447ea99014ff1e3bf8505

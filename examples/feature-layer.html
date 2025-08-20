@@ -29,9 +29,10 @@
       zoom: 12, // starting zoom
       center: [-118.805, 34.027] // starting location [longitude, latitude]
     });
-    const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
+    const basemapStyle = new maplibreArcGIS.BasemapStyle.applyStyle(map, {
+      style: 'arcgis/outdoor',
       token: apiKey
-    }).applyStyleTo(map);
+    });
 
     const pointService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
     const lineService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"

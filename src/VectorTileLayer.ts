@@ -1,5 +1,5 @@
 import type { LayerSpecification, VectorSourceSpecification, StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
-import { checkServiceUrlType, checkItemId, toCdnUrl, isRelativePath, parseRelativeUrl, warn, type ItemId, cleanUrl } from './Util';
+import { checkServiceUrlType, checkItemId, toCdnUrl, isRelativePath, parseRelativeUrl, warn, cleanUrl } from './Util';
 import { HostedLayer } from './HostedLayer';
 import type { DataServiceInfo, ItemInfo, HostedLayerOptions } from './HostedLayer';
 import { request } from '@esri/arcgis-rest-request';
@@ -114,7 +114,7 @@ export class VectorTileLayer extends HostedLayer {
       styleInfo = rootStyle;
       // Check for other style resources associated with the item
     }
-    catch (e) {
+    catch {
       const itemResources = await getItemResources(this._itemInfo.itemId, {
         ...params,
       });

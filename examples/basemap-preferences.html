@@ -30,16 +30,16 @@
       center: [-117.805, 34.027], // starting location
     });
 
-    const style = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
+    const basemapStyle = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
       token: apiKey
     });
 
-    style.applyStyleTo(map);
+    basemapStyle.applyStyleTo(map);
 
     // These options are also accepted in the constructor
     map.once("render", () => {
       setTimeout(async () => {
-        const newStyle = await style.changeStyle({
+        const newStyle = await basemapStyle.changeStyle({
           worldview: 'unitedStatesOfAmerica',
         });
 

@@ -146,7 +146,7 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
           basemapSession = await getNewSession(selectedStyleFamily)
           style.setSession(basemapSession)
         }
-        style.updateStyle(selectedItem,map);
+        style.updateStyle(selectedItem);
         updateSessionInfo()
       }
 
@@ -176,16 +176,16 @@ https://developers.arcgis.com/documentation/security-and-authentication/get-star
         autoRefresh: false,
       })
 
-      style = new maplibreArcGIS.BasemapStyle(initialBasemap, {
-        session: basemapSession,
-      })
-
       const map = new maplibregl.Map({
         container: "map", // the id of the div element
         zoom: 12, // starting zoom
         center: [-118.805, 34.027], // starting location [longitude, latitude]
+        attributionControl: false
       })
-      style.applyStyleTo(map)
+      style = maplibreArcGIS.BasemapStyle.applyStyle(map,{
+        style: initialBasemap,
+        session: basemapSession,
+      })
 
       /**** Event handlers *****/
       map.on("load", () => {
