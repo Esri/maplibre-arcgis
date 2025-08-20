@@ -1,9 +1,13 @@
-import { request } from '@esri/arcgis-rest-request';
+import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
-import { AttributionControl as EsriAttributionControl } from './AttributionControl';
+import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
+/**
+ * Structure of the self response from the Basemap Styles service.
+ */
+export type BasemapSelfResponse = {
 /**
  * Structure of the self response from the Basemap Styles service.
  */
@@ -22,9 +26,21 @@ export type BasemapSelfResponse = {
  * @internal
  */
 export type CodeNamePair = {
+/**
+ * Structure for key/value pairs.
+ * @internal
+ */
+export type CodeNamePair = {
   code: string;
   name: string;
 };
+/**
+ * Supported options basemap places functionality.
+ */
+export type PlacesOptions = 'all' | 'attributed' | 'none';
+/**
+ * The style family of the basemap. To learn more about style families, see [Types of basemap services for more info](https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/types-of-basemap-services/).
+ */
 
 /**
  * Supported options basemap places functionality.
@@ -38,7 +54,15 @@ export type StyleFamily = 'arcgis' | 'open' | 'osm';
  * String representation a basemap style name. '<StyleFamily>/<StyleName>'
  */
 export type StyleEnum = `${StyleFamily}/${string}`;
+/**
+ * String representation a basemap style name. '<StyleFamily>/<StyleName>'
+ */
+export type StyleEnum = `${StyleFamily}/${string}`;
 
+/**
+ * The structure of a basemap style object returned from the Basemap Styles service.
+ */
+export type BasemapStyleObject = {
 /**
  * The structure of a basemap style object returned from the Basemap Styles service.
  */
@@ -58,6 +82,7 @@ export type BasemapStyleObject = {
   baseUrl?: string;
 };
 
+export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
 /**
  * Options for customizing the MapLibre GL JS style.
  */
@@ -96,7 +121,6 @@ export interface IBasemapStyleOptions {
    */
   baseUrl?: string;
 };
-
 /**
  * Supported options for updating the properties of an existing BasemapStyle object.
  */
@@ -131,7 +155,32 @@ export interface IBasemapPreferences {
    * Enable or disable basemap places.
    */
   places?: PlacesOptions;
+  /**
+   * Passthrough options for maplibre-gl map.setStyle()
+   */
+  maplibreStyleOptions?: MaplibreStyleOptions;
+}
+
+/**
+ * Basemapstyle parameters.
+ */
+export type BasemapPreferences = {
+  places?: PlacesOptions;
+  worldview?: string;
+  language?: string;
 };
+
+/**
+ * Union type representing the different types of events emitted from the BasemapStyle class.
+ */
+export type BasemapStyleEventMap = {
+  BasemapStyleLoad: StyleSpecification;
+  BasemapAttributionLoad: EsriAttributionControl;
+  BasemapStyleError: Error;
+};
+
+const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
+// const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 
 /**
  * Class representing a basemap style for MapLibre GL JS.
@@ -171,10 +220,8 @@ export interface IBasemapPreferences {
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
 
   /**
-   * Constructor for the BasemapStyle class.
-   * Initializes the basemap style with the provided style ID and options.
-   * @param styleId The ID or path of the basemap style to load.
-   * @param options
+   * Initializes a new instance of the BasemapStyle class.
+   * @param options - The options for the BasemapStyle instance.
    */
   constructor(options: IBasemapStyleOptions) {
     if (!options || !options.style) throw new Error('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
@@ -487,6 +534,9 @@ export interface IBasemapPreferences {
   }
 
   /**
+   * Returns the url to a basemap style.
+   * @param options - Style options, including a style ID and authentication.
+   * @returns - A string representing the basemap style URL.
    * Returns the url to a basemap style.
    * @param options - Style options, including a style ID and authentication.
    * @returns - A string representing the basemap style URL.

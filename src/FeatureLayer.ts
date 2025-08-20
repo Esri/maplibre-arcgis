@@ -51,6 +51,10 @@ const defaultLayerPaintMap = {
  * Supported options for instantiating a GeoJSONLayer.
  */
 export interface GeoJSONLayerOptions extends HostedLayerOptions {
+/**
+ * Supported options for instantiating a GeoJSONLayer.
+ */
+export interface GeoJSONLayerOptions extends HostedLayerOptions {
   itemId?: string;
   url?: string;
   query?: QueryOptions;
@@ -58,6 +62,17 @@ export interface GeoJSONLayerOptions extends HostedLayerOptions {
 
 /**
  * Options for querying a feature layer.
+ */
+export interface QueryOptions {
+type EsriGeoJSON = GeoJSON.GeoJSON & {
+  properties: {
+    exceededTransferLimit: boolean;
+  };
+};
+
+/**
+ * Parameters for feature layer query request.
+ * @see https://developers.arcgis.com/rest/services-reference/enterprise/query-feature-service-layer/#request-parameters
  */
 export interface QueryOptions {
   gdbVersion?: string;
