@@ -230,30 +230,12 @@ export class BasemapStyle {
     return this.style;
   }
 
-  private _setEsriAttribution(map?: Map): void {
-    if (map) this._map = map;
+  private _setEsriAttribution(): void {
     if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
-    this.attributionControl = new EsriAttributionControl();
-    let hasAttribution = false;
-    if (this._map._controls.length > 0) {
-      this._map._controls.forEach((control: IControl) => {
-        if ('_toggleAttribution' in control) {
-          hasAttribution = true;
-          // Throw error on default attribution
-          const defaultAttributionString = '<a href="https://maplibre.org/" target="_blank">MapLibre</a>';
-          if ((control as MapLibreAttributionControl).options.customAttribution === defaultAttributionString) {
-            throw new Error('This maplibre-gl map is using the default attribution control. To enable automatic Esri attribution, please disable the default attribution by setting \'attributionControl: false\' on your map');
-          }
-          else {
-            console.error('Your map\'s custom attribution is not configured properly. Please refer to the documentation for custom attribution with Esri: '); // TODO api reference link here
-          }
-        }
-      });
-    }
-    if (!hasAttribution) {
-      this._map.addControl(new EsriAttributionControl(this._attributionControlOptions));
-      this._attributionLoadHandler(this.attributionControl);
-    }
+
+    this.attributionControl = new EsriAttributionControl(this._attributionControlOptions);
+    this._map.addControl(this.attributionControl);
+    this._attributionLoadHandler(this.attributionControl);
   }
 
   private _updatePreferences(preferences: BasemapPreferences) {
