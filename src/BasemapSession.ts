@@ -10,7 +10,7 @@ import mitt, { type Emitter } from 'mitt';
 /**
  * Options for initializing a BasemapStyleSession
  */
-interface IBasemapSessionOptions {
+export interface IBasemapSessionOptions {
   /** Access token for authentication. The token must be from an ArcGIS Location Platform account and have the Basemaps privelege. */
   token?: string;
   /** Duration in seconds for the session. */
@@ -31,19 +31,27 @@ interface IBasemapSessionOptions {
   startTime: Date;
 }
 
-type SessionResponse = {
+/**
+ * Structure of the object returned from the session start request.
+ */
+export type SessionResponse = {
   token: string;
   endTime: Date;
   startTime: Date;
   expires: Date;
 };
-
-type SessionRefreshedData = {
+/**
+ * Structure representing the object returned in the basemap session refreshed event.
+ */
+export type SessionRefreshedData = {
   previous: SessionResponse;
   current: SessionResponse;
 };
 
-type BasemapSessionEventMap = {
+/**
+ * Type representing the different events emitted by the BasemapSession class.
+ */
+export type BasemapSessionEventMap = {
   BasemapSessionRefreshed: SessionRefreshedData;
   BasemapSessionExpired: SessionResponse;
   BasemapSessionError: Error;

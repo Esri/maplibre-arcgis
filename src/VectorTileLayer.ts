@@ -5,18 +5,27 @@ import type { DataServiceInfo, HostedLayerOptions, ItemInfo } from './HostedLaye
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, isRelativePath, parseRelativeUrl, toCdnUrl, warn, type ItemId } from './Util';
 
-interface IVectorTileServiceDefinition {
+/**
+ * Interface representing the definition of a vector tile service.
+ */
+export interface IVectorTileServiceDefinition {
   tiles: string[];
   defaultStyles: string;
   copyrightText: string;
 };
 
-interface VectorTileLayerOptions extends HostedLayerOptions {
+/**
+ * Interface representing the supported options for creating a new VectorTileLayer.
+ */
+export interface VectorTileLayerOptions extends HostedLayerOptions {
   itemId?: string;
   url?: string;
 };
 
-interface VectorTileServiceInfo extends DataServiceInfo {
+/**
+ * Interface representing the definition of a vector tile service.
+ */
+export interface VectorTileServiceInfo extends DataServiceInfo {
   styleEndpoint?: string; // Usually "/resources/styles"
   tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
@@ -41,14 +50,8 @@ export class VectorTileLayer extends HostedLayer {
   style: StyleSpecification;
 
   /**
-   *
-   * @param options Options for initializing the vector tile layer.
-   * @param options.itemId ArcGIS item ID for the vector tile service.
-   * @param options.url URL of the vector tile service.
-   * @param options.authentication Authentication manager or access token.
-   * @param options.portalUrl Portal URL for the ArcGIS item.
-   * @param options.attribution Custom attribution text for the layer.
-   * @throws Error if neither `itemId` nor `url` is provided, or if the provided `itemId` or `url` is invalid.
+   * Creates a new VectorTileLayer instance.
+   * @param options -Options for initializing the vector tile layer.
    */
   constructor(options: VectorTileLayerOptions) {
     super();

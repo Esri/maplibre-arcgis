@@ -34,6 +34,7 @@ node_modules
 
 # Garbage
 .DS_Store
+.zed
 
 # Output Folders
 dist/

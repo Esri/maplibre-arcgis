@@ -2,8 +2,40 @@ import type { GeoJSONSourceSpecification, LayerSpecification, VectorSourceSpecif
 import type { Map } from 'maplibre-gl';
 import type { RestJSAuthenticationManager } from './Util';
 
-type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpecification;
+/**
+ * Union type representing the MapLibre source specifications supported by hosted layers.
+ *
+ * @remarks
+ * This type defines the data source formats that can be used with ArcGIS hosted layers
+ * in MapLibre maps. It currently supports vector tile sources and GeoJSON sources,
+ * which cover the most common use cases for ArcGIS Feature Services and Vector Tile Services.
+ *
+ * - `VectorSourceSpecification` - For vector tile sources, typically used with ArcGIS Vector Tile Services
+ * - `GeoJSONSourceSpecification` - For GeoJSON data sources, typically used with ArcGIS Feature Services converted to GeoJSON
+ *
+ * @example
+ * ```typescript
+ * // Vector source example
+ * const vectorSource: SupportedSourceSpecification = {
+ *   type: 'vector',
+ *   tiles: ['https://services.arcgis.com/.../{z}/{y}/{x}.pbf'],
+ *   attribution: 'Esri'
+ * };
+ *
+ * // GeoJSON source example
+ * const geoJsonSource: SupportedSourceSpecification = {
+ *   type: 'geojson',
+ *   data: 'https://services.arcgis.com/.../query?f=geojson'
+ * };
+ * ```
+ *
+ * @see {@link https://maplibre.org/maplibre-style-spec/sources/ | MapLibre Style Specification - Sources}
+ */
+export type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpecification;
 
+/**
+ * Options for creating a HostedLayer instance.
+ */
 export interface HostedLayerOptions {
   token?: string; // Access token as a string
   authentication?: RestJSAuthenticationManager | string; // Authentication as a REST JS object or access token string
@@ -11,6 +43,9 @@ export interface HostedLayerOptions {
   attribution?: string;
 };
 
+/**
+ * Structure representing metadata for an ArcGIS item.
+ */
 export interface ItemInfo {
   portalUrl: string;
   itemId: string;

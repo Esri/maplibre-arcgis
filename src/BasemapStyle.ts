@@ -1,11 +1,14 @@
-import { request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
-import mitt, { type Emitter } from 'mitt';
-import { AttributionControl as EsriAttributionControl } from './AttributionControl';
+import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import type BasemapStyleSession from './BasemapSession';
+import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
+import mitt, { type Emitter } from 'mitt';
 
-type BasemapSelfResponse = {
+/**
+ * Structure of the self response from the Basemap Styles service.
+ */
+export type BasemapSelfResponse = {
   customStylesUrl: string;
   selfUrl: string;
   languages: [CodeNamePair];
@@ -15,15 +18,32 @@ type BasemapSelfResponse = {
   styles: [BasemapStyleObject];
 };
 
-type CodeNamePair = {
+
+/**
+ * Structure for key/value pairs.
+ * @internal
+ */
+export type CodeNamePair = {
   code: string;
   name: string;
 };
-type PlacesOptions = 'all' | 'attributed' | 'none';
+/**
+ * Supported options basemap places functionality.
+ */
+export type PlacesOptions = 'all' | 'attributed' | 'none';
+/**
+ * The style family of the basemap. To learn more about style families, see [Types of basemap services for more info](https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/types-of-basemap-services/).
+ */
 export type StyleFamily = 'arcgis' | 'open' | 'osm';
-type StyleEnum = `${StyleFamily}/${string}`;
+/**
+ * String representation a basemap style name. '<StyleFamily>/<StyleName>'
+ */
+export type StyleEnum = `${StyleFamily}/${string}`;
 
-type BasemapStyleObject = {
+/**
+ * The structure of a basemap style object returned from the Basemap Styles service.
+ */
+export type BasemapStyleObject = {
   complete: boolean;
   deprecated?: boolean;
   name: string;
@@ -39,9 +59,12 @@ type BasemapStyleObject = {
   baseUrl?: string;
 };
 
-type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
+export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
 
-interface IBasemapStyleOptions {
+/**
+ * Supported options for instantiating a basemap style object.
+ */
+export interface IBasemapStyleOptions {
   /**
    * A basemap style enumeration or item ID.
    */
@@ -78,7 +101,10 @@ interface IBasemapStyleOptions {
    */
   baseUrl?: string;
 };
-interface UpdateStyleOptions {
+/**
+ * Supported options for updating the properties of an existing BasemapStyle object.
+ */
+export interface UpdateStyleOptions {
   /**
    * A basemap style enumeration or item ID.
    */
@@ -101,13 +127,19 @@ interface UpdateStyleOptions {
   maplibreStyleOptions?: MaplibreStyleOptions;
 }
 
-type BasemapPreferences = {
+/**
+ * Basemapstyle parameters.
+ */
+export type BasemapPreferences = {
   places?: PlacesOptions;
   worldview?: string;
   language?: string;
 };
 
-type BasemapStyleEventMap = {
+/**
+ * Union type representing the different types of events emitted from the BasemapStyle class.
+ */
+export type BasemapStyleEventMap = {
   BasemapStyleLoad: StyleSpecification;
   BasemapAttributionLoad: EsriAttributionControl;
   BasemapStyleError: Error;
@@ -137,10 +169,8 @@ const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/servi
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
 
   /**
-   * Constructor for the BasemapStyle class.
-   * Initializes the basemap style with the provided style ID and options.
-   * @param styleId The ID or path of the basemap style to load.
-   * @param options
+   * Initializes a new instance of the BasemapStyle class.
+   * @param options - The options for the BasemapStyle instance.
    */
   constructor(options: IBasemapStyleOptions) {
     if (!options || !options.style) throw new Error('BasemapStyle must be initialized with a style enumeration, such as \'arcgis/streets\' or \'arcgis/outdoor\'.');
@@ -324,7 +354,7 @@ const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/servi
     }
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
-    const authentication = typeof this.authentication == 'string' ? ApiKeyManager.fromKey(this.authentication) : this.authentication; // TODO why can't we just pass a string here?
+    const authentication = typeof this.authentication == 'string' ? ApiKeyManager.fromKey(this.authentication) : this.authentication;
     const style = await (request(styleUrl, {
       authentication: authentication,
       httpMethod: 'GET',
@@ -391,7 +421,7 @@ const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/servi
   }
 
   /**
-   * Deregisters an event handler
+   * Unregisters an event handler
    * @param eventName - A basemap style event
    * @param handler - Custom handler function
    */
@@ -400,10 +430,9 @@ const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/servi
   }
 
   /**
-   * Static method that returns a basemap style URL. Does not add a basemap style to the map.
-   * @param style - The basemap style enumeration being requested
-   * @param options - Additional parameters including an ArcGIS access token
-   * @returns The URL of the specified ArcGIS basemap style with all included parameters
+   * Returns the url to a basemap style.
+   * @param options - Style options, including a style ID and authentication.
+   * @returns - A string representing the basemap style URL.
    */
   static url(options: IBasemapStyleOptions): string {
     return new BasemapStyle(options).styleUrl;

@@ -1,5 +1,8 @@
 import type { ApiKeyManager, ApplicationCredentialsManager, ArcGISIdentityManager } from '@esri/arcgis-rest-request';
 
+/**
+ * Custom type to represent authentication managers used in ArcGIS REST JS.
+ */
 export type RestJSAuthenticationManager = ApiKeyManager | ArcGISIdentityManager | ApplicationCredentialsManager;
 
 type SupportedServiceType = 'FeatureService' | 'FeatureLayer' | 'VectorTileService' | 'VectorTileLayer';

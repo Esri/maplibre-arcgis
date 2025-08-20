@@ -47,7 +47,10 @@ const defaultLayerPaintMap = {
     'fill-outline-color': 'rgb(0,0,0)',
   }, // "Esri blue" alternates: #0064ff #6e6e6e
 };
-interface GeoJSONLayerOptions extends HostedLayerOptions {
+/**
+ * Supported options for instantiating a GeoJSONLayer.
+ */
+export interface GeoJSONLayerOptions extends HostedLayerOptions {
   itemId?: string;
   url?: string;
   query?: QueryOptions;
@@ -59,7 +62,11 @@ type EsriGeoJSON = GeoJSON.GeoJSON & {
   };
 };
 
-interface QueryOptions {
+/**
+ * Parameters for feature layer query request.
+ * @see https://developers.arcgis.com/rest/services-reference/enterprise/query-feature-service-layer/#request-parameters
+ */
+export interface QueryOptions {
   gdbVersion?: string;
   geometry?: IGeometry;
   geometryType?: GeometryType;

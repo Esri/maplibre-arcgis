@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import BasemapStyle from './BasemapStyle';
-import BasemapSession from './BasemapSession';
-import { AttributionControl, EsriAttribution } from './AttributionControl';
-import VectorTileLayer from './VectorTileLayer';
-import FeatureLayer from './FeatureLayer';
+import { BasemapStyle, StyleFamily, MaplibreStyleOptions, IBasemapStyleOptions, BasemapPreferences, PlacesOptions, BasemapSelfResponse, CodeNamePair, BasemapStyleObject, StyleEnum, BasemapStyleEventMap, UpdateStyleOptions } from './BasemapStyle';
+import { BasemapSession, IBasemapSessionOptions, BasemapSessionEventMap, SessionResponse, SessionRefreshedData } from './BasemapSession';
+import { AttributionControl, EsriAttribution, AttributionControlOptions } from './AttributionControl';
+import { VectorTileLayer, VectorTileServiceInfo, VectorTileLayerOptions } from './VectorTileLayer';
+import { FeatureLayer, QueryOptions, GeoJSONLayerOptions } from './FeatureLayer';
+import { RestJSAuthenticationManager } from './Util';
+import { HostedLayer, SupportedSourceSpecification, HostedLayerOptions, ItemInfo } from './HostedLayer';
+
 import packageInfo from '../package.json';
 
 interface CustomWindow extends Window {
@@ -33,9 +36,34 @@ const version = packageInfo.version;
 export {
   version as VERSION,
   BasemapStyle,
+  IBasemapStyleOptions,
+  BasemapPreferences,
+  CodeNamePair,
+  StyleFamily,
+  StyleEnum,
+  PlacesOptions,
+  MaplibreStyleOptions,
+  BasemapSelfResponse,
+  BasemapStyleObject,
+  BasemapStyleEventMap,
+  UpdateStyleOptions,
   BasemapSession,
+  IBasemapSessionOptions,
+  BasemapSessionEventMap,
+  SessionResponse,
+  SessionRefreshedData,
   AttributionControl,
+  AttributionControlOptions,
   EsriAttribution,
   VectorTileLayer,
+  VectorTileServiceInfo,
+  VectorTileLayerOptions,
   FeatureLayer,
+  GeoJSONLayerOptions,
+  QueryOptions,
+  RestJSAuthenticationManager,
+  HostedLayer,
+  HostedLayerOptions,
+  SupportedSourceSpecification,
+  ItemInfo
 };
