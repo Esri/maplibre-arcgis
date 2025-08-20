@@ -11,9 +11,9 @@ export interface AttributionControlOptions {
   closed?: boolean;
 }
 
-const esriAttributionString = 'Powered by <a href="https://www.esri.com/">Esri</a>';
-const maplibreAttributionString = '<a href="https://maplibre.org/">MapLibre</a>';
-const defaultMaplibreAttributionString = '<a href="https://maplibre.org/" target="_blank">MapLibre</a>';
+const esriAttributionString = 'Powered by \<a href=\"https:\/\/www.esri.com\/\"\>Esri\<\/a\>';
+const maplibreAttributionString = '\<a href=\"https:\/\/maplibre.org\/\"\>MapLibre\<\/a\>';
+const defaultMaplibreAttributionString = '\<a href=\"https:\/\/maplibre.org\/\" target=\"_blank\"\>MapLibre\<\/a\>';
 
 export const EsriAttribution: MaplibreAttributionControlOptions = {
   customAttribution: `${maplibreAttributionString} | ${esriAttributionString}`,
@@ -44,7 +44,8 @@ export class AttributionControl extends MaplibreAttributionControl {
         attributions.push(options.customAttribution);
       }
     }
-    attributions.push([esriAttributionString, maplibreAttributionString]);
+
+    attributions.push(esriAttributionString, maplibreAttributionString);
 
     const attributionOptions = {
       compact: (options?.compact !== undefined) ? options.compact : true,
@@ -58,7 +59,12 @@ export class AttributionControl extends MaplibreAttributionControl {
 
   onAdd(map: Map): HTMLElement | null {
     this._map = map;
-    if (!this._canAddAttribution()) return null;
+    if (!this.canAdd(this._map)) {
+      console.warn('Esri attribution already present on map. This attribution control will not be added.');
+      return null;
+    }
+
+    console.log('Adding:', true);
 
     const htmlElement = super.onAdd(map);
 
@@ -68,9 +74,13 @@ export class AttributionControl extends MaplibreAttributionControl {
     return htmlElement;
   }
 
-  private _canAddAttribution(): boolean {
-    if (this._map._controls.length > 0) {
-      this._map._controls.forEach((control: IControl) => {
+  canAdd(map?: Map): boolean {
+    if (!map && !this._map) throw new Error('No map provided to attribution control.');
+    if (!map) map = this._map;
+
+    let attributionExists = false;
+    if (map._controls.length > 0) {
+      map._controls.forEach((control: IControl) => {
         // Error if any other attribution control is present
         if ('_toggleAttribution' in control) {
           const attributionControl = control as MaplibreAttributionControl;
@@ -78,8 +88,8 @@ export class AttributionControl extends MaplibreAttributionControl {
             throw new Error('Unable to add Esri attribution. Disable the map\'s default attribution control.');
           }
           else if (attributionControl.options.customAttribution.includes(esriAttributionString)) {
-            // Esri string already exists, don't add
-            return false;
+            // Esri string already exists,
+            attributionExists = true;
           }
           else {
             throw new Error('Unable to add Esri attribution. Your map\'s custom attribution is not configured properly.');
@@ -87,7 +97,7 @@ export class AttributionControl extends MaplibreAttributionControl {
         }
       });
     }
-    return true;
+    return !attributionExists;
   }
 
   static get esriAttribution(): MaplibreAttributionControlOptions {

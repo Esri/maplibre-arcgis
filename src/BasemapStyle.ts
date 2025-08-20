@@ -1,4 +1,4 @@
-import type { Map, AttributionControl as MapLibreAttributionControl, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource, IControl } from 'maplibre-gl';
+import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import type BasemapStyleSession from './BasemapSession';
 import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
@@ -234,8 +234,10 @@ export class BasemapStyle {
     if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
 
     this.attributionControl = new EsriAttributionControl(this._attributionControlOptions);
-    this._map.addControl(this.attributionControl);
-    this._attributionLoadHandler(this.attributionControl);
+    if (this.attributionControl.canAdd(this._map)) {
+      this._map.addControl(this.attributionControl);
+      this._attributionLoadHandler(this.attributionControl);
+    }
   }
 
   private _updatePreferences(preferences: BasemapPreferences) {
