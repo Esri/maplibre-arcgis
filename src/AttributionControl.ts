@@ -64,8 +64,6 @@ export class AttributionControl extends MaplibreAttributionControl {
       return null;
     }
 
-    console.log('Adding:', true);
-
     const htmlElement = super.onAdd(map);
 
     if (this._closed && this._container.classList.contains('maplibregl-compact-show')) {

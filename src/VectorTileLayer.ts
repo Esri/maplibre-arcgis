@@ -141,8 +141,9 @@ export class VectorTileLayer extends HostedLayer {
 
   async _loadStyleFromServiceUrl(): Promise<StyleSpecification | null> {
     if (!this._serviceInfo.serviceUrl) throw new Error('No data service provided');
+    if (!this._serviceInfo.styleEndpoint) this._serviceInfo.styleEndpoint = 'resources/styles/';
 
-    const styleInfo = await request(`${this._serviceInfo.serviceUrl}/${this._serviceInfo.styleEndpoint}`, {
+    const styleInfo = await request(`${this._serviceInfo.serviceUrl}${this._serviceInfo.styleEndpoint}`, {
       authentication: this.authentication,
     }) as StyleSpecification;
     return styleInfo;
@@ -159,7 +160,7 @@ export class VectorTileLayer extends HostedLayer {
     this._serviceInfo = {
       ...this._serviceInfo,
       tiles: serviceResponse.tiles,
-      styleEndpoint: serviceResponse.defaultStyles,
+      styleEndpoint: cleanUrl(serviceResponse.defaultStyles),
       copyrightText: serviceResponse.copyrightText,
     };
     this._serviceInfoLoaded = true;
@@ -177,10 +178,9 @@ export class VectorTileLayer extends HostedLayer {
 
     if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
 
-    // Set service URL if it doesn't exist
     if (!this._serviceInfoLoaded) {
       this._serviceInfo = {
-        serviceUrl: itemResponse.url,
+        serviceUrl: cleanUrl(itemResponse.url),
         // serviceItemPortalUrl: this._itemInfo.portalUrl
       };
     }
@@ -200,7 +200,9 @@ export class VectorTileLayer extends HostedLayer {
   _cleanStyle(style: StyleSpecification): void {
     if (!style) throw new Error('Vector tile style has not been loaded from ArcGIS.');
 
-    const styleUrl = `${this._serviceInfo.serviceUrl}resources/styles/`;
+    if (!this._serviceInfo.serviceUrl) throw new Error('No data service provided');
+    if (!this._serviceInfo.styleEndpoint) this._serviceInfo.styleEndpoint = 'resources/styles/';
+    const styleUrl = `${this._serviceInfo.serviceUrl}${this._serviceInfo.styleEndpoint}`;
 
     // Validate glyphs
     if (style.glyphs) {
@@ -291,7 +293,7 @@ export class VectorTileLayer extends HostedLayer {
     return this;
   }
 
-  static async fromPortalItem(itemId: ItemId, options: VectorTileLayerOptions): Promise<VectorTileLayer> {
+  static async fromPortalItem(itemId: string, options: VectorTileLayerOptions): Promise<VectorTileLayer> {
     if (checkItemId(itemId) !== 'ItemId') throw new Error('Input is not a valid ArcGIS item ID.');
 
     const vtl = new VectorTileLayer({
