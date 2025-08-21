@@ -71,8 +71,45 @@ export class BasemapSession {
   private readonly _emitter: Emitter<BasemapSessionEventMap> = mitt();
   private _parentToken: string;
 
+  /**
+   * Gets or sets whether the session should automatically request a new token when the session expires.
+   */
   autoRefresh: boolean;
 
+  /**
+   * Creates a new BasemapSession instance for managing basemap sessions.
+   *
+   * @param options - Configuration options for the basemap session
+   *
+   * @remarks
+   * Creates a session instance but does not start it. Use the {@link initialize}
+   * method or the static {@link BasemapSession.start} method to begin the session.
+   *
+   * The token must be from an ArcGIS Location Platform account with the Basemaps privilege.
+   * For more information, see the ArcGIS Location Platform documentation.
+   *
+   * @example
+   * ```typescript
+   * // Create and initialize a session manually
+   * const session = new BasemapSession({
+   *   token: 'your-arcgis-token',
+   *   styleFamily: 'arcgis-navigation',
+   *   duration: 3600,
+   *   autoRefresh: false
+   * });
+   * await session.initialize();
+   *
+   * // Or use the static start method (recommended)
+   * const session = await BasemapSession.start({
+   *   token: 'your-arcgis-token',
+   *   styleFamily: 'arcgis-streets',
+   *   autoRefresh: true
+   * });
+   * ```
+   *
+   * @see {@link BasemapSession.start} for a convenient way to create and initialize in one step
+   * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys}
+   */
   constructor(options: IBasemapSessionOptions) {
     if (!options?.token) throw new Error('An valid ArcGIS access token is required to start a session.');
 
@@ -83,7 +120,6 @@ export class BasemapSession {
 
   /**
    * Gets the current session token
-   * @throws If session is not initialized
    */
   get token(): string {
     if (!this._session?.token) {
@@ -92,13 +128,15 @@ export class BasemapSession {
     return this._session.token;
   }
 
+  /**
+   * Gets the current session token
+   */
   get styleFamily(): StyleFamily | undefined {
     return this._session?.styleFamily;
   }
 
   /**
    * Gets the session expiration date
-   * @throws If session is not initialized
    */
   get expires(): Date {
     if (!this._session) {

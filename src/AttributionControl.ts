@@ -91,31 +91,6 @@ export class AttributionControl extends MaplibreAttributionControl {
   }
 
   /**
-   * Removes the attribution control from the map.
-   *
-   * @param map - The MapLibre map instance to remove the control from
-   * @returns The HTML element for the control, or null if the control cannot be removed
-   *
-   * @remarks
-   * This method checks if the control is currently added to the map before removing.
-   * If the control is configured to be closed initially, it will add the 'show' class.
-   */
-  onRemove(map: Map): HTMLElement | null {
-    this._map = map;
-    if (!this.canRemove(this._map)) {
-      console.warn('Esri attribution not present on map. This attribution control will not be removed.');
-      return null;
-    }
-
-    const htmlElement = super.onRemove(map);
-
-    if (this._closed && this._container.classList.contains('maplibregl-compact-show')) {
-      this._container.classList.add('maplibregl-compact-show');
-    }
-    return htmlElement;
-  }
-
-  /**
    * Checks if the attribution control can be added to the map.
    *
    * @param map - The MapLibre map instance to check

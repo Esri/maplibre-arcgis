@@ -65,5 +65,5 @@ export {
   HostedLayer,
   HostedLayerOptions,
   SupportedSourceSpecification,
-  ItemInfo
+  ItemInfo,
 };

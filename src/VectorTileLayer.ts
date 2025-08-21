@@ -3,7 +3,7 @@ import { request } from '@esri/arcgis-rest-request';
 import type { LayerSpecification, StyleSpecification, VectorSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { DataServiceInfo, HostedLayerOptions, ItemInfo } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
-import { checkItemId, checkServiceUrlType, cleanUrl, isRelativePath, parseRelativeUrl, toCdnUrl, warn, type ItemId } from './Util';
+import { checkItemId, checkServiceUrlType, cleanUrl, isRelativePath, parseRelativeUrl, toCdnUrl, warn } from './Util';
 
 /**
  * Interface representing the definition of a vector tile service.
