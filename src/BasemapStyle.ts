@@ -1,8 +1,7 @@
 import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
-import mitt, { type Emitter } from 'mitt';
 import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
-import type BasemapStyleSession from './BasemapSession';
+import type BasemapSession from './BasemapSession';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
 /**
@@ -73,7 +72,7 @@ export interface IBasemapStyleOptions {
    */
   style: string;
   token?: string;
-  session?: BasemapStyleSession;
+  session?: BasemapSession;
   authentication?: string | RestJSAuthenticationManager;
   /**
    * Customize the language of the basemap.
@@ -168,7 +167,7 @@ export class BasemapStyle {
   maplibreStyleOptions?: MaplibreStyleOptions;
   private _attributionControlOptions: EsriAttributionControlOptions;
   private _isItemId: boolean;
-  private _session: BasemapStyleSession;
+  private _session: BasemapSession | Promise<BasemapSession>;
   private _map?: Map;
   private _baseUrl: string;
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
@@ -296,13 +295,12 @@ export class BasemapStyle {
 
   private async _setSession(map?: Map): Promise<void> {
     if (!this._session) throw new Error('No session was provided to the constructor.');
-    if (!this._session.isStarted) {
-      await this._session.initialize();
-    }
 
-    this.authentication = this._session.token;
+    const session = await Promise.resolve(this._session);
 
-    this._session.on('BasemapSessionRefreshed', (sessionData) => {
+    this.authentication = session.token;
+
+    session.on('BasemapSessionRefreshed', (sessionData) => {
       const oldToken = sessionData.previous.token;
       const newToken = sessionData.current.token;
       this.authentication = newToken; // update the class with the new token
@@ -374,7 +372,7 @@ export class BasemapStyle {
       });
 
     // Handle glyphs
-    style.glyphs = `${style.glyphs}?token=${this.token}`;
+    if (style.glyphs) style.glyphs = `${style.glyphs}?token=${this.token}`;
 
     // Handle sources
     Object.keys(style.sources).forEach((sourceId) => {
@@ -387,7 +385,7 @@ export class BasemapStyle {
       }
     });
 
-    if (!this._session) {
+    if (style.sprite && !this._session) {
       // Handle sprite
       if (Array.isArray(style.sprite)) {
         style.sprite.forEach((sprite, id, spriteArray) => {

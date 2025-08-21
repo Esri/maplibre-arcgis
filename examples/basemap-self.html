@@ -23,21 +23,24 @@
   <div id="map"></div>
   <script src="../debug/apikey.js"></script>
   <script type="module">
-    const arcgisStyle = await maplibreArcGIS.BasemapStyle.createBasemapStyle('arcgis/streets', {
-      token: apiKey,
-    });
 
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
-      style: arcgisStyle.style, //e using the URL from the BasemapStyle instance
-      attributionControl: arcgisStyle.attributionControl,
       zoom: 14, // starting zoom
-      center: [-117.805, 34.027] // starting location [longitude, latitude]
+      center: [-117.805, 34.027], // starting location [longitude, latitude]
+      attributionControl: false
     });
 
-    map.on('load', () => {
-      // do you map loading logic here
+    const selfResponse = await maplibreArcGIS.BasemapStyle.getSelf();
+    const styleNames = selfResponse.styles;
+    const languageOptions = selfResponse.languages;
+
+    const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map,{
+      token: apiKey,
+      style: styleNames[1].path,
+      language: languageOptions[10].code
     });
+
   </script>
 </body>
 

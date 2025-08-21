@@ -1,4 +1,3 @@
-import { getItem, getItemResource, getItemResources } from '@esri/arcgis-rest-portal';
 import { request } from '@esri/arcgis-rest-request';
 import type { LayerSpecification, StyleSpecification, VectorSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { DataServiceInfo, HostedLayerOptions, ItemInfo } from './HostedLayer';
@@ -132,7 +131,7 @@ export class VectorTileLayer extends HostedLayer {
       styleInfo = rootStyle;
       // Check for other style resources associated with the item
     }
-    catch (e) {
+    catch {
       const itemResources = await getItemResources(this._itemInfo.itemId, {
         ...params,
       });

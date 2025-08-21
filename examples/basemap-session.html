@@ -23,40 +23,24 @@
   <div id="map"></div>
   <script src="../debug/apikey.js"></script>
   <script type="module">
-
-    // Initialize the map
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
       zoom: 14, // starting zoom
       center: [-117.805, 34.027], // starting location
+      attributionControl: false
     });
 
-    // Start a new basemap session.
-    const basemapSession = await maplibreArcGIS.BasemapSession.start({
+    const basemapSession = maplibreArcGIS.BasemapSession.start({
       styleFamily: 'arcgis',
-      token: apiKey,
-      duration:30,
+      token: sessionKey2,
+      duration:30, // Only valid for 30 seconds, for testing
       autoRefresh: true
     });
 
-    basemapSession.on(BasemapSession.BasemapSessionRefreshed, (event) => {
-      console.log(`The basemap session was refreshed. previous token: ${event.previous.token}`);
-    });
-
-    basemapSession.on(BasemapSession.BasemapSessionExpired, () => {
-      console.log("The basemap session is about to expire.");
-    });
-
-    basemapSession.on(BasemapSessionRefreshed, ()=>{
-      console.log("The basemap session was refreshed.");
-    })
-
-    // Create a new basemap style
-    const arcgisBasemap =  maplibreArcGIS.BasemapStyle.applyStyle(map,{
-      style: "arcgis/outdoor",
+    const arcgisBasemap = maplibreArcGIS.BasemapStyle.applyStyle(map, {
+      style: 'arcgis/outdoor',
       session: basemapSession
     });
-
 </script>
 </body>
 
