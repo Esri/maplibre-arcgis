@@ -49,11 +49,20 @@ export type SessionRefreshedData = {
 };
 
 /**
- * Type representing the different events emitted by the BasemapSession class.
+ * Type representing the events emitted by the BasemapSession class.
  */
 export type BasemapSessionEventMap = {
+  /**
+   * Event emitted when the basemap session is refreshed.
+   */
   BasemapSessionRefreshed: SessionRefreshedData;
+  /**
+   * Event emitted when the basemap session expires.
+   */
   BasemapSessionExpired: SessionResponse;
+  /**
+   * Event emitted when there is an error with the basemap session.
+   */
   BasemapSessionError: Error;
 };
 
@@ -73,20 +82,21 @@ export class BasemapSession {
 
   /**
    * Gets or sets whether the session should automatically request a new token when the session expires.
+   * @defaultValue false
    */
   autoRefresh: boolean;
 
   /**
    * Creates a new BasemapSession instance for managing basemap sessions.
-   *
-   * @param options - Configuration options for the basemap session
-   *
-   * @remarks
    * Creates a session instance but does not start it. Use the {@link initialize}
    * method or the static {@link BasemapSession.start} method to begin the session.
    *
    * The token must be from an ArcGIS Location Platform account with the Basemaps privilege.
+   *
    * For more information, see the ArcGIS Location Platform documentation.
+   *
+   * @param options - Configuration options for the basemap session
+   *
    *
    * @example
    * ```typescript
@@ -120,6 +130,7 @@ export class BasemapSession {
 
   /**
    * Gets the current session token
+   * @readonly
    */
   get token(): string {
     if (!this._session?.token) {
@@ -147,7 +158,6 @@ export class BasemapSession {
 
   /**
    * Gets the session start time.
-   * @throws If session is not initialized.
    */
   get startTime(): Date {
     if (!this._session) throw new Error('Unable to fetch start time. Session not initialized.');
@@ -168,7 +178,6 @@ export class BasemapSession {
 
   /**
    * Starts a new BasemapStyleSession
-   * @throws If session creation fails
    */
   async initialize(): Promise<void> {
     if (this._session) {
@@ -195,6 +204,9 @@ export class BasemapSession {
     this.setupEventListeners();
   }
 
+  /**
+   * Manually refreshes the session token.
+   */
   async refresh(): Promise<void> {
     if (!this._session) {
       throw new Error('Session not initialized');
@@ -230,7 +242,7 @@ export class BasemapSession {
   };
 
   /**
-   * Registers an event handler
+   * Register an event handler
    */
   on<K extends keyof BasemapSessionEventMap>(
     eventName: K,
@@ -240,7 +252,7 @@ export class BasemapSession {
   }
 
   /**
-   * Unregisters an event handler
+   * Unregister an event handler
    */
   off<K extends keyof BasemapSessionEventMap>(
     eventName: K,
