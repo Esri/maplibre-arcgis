@@ -51,8 +51,12 @@ export type SessionRefreshedData = {
 
 /**
  * Type representing the events emitted by the BasemapSession class.
+ * Type representing the events emitted by the BasemapSession class.
  */
 export type BasemapSessionEventMap = {
+  /**
+   * Event emitted when the basemap session is refreshed.
+   */
   /**
    * Event emitted when the basemap session is refreshed.
    */
@@ -60,7 +64,13 @@ export type BasemapSessionEventMap = {
   /**
    * Event emitted when the basemap session expires.
    */
+  /**
+   * Event emitted when the basemap session expires.
+   */
   BasemapSessionExpired: SessionResponse;
+  /**
+   * Event emitted when there is an error with the basemap session.
+   */
   /**
    * Event emitted when there is an error with the basemap session.
    */
@@ -84,15 +94,22 @@ export class BasemapSession {
   private _parentToken: string;
 
   /**
-   * Gets or sets whether the session should automatically request a new token after expiration.
+   * Gets or sets whether the session should automatically request a new token when the session expires.
    * @defaultValue false
    */
   autoRefresh: boolean;
 
   /**
-   * Creates a new `BasemapSession` instance but does not start it. Use the the static {@link BasemapSession.start | start} method to create an instance that starts immediately. Use the {@link initialize} method to begin the session manually.
+   * Creates a new BasemapSession instance for managing basemap sessions.
+   * Creates a session instance but does not start it. Use the {@link initialize}
+   * method or the static {@link BasemapSession.start} method to begin the session.
    *
-   * @param options - Configuration options for the session
+   * The token must be from an ArcGIS Location Platform account with the Basemaps privilege.
+   *
+   * For more information, see the ArcGIS Location Platform documentation.
+   *
+   * @param options - Configuration options for the basemap session
+   *
    *
    * @example
    * ```javascript
@@ -116,7 +133,7 @@ export class BasemapSession {
   }
 
   /**
-   * Gets the current session token.
+   * Gets the current session token
    * @readonly
    */
   get token(): string {
