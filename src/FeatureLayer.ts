@@ -2,16 +2,8 @@ import type { LayerSpecification, GeoJSONSourceSpecification } from 'maplibre-gl
 import { HostedLayer } from './HostedLayer';
 import type { HostedLayerOptions } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, warn } from './Util';
-import {
-  getLayer, getService,
-  type ILayerDefinition,
-  type IGeometry,
-  type GeometryType,
-  type ISpatialReference,
-  type SpatialRelationship,
-  queryAllFeatures,
-  type IQueryAllFeaturesResponse,
-} from '@esri/arcgis-rest-feature-service';
+import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arcgis-rest-feature-service';
+import type { ILayerDefinition, IGeometry, GeometryType, ISpatialReference, SpatialRelationship, IQueryResponse } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
 import { type IParams } from '@esri/arcgis-rest-request';
 
@@ -53,12 +45,6 @@ interface GeoJSONLayerOptions extends HostedLayerOptions {
   url?: string;
   query?: QueryOptions;
 }
-
-type EsriGeoJSON = GeoJSON.GeoJSON & {
-  properties: {
-    exceededTransferLimit: boolean;
-  };
-};
 
 interface QueryOptions {
   gdbVersion?: string;
@@ -137,24 +123,28 @@ export class FeatureLayer extends HostedLayer {
     if (!layerInfo.capabilities.includes('Query')) throw new Error('Feature service does not support queries.');
     if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('Feature service does not support pagination in queries');
 
-    let layerData: EsriGeoJSON;
+    let layerData: GeoJSON.GeoJSON;
     if (layerInfo.supportsExceedsLimitStatistics) {
-      try {
-        layerData = await queryAllFeatures({
-          url: layerUrl,
-          authentication: this.token ? this.token : undefined,
-          ...this.query,
-          returnExceededLimitFeatures: true,
-          f: 'geojson',
-        }) as unknown as EsriGeoJSON;
-      }
-      catch (e) {
-        console.error(e);
+      // Check if feature count exceeds limit
+      const featureCount = await queryFeatures({
+        url: layerUrl,
+        authentication: this.token,
+        ...this.query,
+        returnCountOnly: true,
+      }) as IQueryResponse;
+      if (featureCount.count > 2000) {
+        console.warn('You are loading a large feature layer ( >2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.');
       }
 
-      if (layerData.properties.exceededTransferLimit) {
-        console.error('This feature query exceeds the transfer limit supported by the plugin. Only the first 2000 features will be loaded.');
-      }
+      // Get all features
+      const response = await queryAllFeatures({
+        url: layerUrl,
+        authentication: this.token,
+        ...this.query,
+        f: 'geojson',
+      });
+
+      layerData = response as unknown as GeoJSON.GeoJSON;
     }
     else {
       throw new Error('Feature layers hosted in old versions of ArcGIS Enterprise are not currently supported in this plugin. Support will be added in a future release: https://github.com/ArcGIS/maplibre-arcgis/issues/5');
