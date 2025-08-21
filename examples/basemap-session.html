@@ -27,24 +27,20 @@
       container: "map", // the id of the div element
       zoom: 14, // starting zoom
       center: [-117.805, 34.027], // starting location
+      attributionControl: false
     });
 
     const basemapSession = maplibreArcGIS.BasemapSession.start({
       styleFamily: 'arcgis',
       token: sessionKey2,
-      duration:30 // Only valid for 30 seconds, for testing
+      duration:30, // Only valid for 30 seconds, for testing
+      autoRefresh: true
     });
 
     const arcgisBasemap = maplibreArcGIS.BasemapStyle.applyStyle(map, {
       style: 'arcgis/outdoor',
       session: basemapSession
     });
-
-    // Refresh token automatically on expiration
-    basemapSession.on("BasemapSessionExpired", () => {
-      basemapSession.refresh()
-    })
-
 </script>
 </body>
 

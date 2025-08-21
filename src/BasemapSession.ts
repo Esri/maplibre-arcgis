@@ -206,7 +206,6 @@ export class BasemapSession {
     const basemapSession = new BasemapSession(options);
 
     await basemapSession.initialize();
-
     return basemapSession;
   }
 }
