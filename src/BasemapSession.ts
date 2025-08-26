@@ -67,12 +67,50 @@ export type BasemapSessionEventMap = {
 };
 
 /**
- * Class representing a session for ArcGIS Basemap Styles.
- * This class manages the lifecycle of a basemap style session, including authentication and auto-refresh functionality.
- * It provides methods to start, refresh, and handle events related to the session.
- * The session can be used to apply basemap styles to MapLibre maps.
+ * Manages the creation and lifecycle of a basemap session for use with {@link BasemapStyle}.
  *
- * Go to [Basemap Session](https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/introduction-basemap-styles-service/) for more information.
+ * An [access token](https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions. The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
+ *
+ * The `BasemapSession` class provides:
+ * - Session token management with auto-refresh capabilities
+ * - Event handling for session lifecycle (refresh, expiration, errors)
+ * - Integration with ArcGIS Basemap Styles Service
+ *
+ *
+ *
+ * More info here to describe the overview of the class and its functionality.
+ *
+ * @remarks
+ *
+ * @example
+ * ```javascript
+ * // Create and start a session
+ * const basemapSession = await BasemapSession.start({
+ *   token: "your-arcgis-token",
+ *   styleFamily: "arcgis",
+ *   duration: 3600,
+ *   autoRefresh: true
+ * });
+ *
+ * // Listen for session events
+ * basemapSession.on("BasemapSessionRefreshed", (e) => {
+ *   console.log("Session refreshed", e.current.token);
+ * });
+ *
+ * basemapSession.on("BasemapSessionExpired", (e) => {
+ *   console.log("Session expired", e.token);
+ * });
+ *
+ * basemapSession.on("BasemapSessionError", (e) => {
+ *   console.error("Session error", e);
+ * });
+ * ```
+ *
+ * @see {@link IBasemapSessionOptions} for configuration options
+ * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys} for more information on ArcGIS Authentication.
+ * @see {@link https://basemap-sessions-preview.gha.afd.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/basemap-usage-styles/ | Basemap usage} for more information on the session usage models.
+ * @see {@link https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/maps/display-a-map-with-a-basemap-session/ | Display a map with a basemap session tutorial}
+ *
  */
 export class BasemapSession {
   private _session?: ArcgisRestBasemapStyleSession;
@@ -81,44 +119,28 @@ export class BasemapSession {
   private _parentToken: string;
 
   /**
-   * Gets or sets whether the session should automatically request a new token when the session expires.
+   * Gets or sets whether the session should automatically request a new token after expiration.
    * @defaultValue false
    */
   autoRefresh: boolean;
 
   /**
-   * Creates a new BasemapSession instance for managing basemap sessions.
-   * Creates a session instance but does not start it. Use the {@link initialize}
-   * method or the static {@link BasemapSession.start} method to begin the session.
+   * Creates a new `BasemapSession` instance but does not start it. Use the the static {@link BasemapSession.start | start} method to create an instance that starts immediately. Use the {@link initialize} method to begin the session manually.
    *
-   * The token must be from an ArcGIS Location Platform account with the Basemaps privilege.
-   *
-   * For more information, see the ArcGIS Location Platform documentation.
-   *
-   * @param options - Configuration options for the basemap session
-   *
+   * @param options - Configuration options for the session
    *
    * @example
-   * ```typescript
-   * // Create and initialize a session manually
-   * const session = new BasemapSession({
+   * ```javascript
+   * const basemapSession = new BasemapSession({
    *   token: 'your-arcgis-token',
    *   styleFamily: 'arcgis-navigation',
    *   duration: 3600,
    *   autoRefresh: false
    * });
    * await session.initialize();
-   *
-   * // Or use the static start method (recommended)
-   * const session = await BasemapSession.start({
-   *   token: 'your-arcgis-token',
-   *   styleFamily: 'arcgis-streets',
-   *   autoRefresh: true
-   * });
    * ```
    *
-   * @see {@link BasemapSession.start} for a convenient way to create and initialize in one step
-   * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys}
+   * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys } for more information on ArcGIS Authentication.
    */
   constructor(options: IBasemapSessionOptions) {
     if (!options?.token) throw new Error('An valid ArcGIS access token is required to start a session.');
@@ -129,7 +151,7 @@ export class BasemapSession {
   }
 
   /**
-   * Gets the current session token
+   * Gets the current session token.
    * @readonly
    */
   get token(): string {
@@ -140,14 +162,14 @@ export class BasemapSession {
   }
 
   /**
-   * Gets the current session token
+   * Gets the sessions {@link StyleFamily} value.
    */
   get styleFamily(): StyleFamily | undefined {
     return this._session?.styleFamily;
   }
 
   /**
-   * Gets the session expiration date
+   * Gets the sessions expiration date.
    */
   get expires(): Date {
     if (!this._session) {
@@ -177,7 +199,18 @@ export class BasemapSession {
   }
 
   /**
-   * Starts a new BasemapStyleSession
+   * Starts the session.
+   *
+   * @example
+   * ```javascript
+   * const basemapSession = new BasemapSession({
+   *   token: 'your-arcgis-token',
+   *   styleFamily: 'arcgis-navigation',
+   *   duration: 3600,
+   *   autoRefresh: false
+   * });
+   * await session.initialize();
+   * ```
    */
   async initialize(): Promise<void> {
     if (this._session) {
@@ -205,7 +238,15 @@ export class BasemapSession {
   }
 
   /**
-   * Manually refreshes the session token.
+   * Manually refresh the session token.
+   * @example
+   * ```javascript
+   * basemapSession.on("BasemapSessionExpired", () => {
+   *   console.log('Session expired');
+   *   // Manually refresh the session token using the refresh method.
+   *   basemapSession.refresh();
+   * });
+   * ```
    */
   async refresh(): Promise<void> {
     if (!this._session) {
@@ -219,6 +260,9 @@ export class BasemapSession {
     }
   }
 
+  /**
+   * @internal
+   */
   private setupEventListeners(): void {
     if (!this._session) return;
 
@@ -229,20 +273,36 @@ export class BasemapSession {
     this._session.on('error', this.errorHandler);
   }
 
+  /**
+   * @internal
+   */
   private expiredHandler = (e: SessionResponse): void => {
     this._emitter.emit('BasemapSessionExpired', e);
   };
 
+  /**
+   * @internal
+   */
   private refreshedHandler = (e: SessionRefreshedData): void => {
     this._emitter.emit('BasemapSessionRefreshed', e);
   };
 
+  /**
+   * @internal
+   */
   private errorHandler = (e: Error): void => {
     this._emitter.emit('BasemapSessionError', e);
   };
 
   /**
    * Register an event handler
+   * @example
+   * ```typescript
+   * const basemapSession = await BasemapSession.start(options);
+   * basemapSession.on('BasemapSessionExpired', (data) => {
+   *   console.log('Session expired:', data);
+   * });
+   * ```
    */
   on<K extends keyof BasemapSessionEventMap>(
     eventName: K,
@@ -253,6 +313,11 @@ export class BasemapSession {
 
   /**
    * Unregister an event handler
+   * @example
+   * ```typescript
+   * const basemapSession = await BasemapSession.start(options);
+   * basemapSession.off('BasemapSessionExpired', handler);
+   * ```
    */
   off<K extends keyof BasemapSessionEventMap>(
     eventName: K,
@@ -264,7 +329,14 @@ export class BasemapSession {
   /**
    * Factory method that creates a new basemap session and starts it.
    * @param options - Options for constructing the basemap session.
-   * @returns - a BasemapSession object.
+   * @example
+   * ```javascript
+   * const basemapSession = await BasemapSession.start({
+   *   token: 'your-access-token',
+   *   styleFamily: 'arcgis',
+   *   autoRefresh: true
+   * });
+   * ```
    */
   static async start(options: IBasemapSessionOptions): Promise<BasemapSession> {
     const basemapSession = new BasemapSession(options);

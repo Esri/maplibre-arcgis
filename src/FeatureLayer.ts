@@ -1,9 +1,5 @@
-import type { LayerSpecification, GeoJSONSourceSpecification } from 'maplibre-gl';
-import { HostedLayer } from './HostedLayer';
-import type { HostedLayerOptions } from './HostedLayer';
-import { checkItemId, checkServiceUrlType, cleanUrl, warn } from './Util';
+import type { GeometryType, IGeometry, ILayerDefinition, IQueryResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
 import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arcgis-rest-feature-service';
-import type { ILayerDefinition, IGeometry, GeometryType, ISpatialReference, SpatialRelationship, IQueryResponse } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
 import { type IParams } from '@esri/arcgis-rest-request';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
@@ -53,7 +49,10 @@ export interface GeoJSONLayerOptions extends HostedLayerOptions {
   query?: QueryOptions;
 }
 
-interface QueryOptions {
+/**
+ * Options for querying a feature layer.
+ */
+export interface QueryOptions {
   gdbVersion?: string;
   geometry?: IGeometry;
   geometryType?: GeometryType;

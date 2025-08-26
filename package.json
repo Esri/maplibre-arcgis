@@ -39,7 +39,10 @@
     "build": "node build.js prod",
     "build-dev": "node build.js dev",
     "start": "node build.js prod watch",
-    "start-dev": "node build.js dev watch"
+    "start-dev": "node build.js dev watch",
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch",
+    "docs:deploy": "npm run docs && gh-pages -d docs/build/html"
   },
   "dependencies": {
     "@esri/arcgis-rest-basemap-sessions": "^1.1.0",

@@ -1,8 +1,8 @@
 {
   "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["./src/MaplibreArcGIS.ts"],
-  "out": "typedoc",
-  "json": "docs/build/typedoc.json",
+  "out": "docs",
+  "json": "docs/typedoc.json",
   "name": "@esri/maplibre-arcgis",
   "excludePrivate": true,
   "excludeInternal": true,
@@ -19,18 +19,37 @@
     "MapLibre GL JS": "https://maplibre.org/maplibre-gl-js/docs/"
   },
   "readme": "./README.md",
-  "outputs": [
-    {
-      "name": "html",
-      "path": "index.html"
-    },
-    {
-      "name": "json",
-      "path": "api.json"
-    }
-  ],
+  "githubPages": true,
+  "gitRevision": "main",
+  "gitRemote": "origin",
   "theme": "default",
   "hideGenerator": true,
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Document",
+    "Project",
+    "Module",
+    "Namespace",
+    "Enum",
+    "EnumMember",
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Constructor",
+    "Property",
+    "Variable",
+    "Function",
+    "Accessor",
+    "Method",
+    "Parameter",
+    "TypeParameter",
+    "TypeLiteral",
+    "CallSignature",
+    "ConstructorSignature",
+    "IndexSignature",
+    "GetSignature",
+    "SetSignature"
+  ],
   "validation": {
     "invalidLink": false
   }
