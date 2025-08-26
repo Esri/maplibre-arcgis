@@ -459,11 +459,11 @@ export class BasemapStyle {
     }
 
     this.style = style;
-    this._styleLoadHandler(this.style);
+    this._styleLoadHandler(this);
     return this.style;
   }
 
-  private _styleLoadHandler = (e: StyleSpecification): void => {
+  private _styleLoadHandler = (e: BasemapStyle): void => {
     this._emitter.emit('BasemapStyleLoad', e);
   };
 
