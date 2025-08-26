@@ -347,15 +347,15 @@ export class BasemapStyle {
       }
     });
 
-    if (style.sprite && !this._session) {
+    if (style.sprite) {
       // Handle sprite
       if (Array.isArray(style.sprite)) {
         style.sprite.forEach((sprite, id, spriteArray) => {
-          spriteArray[id].url = `${sprite.url}?token=${this.token}`;
+          spriteArray[id].url = `${sprite.url}?f=json&token=${this.token}`;
         });
       }
       else {
-        style.sprite = `${style.sprite}?token=${this.token}`;
+        style.sprite = `${style.sprite}?f=json&token=${this.token}`;
       }
     }
 
