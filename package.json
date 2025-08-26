@@ -43,7 +43,10 @@
     "start-dev": "node build.js dev watch & npm run docs:watch",
     "format": "eslint . --fix",
     "docs": "typedoc",
-    "docs:watch": "typedoc --watch"
+    "docs:watch": "typedoc --watch""start-dev": "node build.js dev watch",
+    "docs": "typedoc",
+    "docs:watch": "typedoc --watch",
+    "docs:deploy": "npm run docs && gh-pages -d docs/build/html"
   },
   "dependencies": {
     "@esri/arcgis-rest-basemap-sessions": "^1.0.0",

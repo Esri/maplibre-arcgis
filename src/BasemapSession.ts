@@ -80,12 +80,50 @@ export type BasemapSessionEventMap = {
 const DEFAULT_START_BASEMAP_STYLE_SESSION_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start';
 const DEV_STYLE_SESSION_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start';
 /**
- * Class representing a session for ArcGIS Basemap Styles.
- * This class manages the lifecycle of a basemap style session, including authentication and auto-refresh functionality.
- * It provides methods to start, refresh, and handle events related to the session.
- * The session can be used to apply basemap styles to MapLibre maps.
+ * Manages the creation and lifecycle of a basemap session for use with {@link BasemapStyle}.
  *
- * Go to [Basemap Session](https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/introduction-basemap-styles-service/) for more information.
+ * An [access token](https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions. The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
+ *
+ * The `BasemapSession` class provides:
+ * - Session token management with auto-refresh capabilities
+ * - Event handling for session lifecycle (refresh, expiration, errors)
+ * - Integration with ArcGIS Basemap Styles Service
+ *
+ *
+ *
+ * More info here to describe the overview of the class and its functionality.
+ *
+ * @remarks
+ *
+ * @example
+ * ```javascript
+ * // Create and start a session
+ * const basemapSession = await BasemapSession.start({
+ *   token: "your-arcgis-token",
+ *   styleFamily: "arcgis",
+ *   duration: 3600,
+ *   autoRefresh: true
+ * });
+ *
+ * // Listen for session events
+ * basemapSession.on("BasemapSessionRefreshed", (e) => {
+ *   console.log("Session refreshed", e.current.token);
+ * });
+ *
+ * basemapSession.on("BasemapSessionExpired", (e) => {
+ *   console.log("Session expired", e.token);
+ * });
+ *
+ * basemapSession.on("BasemapSessionError", (e) => {
+ *   console.error("Session error", e);
+ * });
+ * ```
+ *
+ * @see {@link IBasemapSessionOptions} for configuration options
+ * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys} for more information on ArcGIS Authentication.
+ * @see {@link https://basemap-sessions-preview.gha.afd.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/basemap-usage-styles/ | Basemap usage} for more information on the session usage models.
+ * @see {@link https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/maps/display-a-map-with-a-basemap-session/ | Display a map with a basemap session tutorial}
+ *
  */
 export class BasemapSession {
   private _session?: ArcgisRestBasemapStyleSession;
@@ -94,22 +132,15 @@ export class BasemapSession {
   private _parentToken: string;
 
   /**
-   * Gets or sets whether the session should automatically request a new token when the session expires.
+   * Gets or sets whether the session should automatically request a new token after expiration.
    * @defaultValue false
    */
   autoRefresh: boolean;
 
   /**
-   * Creates a new BasemapSession instance for managing basemap sessions.
-   * Creates a session instance but does not start it. Use the {@link initialize}
-   * method or the static {@link BasemapSession.start} method to begin the session.
+   * Creates a new `BasemapSession` instance but does not start it. Use the the static {@link BasemapSession.start | start} method to create an instance that starts immediately. Use the {@link initialize} method to begin the session manually.
    *
-   * The token must be from an ArcGIS Location Platform account with the Basemaps privilege.
-   *
-   * For more information, see the ArcGIS Location Platform documentation.
-   *
-   * @param options - Configuration options for the basemap session
-   *
+   * @param options - Configuration options for the session
    *
    * @example
    * ```javascript
@@ -133,7 +164,7 @@ export class BasemapSession {
   }
 
   /**
-   * Gets the current session token
+   * Gets the current session token.
    * @readonly
    */
   get token(): string {
