@@ -46,8 +46,17 @@ interface IBasemapStyleOptions {
    * A basemap style enumeration or item ID.
    */
   style: string;
+  /**
+   * Accepts an ArcGIS access token for authentication.
+   */
   token?: string;
+  /**
+   * Accepts basemap sessions for authentication. The style will reload automatically on session token refresh.
+   */
   session?: BasemapSession;
+  /**
+   * Accepts an ArcGIS REST JS authentication manager for authentication.
+   */
   authentication?: string | RestJSAuthenticationManager;
   /**
    * Customize the language of the basemap.

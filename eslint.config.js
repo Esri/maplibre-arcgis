@@ -8,7 +8,7 @@ import stylistic from '@stylistic/eslint-plugin';
 
 export default tseslint.config([
     {
-        ignores: ["**/dist/**", "**/build/**"]
+        ignores: ["**/dist/**", "**/build/**", "test/**/*.ts"]
     },
     {
         files: ["**/*.ts"],

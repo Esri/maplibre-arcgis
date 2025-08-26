@@ -28,10 +28,12 @@
         "eslint-plugin-tsdoc": "^0.4.0",
         "gh-release": "^7.0.2",
         "globals": "^16.3.0",
+        "jsdom": "^26.1.0",
         "mkdirp": "^3.0.1",
         "typedoc": "^0.28.9",
         "typescript": "^5.8.3",
-        "typescript-eslint": "^8.36.0"
+        "typescript-eslint": "^8.36.0",
+        "vitest": "^3.2.4"
     },
     "main": "src/MaplibreArcGIS.ts",
     "scripts": {
@@ -39,7 +41,8 @@
         "build": "node build.js prod",
         "build-dev": "node build.js dev",
         "start": "node build.js prod watch",
-        "start-dev": "node build.js dev watch"
+        "start-dev": "node build.js dev watch",
+        "test": "vitest"
     },
     "dependencies": {
         "@esri/arcgis-rest-basemap-sessions": "^1.1.0",

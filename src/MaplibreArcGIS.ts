@@ -21,10 +21,10 @@ import FeatureLayer from './FeatureLayer';
 import packageInfo from '../package.json';
 
 interface CustomWindow extends Window {
-  TEST_ENVIRONMENT: string | null;
+  TEST_ENVIRONMENT?: string | null;
 }
-declare let window: CustomWindow;
-if (window.TEST_ENVIRONMENT) {
+const customWindow: CustomWindow | undefined = window;
+if (customWindow && customWindow.TEST_ENVIRONMENT) {
   new EventSource('/esbuild').addEventListener('change', () => location.reload());
 }
 
