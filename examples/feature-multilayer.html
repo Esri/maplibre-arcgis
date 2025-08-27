@@ -27,8 +27,7 @@
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
       zoom: 6, // starting zoom
-      center: [-120.504, 50.925], // starting location [longitude, latitude]
-      attributionControl: false
+      center: [-120.504, 50.925] // starting location [longitude, latitude]
     });
     const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
       style: 'arcgis/outdoor',
