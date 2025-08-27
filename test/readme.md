@@ -1,6 +1,5 @@
 # Unit tests
 
-
 Short statement as to mission test philosophy
 
 - No side effects
