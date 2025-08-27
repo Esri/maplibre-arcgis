@@ -23,16 +23,13 @@
   <div id="map"></div>
   <script src="../debug/apikey.js"></script>
   <script type="module">
-
-    const basemapsKey = apiKey;
-    const vectorTileKey = vectorTileApiKey;
-
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
       zoom: 13, // starting zoom
       center: [-118.498, 34.014], // starting location [longitude, latitude]
+      attributionControl: false
     });
-    const basemapStyle = new maplibreArcGIS.BasemapStyle.applyStyle(map, {
+    const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
       style: 'arcgis/light-gray',
       token: apiKey
     });
