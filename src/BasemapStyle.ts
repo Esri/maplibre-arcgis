@@ -1,5 +1,5 @@
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
-import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
+import { request } from '@esri/arcgis-rest-request';
 import type BasemapSession from './BasemapSession';
 import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
@@ -53,7 +53,7 @@ interface IBasemapStyleOptions {
   /**
    * Accepts basemap sessions for authentication. The style will reload automatically on session token refresh.
    */
-  session?: BasemapSession;
+  session?: BasemapSession | Promise<BasemapSession>;
   /**
    * Accepts an ArcGIS REST JS authentication manager for authentication.
    */
@@ -130,14 +130,14 @@ export class BasemapStyle {
   style: StyleSpecification;
   styleId: string;
   attributionControl: EsriAttributionControl;
-  authentication: string | RestJSAuthenticationManager;
+  authentication?: string | RestJSAuthenticationManager;
+  session: BasemapSession | Promise<BasemapSession>;
   preferences: BasemapPreferences;
   options: IBasemapStyleOptions;
   // private _transformStyleFn?:TransformStyleFunction;
   maplibreStyleOptions?: MaplibreStyleOptions;
   private _attributionControlOptions: EsriAttributionControlOptions;
   private _isItemId: boolean;
-  private _session: BasemapSession | Promise<BasemapSession>;
   private _map?: Map;
   private _baseUrl: string;
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
@@ -150,7 +150,7 @@ export class BasemapStyle {
   constructor(options: IBasemapStyleOptions) {
     if (!options || !options.style) throw new Error('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
     // Access token validation
-    if (options.session) this._session = options.session;
+    if (options.session) this.session = options.session;
     else if (options.authentication) this.authentication = options.authentication;
     else if (options.token) this.authentication = options.token;
     else throw new Error(
@@ -191,8 +191,11 @@ export class BasemapStyle {
   }
 
   private get token(): string {
-    if (!this.authentication) return undefined;
-    return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
+    if (this.session) return (this.session as BasemapSession).token;
+    if (this.authentication) {
+      if (typeof this.authentication === 'string') return this.authentication;
+      else return this.authentication.token;
+    }
   }
 
   /**
@@ -265,11 +268,9 @@ export class BasemapStyle {
   }
 
   private async _setSession(map?: Map): Promise<void> {
-    if (!this._session) throw new Error('No session was provided to the constructor.');
+    if (!this.session) throw new Error('No session was provided to the constructor.');
 
-    const session = await Promise.resolve(this._session);
-
-    this.authentication = session.token;
+    const session = await Promise.resolve(this.session);
 
     session.on('BasemapSessionRefreshed', (sessionData) => {
       const oldToken = sessionData.previous.token;
@@ -323,14 +324,14 @@ export class BasemapStyle {
    * @returns The maplibre style specification of the basemap style, formatted properly.
    */
   async loadStyle(): Promise<StyleSpecification> {
-    if (this._session) {
+    if (this.session) {
       await this._setSession();
     }
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
-    const authentication = typeof this.authentication == 'string' ? ApiKeyManager.fromKey(this.authentication) : this.authentication; // TODO why can't we just pass a string here?
+
     const style = await (request(styleUrl, {
-      authentication: authentication,
+      authentication: this.token, // TODO ask pat about this warning
       httpMethod: 'GET',
       params: {
         ...this.preferences,
@@ -356,7 +357,7 @@ export class BasemapStyle {
       }
     });
 
-    if (style.sprite && !this._session) {
+    if (style.sprite) {
       // Handle sprite
       if (Array.isArray(style.sprite)) {
         style.sprite.forEach((sprite, id, spriteArray) => {
