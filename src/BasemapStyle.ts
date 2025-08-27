@@ -71,8 +71,17 @@ export interface IBasemapStyleOptions {
    * A basemap style enumeration or item ID.
    */
   style: string;
+  /**
+   * Accepts an ArcGIS access token for authentication.
+   */
   token?: string;
-  session?: BasemapSession;
+  /**
+   * Accepts basemap sessions for authentication. The style will reload automatically on session token refresh.
+   */
+  session?: BasemapSession | Promise<BasemapSession>;
+  /**
+   * Accepts an ArcGIS REST JS authentication manager for authentication.
+   */
   authentication?: string | RestJSAuthenticationManager;
   /**
    * Customize the language of the basemap.
@@ -90,10 +99,6 @@ export interface IBasemapStyleOptions {
    * The maplibre-gl map to apply the basemap style to.
    */
   map?: Map;
-  /**
-   * Passthrough options for maplibre-gl map.setStyle()
-   */
-  maplibreStyleOptions?: MaplibreStyleOptions;
   /**
    * Options for customizing the maplibre-gl attribution control.
    */
@@ -160,14 +165,13 @@ export class BasemapStyle {
   style: StyleSpecification;
   styleId: string;
   attributionControl: EsriAttributionControl;
-  authentication: string | RestJSAuthenticationManager;
+  authentication?: string | RestJSAuthenticationManager;
+  session: BasemapSession | Promise<BasemapSession>;
   preferences: BasemapPreferences;
   options: IBasemapStyleOptions;
   // private _transformStyleFn?:TransformStyleFunction;
-  maplibreStyleOptions?: MaplibreStyleOptions;
   private _attributionControlOptions: EsriAttributionControlOptions;
   private _isItemId: boolean;
-  private _session: BasemapSession | Promise<BasemapSession>;
   private _map?: Map;
   private _baseUrl: string;
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
@@ -177,13 +181,13 @@ export class BasemapStyle {
    * @param options - The options for the BasemapStyle instance.
    */
   constructor(options: IBasemapStyleOptions) {
-    if (!options || !options.style) throw new Error('BasemapStyle must be initialized with a style enumeration, such as \'arcgis/streets\' or \'arcgis/outdoor\'.');
+    if (!options || !options.style) throw new Error('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
     // Access token validation
-    if (options.session) this._session = options.session;
+    if (options.session) this.session = options.session;
     else if (options.authentication) this.authentication = options.authentication;
     else if (options.token) this.authentication = options.token;
     else throw new Error(
-      'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
+      'ArcGIS access token required. To learn more, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
     );
 
     if (options.map) this._map = options.map;
@@ -191,7 +195,7 @@ export class BasemapStyle {
     this.styleId = options.style;
     this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
     this._isItemId = checkItemId(this.styleId) == 'ItemId' ? true : false;
-    if (options.maplibreStyleOptions) this.maplibreStyleOptions = options.maplibreStyleOptions;
+
     if (options.attributionControl) this._attributionControlOptions = options.attributionControl;
 
     this._updatePreferences({
@@ -201,7 +205,7 @@ export class BasemapStyle {
     });
   }
 
-  get styleUrl(): string {
+  private get _styleUrl(): string {
     let styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
     styleUrl += `?token=${this.token}`;
@@ -220,8 +224,11 @@ export class BasemapStyle {
   }
 
   private get token(): string {
-    if (!this.authentication) return undefined;
-    return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
+    if (this.session) return (this.session as BasemapSession).token;
+    if (this.authentication) {
+      if (typeof this.authentication === 'string') return this.authentication;
+      else return this.authentication.token;
+    }
   }
 
   /**
@@ -244,8 +251,7 @@ export class BasemapStyle {
     if (map) this._map = map;
     if (!this._map) throw new Error('Unable to apply basemap style: No \'Map\' object was provided.');
 
-    if (maplibreStyleOptions) this.maplibreStyleOptions = maplibreStyleOptions;
-    this._map.setStyle(this.style, this.maplibreStyleOptions);
+    this._map.setStyle(this.style, maplibreStyleOptions);
     this._setEsriAttribution();
 
     return this._map;
@@ -263,7 +269,7 @@ export class BasemapStyle {
     }
 
     await this.loadStyle();
-    this.applyToMap();
+    this.applyToMap(this._map, options.maplibreStyleOptions);
 
     return this.style;
   }
@@ -294,18 +300,19 @@ export class BasemapStyle {
   }
 
   private async _setSession(map?: Map): Promise<void> {
-    if (!this._session) throw new Error('No session was provided to the constructor.');
+    if (!this.session) throw new Error('No session was provided to the constructor.');
 
-    const session = await Promise.resolve(this._session);
+    const session = await Promise.resolve(this.session);
+    this.session = session;
 
-    this.authentication = session.token;
-
-    session.on('BasemapSessionRefreshed', (sessionData) => {
+    this.session.on('BasemapSessionRefreshed', (sessionData) => {
       const oldToken = sessionData.previous.token;
       const newToken = sessionData.current.token;
       this.authentication = newToken; // update the class with the new token
       this._updateTiles(oldToken, newToken, map); // update the map with the new token
     });
+
+    return;
   }
 
   private _updateTiles(fromToken: string, toToken: string, map?: Map): void {
@@ -352,14 +359,14 @@ export class BasemapStyle {
    * @returns The maplibre style specification of the basemap style, formatted properly.
    */
   async loadStyle(): Promise<StyleSpecification> {
-    if (this._session) {
+    if (this.session) {
       await this._setSession();
     }
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
     const authentication = typeof this.authentication == 'string' ? ApiKeyManager.fromKey(this.authentication) : this.authentication;
     const style = await (request(styleUrl, {
-      authentication: authentication,
+      authentication: this.token, // TODO ask pat about this warning
       httpMethod: 'GET',
       params: {
         ...this.preferences,
@@ -368,9 +375,8 @@ export class BasemapStyle {
     }) as Promise<StyleSpecification>)
       .catch((e: Error) => {
         this._styleErrorHandler(e);
-        throw e;
       });
-
+    if (!style) return;
     // Handle glyphs
     if (style.glyphs) style.glyphs = `${style.glyphs}?token=${this.token}`;
 
@@ -385,7 +391,7 @@ export class BasemapStyle {
       }
     });
 
-    if (style.sprite && !this._session) {
+    if (style.sprite) {
       // Handle sprite
       if (Array.isArray(style.sprite)) {
         style.sprite.forEach((sprite, id, spriteArray) => {
@@ -438,7 +444,7 @@ export class BasemapStyle {
    * @returns - A string representing the basemap style URL.
    */
   static url(options: IBasemapStyleOptions): string {
-    return new BasemapStyle(options).styleUrl;
+    return new BasemapStyle(options)._styleUrl;
   }
 
   /**
@@ -447,14 +453,14 @@ export class BasemapStyle {
    * @param options - Style options, including a style ID and authentication
    * @returns - BasemapStyle object
    */
-  static applyStyle(map: Map, options: IBasemapStyleOptions): BasemapStyle {
+  static applyStyle(map: Map, options: ApplyStyleOptions): BasemapStyle {
     if (!map) throw new Error('Must provide a maplibre-gl \'Map\' to apply style to.');
     options.map = map;
 
     const basemapStyle = new BasemapStyle(options);
 
     basemapStyle.loadStyle().then((_) => {
-      basemapStyle.applyToMap();
+      basemapStyle.applyToMap(map, options.maplibreStyleOptions);
     }).catch((e) => { throw e; });
 
     return basemapStyle;
