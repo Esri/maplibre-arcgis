@@ -27,11 +27,12 @@
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
       zoom: 12, // starting zoom
-      center: [-118.805, 34.027] // starting location [longitude, latitude]
+      center: [-118.805, 34.027], // starting location [longitude, latitude]
+      attributionControl: false
     });
     const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
       style: 'arcgis/light-gray',
-      token: apiKey
+      token: apiKey,
     });
 
     const polygonLayer = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Parks_and_Open_Space/FeatureServer/0";

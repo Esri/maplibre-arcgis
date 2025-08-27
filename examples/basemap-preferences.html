@@ -26,28 +26,23 @@
 
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
-      zoom: 3, // starting zoom
-      center: [-117.805, 34.027], // starting location
+      zoom: 5, // starting zoom
+      center: [-88.805, 30.027], // starting location
+      attributionControl: false
     });
 
-    const basemapStyle = new maplibreArcGIS.BasemapStyle('arcgis/outdoor', {
+    const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map,{
+      style: 'arcgis/outdoor',
       token: apiKey
     });
 
-    basemapStyle.applyStyleTo(map);
-
-    // These options are also accepted in the constructor
-    map.once("render", () => {
+    map.on("load", () => {
       setTimeout(async () => {
-        const newStyle = await basemapStyle.changeStyle({
+        // Update map preferences after 3 seconds
+        await basemapStyle.updateStyle({
+          style: 'arcgis/navigation',
           worldview: 'unitedStatesOfAmerica',
-        });
-
-        console.log('New style applied:', newStyle);
-
-        map.setStyle(newStyle, {
-          diff: true,
-          validate: false
+          language: 'ja'
         });
       }, 3000);
     });
