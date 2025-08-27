@@ -10,7 +10,8 @@ export default defineConfig({
     },
     setupFiles: [
       'dotenv/config',
-      './test/setupUnit.js'
+      './test/setupUnit.js',
+      'vitest-webgl-canvas-mock'
     ],
     include: [
       './test/**/*.test.{ts,js}'
