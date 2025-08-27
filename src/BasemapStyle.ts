@@ -175,11 +175,8 @@ export type BasemapPreferences = {
   language?: string;
 };
 
-/**
- * Union type representing the different types of events emitted from the BasemapStyle class.
- */
 export type BasemapStyleEventMap = {
-  BasemapStyleLoad: StyleSpecification;
+  BasemapStyleLoad: BasemapStyle;
   BasemapAttributionLoad: EsriAttributionControl;
   BasemapStyleError: Error;
 };
