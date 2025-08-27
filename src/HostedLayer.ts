@@ -1,6 +1,7 @@
 import type { GeoJSONSourceSpecification, LayerSpecification, VectorSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Map } from 'maplibre-gl';
 import type { RestJSAuthenticationManager } from './Util';
+import AttributionControl from './AttributionControl';
 
 /**
  * Union type representing the MapLibre source specifications supported by hosted layers.
@@ -172,6 +173,14 @@ export abstract class HostedLayer {
 
   set layer(_) { throwReadOnlyError('layer'); }
 
+  protected _onAdd(map: Map) {
+    if (map) this._map = map;
+    if (!this._map) throw new Error('No map');
+    // Handle attribution
+    const esriAttribution = new AttributionControl();
+    if (esriAttribution.canAdd(this._map)) this._map.addControl(esriAttribution);
+  }
+
   /**
    * Changes the ID of a maplibre style source, and updates all associated maplibre style layers.
    * @param oldId - The source ID to be changed.
@@ -235,7 +244,7 @@ export abstract class HostedLayer {
     this._layers.forEach((layer) => {
       map.addLayer(layer);
     });
-
+    this._onAdd(map);
     return this;
   }
 
@@ -245,6 +254,7 @@ export abstract class HostedLayer {
     Object.keys(this._sources).forEach((sourceId) => {
       map.addSource(sourceId, this._sources[sourceId]);
     });
+    this._onAdd(map);
     return this;
   }
 
@@ -254,6 +264,7 @@ export abstract class HostedLayer {
     this._layers.forEach((layer) => {
       map.addLayer(layer);
     });
+    this._onAdd(map);
     return this;
   }
 
