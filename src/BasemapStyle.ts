@@ -41,6 +41,9 @@ type BasemapStyleObject = {
 
 type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
 
+/**
+ * Options for basemap styles
+ */
 interface IBasemapStyleOptions {
   /**
    * A basemap style enumeration or item ID.
@@ -83,6 +86,10 @@ interface IBasemapStyleOptions {
    */
   baseUrl?: string;
 };
+
+/**
+ * Options for applyStyle
+ */
 type ApplyStyleOptions = IBasemapStyleOptions & {
   /**
    * Passthrough options for maplibre-gl map.setStyle()
@@ -90,6 +97,9 @@ type ApplyStyleOptions = IBasemapStyleOptions & {
   maplibreStyleOptions?: MaplibreStyleOptions;
 };
 
+/**
+ * Options for updateStyle
+ */
 interface UpdateStyleOptions {
   /**
    * A basemap style enumeration or item ID.
@@ -129,14 +139,30 @@ const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/servi
 // const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 
 export class BasemapStyle {
-  // Type declarations
+  /**
+   * The basemap style, formatted as MapLibre style specification JSON.
+   */
   style: StyleSpecification;
+  /**
+   * The ID of the saved style.
+   */
   styleId: string;
+  /**
+   * A reference to the map's AttributionControl.
+   */
   attributionControl: EsriAttributionControl;
+  /**
+   * An access token or ArcGIS REST JS authentication manager. Used for authentication.
+   */
   authentication?: string | RestJSAuthenticationManager;
+  /**
+   * A basemap session. Used for authentication.
+   */
   session: BasemapSession | Promise<BasemapSession>;
+  /**
+   * Optional style preferences such as `language` and `places`.
+   */
   preferences: BasemapPreferences;
-  options: IBasemapStyleOptions;
   // private _transformStyleFn?:TransformStyleFunction;
   private _attributionControlOptions: EsriAttributionControlOptions;
   private _isItemId: boolean;
@@ -243,6 +269,60 @@ export class BasemapStyle {
     return this.style;
   }
 
+  /**
+   * Loads the basemap style from the basemap styles service.
+   * @returns The maplibre style specification of the basemap style, formatted properly.
+   */
+  async loadStyle(): Promise<StyleSpecification> {
+    if (this.session) {
+      await this._setSession();
+    }
+    // Request style JSON
+    const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
+
+    const style = await (request(styleUrl, {
+      authentication: this.token, // TODO ask pat about this warning
+      httpMethod: 'GET',
+      params: {
+        ...this.preferences,
+        echoToken: false,
+      },
+    }) as Promise<StyleSpecification>)
+      .catch((e: Error) => {
+        this._styleErrorHandler(e);
+      });
+    if (!style) return;
+    // Handle glyphs
+    if (style.glyphs) style.glyphs = `${style.glyphs}?token=${this.token}`;
+
+    // Handle sources
+    Object.keys(style.sources).forEach((sourceId) => {
+      const source = style.sources[sourceId];
+
+      if (source.type === 'raster' || source.type === 'vector' || source.type === 'raster-dem') {
+        if (source.tiles.length > 0) {
+          for (let i = 0; i < source.tiles.length; i++) source.tiles[i] = `${source.tiles[i]}?token=${this.token}`;
+        }
+      }
+    });
+
+    if (style.sprite) {
+      // Handle sprite
+      if (Array.isArray(style.sprite)) {
+        style.sprite.forEach((sprite, id, spriteArray) => {
+          spriteArray[id].url = `${sprite.url}?token=${this.token}`;
+        });
+      }
+      else {
+        style.sprite = `${style.sprite}?token=${this.token}`;
+      }
+    }
+
+    this.style = style;
+    this._styleLoadHandler(this.style);
+    return this.style;
+  }
+
   private _setEsriAttribution(): void {
     if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
 
@@ -321,60 +401,6 @@ export class BasemapStyle {
         this._map.setSprite(sprite.url.replace(fromToken, toToken));
       }
     }
-  }
-
-  /**
-   * Loads the basemap style from the basemap styles service.
-   * @returns The maplibre style specification of the basemap style, formatted properly.
-   */
-  async loadStyle(): Promise<StyleSpecification> {
-    if (this.session) {
-      await this._setSession();
-    }
-    // Request style JSON
-    const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
-
-    const style = await (request(styleUrl, {
-      authentication: this.token, // TODO ask pat about this warning
-      httpMethod: 'GET',
-      params: {
-        ...this.preferences,
-        echoToken: false,
-      },
-    }) as Promise<StyleSpecification>)
-      .catch((e: Error) => {
-        this._styleErrorHandler(e);
-      });
-    if (!style) return;
-    // Handle glyphs
-    if (style.glyphs) style.glyphs = `${style.glyphs}?token=${this.token}`;
-
-    // Handle sources
-    Object.keys(style.sources).forEach((sourceId) => {
-      const source = style.sources[sourceId];
-
-      if (source.type === 'raster' || source.type === 'vector' || source.type === 'raster-dem') {
-        if (source.tiles.length > 0) {
-          for (let i = 0; i < source.tiles.length; i++) source.tiles[i] = `${source.tiles[i]}?token=${this.token}`;
-        }
-      }
-    });
-
-    if (style.sprite) {
-      // Handle sprite
-      if (Array.isArray(style.sprite)) {
-        style.sprite.forEach((sprite, id, spriteArray) => {
-          spriteArray[id].url = `${sprite.url}?token=${this.token}`;
-        });
-      }
-      else {
-        style.sprite = `${style.sprite}?token=${this.token}`;
-      }
-    }
-
-    this.style = style;
-    this._styleLoadHandler(this.style);
-    return this.style;
   }
 
   private _styleLoadHandler = (e: StyleSpecification): void => {
