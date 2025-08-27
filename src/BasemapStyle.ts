@@ -75,10 +75,6 @@ interface IBasemapStyleOptions {
    */
   map?: Map;
   /**
-   * Passthrough options for maplibre-gl map.setStyle()
-   */
-  maplibreStyleOptions?: MaplibreStyleOptions;
-  /**
    * Options for customizing the maplibre-gl attribution control.
    */
   attributionControl?: EsriAttributionControlOptions;
@@ -87,6 +83,13 @@ interface IBasemapStyleOptions {
    */
   baseUrl?: string;
 };
+type ApplyStyleOptions = IBasemapStyleOptions & {
+  /**
+   * Passthrough options for maplibre-gl map.setStyle()
+   */
+  maplibreStyleOptions?: MaplibreStyleOptions;
+};
+
 interface UpdateStyleOptions {
   /**
    * A basemap style enumeration or item ID.
@@ -135,7 +138,6 @@ export class BasemapStyle {
   preferences: BasemapPreferences;
   options: IBasemapStyleOptions;
   // private _transformStyleFn?:TransformStyleFunction;
-  maplibreStyleOptions?: MaplibreStyleOptions;
   private _attributionControlOptions: EsriAttributionControlOptions;
   private _isItemId: boolean;
   private _map?: Map;
@@ -162,7 +164,7 @@ export class BasemapStyle {
     this.styleId = options.style;
     this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
     this._isItemId = checkItemId(this.styleId) == 'ItemId' ? true : false;
-    if (options.maplibreStyleOptions) this.maplibreStyleOptions = options.maplibreStyleOptions;
+
     if (options.attributionControl) this._attributionControlOptions = options.attributionControl;
 
     this._updatePreferences({
@@ -172,7 +174,7 @@ export class BasemapStyle {
     });
   }
 
-  get styleUrl(): string {
+  private get _styleUrl(): string {
     let styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
     styleUrl += `?token=${this.token}`;
@@ -218,8 +220,7 @@ export class BasemapStyle {
     if (map) this._map = map;
     if (!this._map) throw new Error('Unable to apply basemap style: No \'Map\' object was provided.');
 
-    if (maplibreStyleOptions) this.maplibreStyleOptions = maplibreStyleOptions;
-    this._map.setStyle(this.style, this.maplibreStyleOptions);
+    this._map.setStyle(this.style, maplibreStyleOptions);
     this._setEsriAttribution();
 
     return this._map;
@@ -237,7 +238,7 @@ export class BasemapStyle {
     }
 
     await this.loadStyle();
-    this.applyToMap();
+    this.applyToMap(this._map, options.maplibreStyleOptions);
 
     return this.style;
   }
@@ -271,13 +272,16 @@ export class BasemapStyle {
     if (!this.session) throw new Error('No session was provided to the constructor.');
 
     const session = await Promise.resolve(this.session);
+    this.session = session;
 
-    session.on('BasemapSessionRefreshed', (sessionData) => {
+    this.session.on('BasemapSessionRefreshed', (sessionData) => {
       const oldToken = sessionData.previous.token;
       const newToken = sessionData.current.token;
       this.authentication = newToken; // update the class with the new token
       this._updateTiles(oldToken, newToken, map); // update the map with the new token
     });
+
+    return;
   }
 
   private _updateTiles(fromToken: string, toToken: string, map?: Map): void {
@@ -340,9 +344,8 @@ export class BasemapStyle {
     }) as Promise<StyleSpecification>)
       .catch((e: Error) => {
         this._styleErrorHandler(e);
-        throw e;
       });
-
+    if (!style) return;
     // Handle glyphs
     if (style.glyphs) style.glyphs = `${style.glyphs}?token=${this.token}`;
 
@@ -411,7 +414,7 @@ export class BasemapStyle {
    * @returns The URL of the specified ArcGIS basemap style with all included parameters
    */
   static url(options: IBasemapStyleOptions): string {
-    return new BasemapStyle(options).styleUrl;
+    return new BasemapStyle(options)._styleUrl;
   }
 
   /**
@@ -420,14 +423,14 @@ export class BasemapStyle {
    * @param options - Style options, including a style ID and authentication
    * @returns - BasemapStyle object
    */
-  static applyStyle(map: Map, options: IBasemapStyleOptions): BasemapStyle {
+  static applyStyle(map: Map, options: ApplyStyleOptions): BasemapStyle {
     if (!map) throw new Error('Must provide a maplibre-gl \'Map\' to apply style to.');
     options.map = map;
 
     const basemapStyle = new BasemapStyle(options);
 
     basemapStyle.loadStyle().then((_) => {
-      basemapStyle.applyToMap();
+      basemapStyle.applyToMap(map, options.maplibreStyleOptions);
     }).catch((e) => { throw e; });
 
     return basemapStyle;
