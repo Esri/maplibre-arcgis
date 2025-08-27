@@ -23,24 +23,21 @@
   <div id="map"></div>
   <script src="../debug/apikey.js"></script>
   <script type="module">
+
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
-      zoom: 14, // starting zoom
-      center: [-117.805, 34.027], // starting location
+      zoom: 13, // starting zoom
+      center: [-118.498, 34.014], // starting location [longitude, latitude]
     });
 
-    const basemapSession = maplibreArcGIS.BasemapSession.start({
-      styleFamily: 'arcgis',
-      token: sessionKey2,
-      duration:30, // Only valid for 30 seconds, for testing
-      autoRefresh: true
-    });
+    const vectorLayer = await maplibreArcGIS.VectorTileLayer.fromPortalItem('f0298e881b5b4743bbdf2c7d378acc84');
 
-    const arcgisBasemap = maplibreArcGIS.BasemapStyle.applyStyle(map, {
-      style: 'arcgis/outdoor',
-      session: basemapSession
-    });
-</script>
+    // May also contain glyphs and sprites
+    console.log(vectorLayer.style);
+
+    vectorLayer.addSourcesAndLayersTo(map);
+
+  </script>
 </body>
 
 </html>
