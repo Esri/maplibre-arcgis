@@ -42,7 +42,7 @@ type BasemapStyleObject = {
 type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
 
 type BasemapStyleEventMap = {
-  BasemapStyleLoad: StyleSpecification;
+  BasemapStyleLoad: BasemapStyle;
   BasemapAttributionLoad: EsriAttributionControl;
   BasemapStyleError: Error;
 };
@@ -293,7 +293,7 @@ export class BasemapStyle {
       });
     if (!style) return;
     // Handle glyphs
-    if (style.glyphs) style.glyphs = `${style.glyphs}?token=${this._token}`;
+    if (style.glyphs) style.glyphs = `${style.glyphs}?f=json&token=${this.token}`;
 
     // Handle sources
     Object.keys(style.sources).forEach((sourceId) => {
@@ -301,7 +301,7 @@ export class BasemapStyle {
 
       if (source.type === 'raster' || source.type === 'vector' || source.type === 'raster-dem') {
         if (source.tiles.length > 0) {
-          for (let i = 0; i < source.tiles.length; i++) source.tiles[i] = `${source.tiles[i]}?token=${this._token}`;
+          for (let i = 0; i < source.tiles.length; i++) source.tiles[i] = `${source.tiles[i]}?f=json&token=${this.token}`;
         }
       }
     });
@@ -319,7 +319,7 @@ export class BasemapStyle {
     }
 
     this.style = style;
-    this._styleLoadHandler(this.style);
+    this._styleLoadHandler(this);
     return this.style;
   }
 
@@ -403,7 +403,7 @@ export class BasemapStyle {
     }
   }
 
-  private _styleLoadHandler = (e: StyleSpecification): void => {
+  private _styleLoadHandler = (e: BasemapStyle): void => {
     this._emitter.emit('BasemapStyleLoad', e);
   };
 
