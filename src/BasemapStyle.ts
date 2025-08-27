@@ -148,13 +148,13 @@ export class BasemapStyle {
    * @param options - Additional options, including access token and style preferences
    */
   constructor(options: IBasemapStyleOptions) {
-    if (!options || !options.style) throw new Error('BasemapStyle must be initialized with a style enumeration, such as \'arcgis/streets\' or \'arcgis/outdoor\'.');
+    if (!options || !options.style) throw new Error('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
     // Access token validation
     if (options.session) this._session = options.session;
     else if (options.authentication) this.authentication = options.authentication;
     else if (options.token) this.authentication = options.token;
     else throw new Error(
-      'An ArcGIS access token is required to load basemap styles. To get one, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
+      'ArcGIS access token required. To learn more, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
     );
 
     if (options.map) this._map = options.map;

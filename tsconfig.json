@@ -11,11 +11,12 @@
         "typeRoots":["src/@types","node_modules/@types"]
     },
     "include": [
-        "src/**/*",
-        "test/**/*"
+        "src/**/*.ts",
+        "test/**/*.ts"
     ],
     "exclude": [
         "node_modules",
-        "dist"
+        "dist",
+        "test/**/*.test.ts"
     ]
 }

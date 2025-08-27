@@ -8,7 +8,10 @@ export default defineConfig({
         url: 'http://127.0.0.1:5500/'
       }
     },
-    setupFiles: ['./test/setupUnit.js'],
+    setupFiles: [
+      'dotenv/config',
+      './test/setupUnit.js'
+    ],
     include: [
       './test/**/*.test.{ts,js}'
     ],
