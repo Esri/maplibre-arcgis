@@ -3,7 +3,7 @@ import { AttributionControl as MaplibreAttributionControl, type IControl, type M
 /**
  * Supported options for the attribution control.
  */
-export interface AttributionControlOptions {
+export interface IAttributionControlOptions {
   customAttribution?: string | Array<string>;
   compact?: boolean;
   closed?: boolean;
@@ -32,7 +32,7 @@ export class AttributionControl extends MaplibreAttributionControl {
    *
    * @param options - Configuration options for the attribution control
    */
-  constructor(options: AttributionControlOptions = {}) {
+  constructor(options: IAttributionControlOptions = {}) {
     // Incompatible options - 'closed' overrides 'compact'
     if (!options?.compact && options?.closed) options.compact = true;
 

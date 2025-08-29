@@ -26,9 +26,17 @@ export interface IBasemapSessionOptions {
    * @internal
    */
   startSessionUrl?: string;
-
+  /**
+   * The end time of the session.
+   */
   endTime: Date;
+  /**
+   * The date of expiration for the session taking into account the {@link safetyMargin} applied.
+   */
   expires: Date;
+  /**
+   * The start time of the session
+   */
   startTime: Date;
 }
 
@@ -82,18 +90,13 @@ const DEV_STYLE_SESSION_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/re
 /**
  * Manages the creation and lifecycle of a basemap session for use with {@link BasemapStyle}.
  *
- * An [access token](https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions. The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
- *
  * The `BasemapSession` class provides:
  * - Session token management with auto-refresh capabilities
  * - Event handling for session lifecycle (refresh, expiration, errors)
  * - Integration with ArcGIS Basemap Styles Service
  *
- *
- *
- * More info here to describe the overview of the class and its functionality.
- *
- * @remarks
+ * > An [access token](https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions.
+ * > The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
  *
  * @example
  * ```javascript
@@ -138,7 +141,7 @@ export class BasemapSession {
   autoRefresh: boolean;
 
   /**
-   * Creates a new `BasemapSession` instance but does not start it. Use the the static {@link BasemapSession.start | start} method to create an instance that starts immediately. Use the {@link initialize} method to begin the session manually.
+   * Creates a new `BasemapSession` instance but does not start it. Use the {@linkcode BasemapSession.initialize} method to begin the session manually.
    *
    * @param options - Configuration options for the session
    *
