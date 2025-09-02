@@ -88,10 +88,6 @@ export interface IBasemapStyleOptions {
    */
   preferences?: IBasemapPreferences;
   /**
-   * The maplibre-gl map to apply the basemap style to.
-   */
-  map?: Map;
-  /**
    * Options for customizing the maplibre-gl attribution control.
    */
   attributionControl?: EsriAttributionControlOptions;
@@ -190,8 +186,6 @@ export class BasemapStyle {
     else throw new Error(
       'ArcGIS access token required. To learn more, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
     );
-
-    if (options.map) this._map = options.map;
 
     this.styleId = options.style;
     this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
@@ -510,7 +504,6 @@ export class BasemapStyle {
    */
   static applyStyle(map: Map, options: IApplyStyleOptions): BasemapStyle {
     if (!map) throw new Error('Must provide a maplibre-gl \'Map\' to apply style to.');
-    options.map = map;
 
     const basemapStyle = new BasemapStyle(options);
 
