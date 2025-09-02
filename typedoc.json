@@ -10,7 +10,6 @@
   "excludeExternals": false,
   "includeVersion": true,
   "categorizeByGroup": true,
-  "skipErrorChecking": true,
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
   "externalPattern": ["node_modules"],
   "tsconfig": "./tsconfig.json",
@@ -22,7 +21,6 @@
   "githubPages": true,
   "gitRevision": "main",
   "gitRemote": "origin",
-  "theme": "default",
   "hideGenerator": true,
   "validation": {
     "invalidLink": false

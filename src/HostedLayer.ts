@@ -1,7 +1,7 @@
 import type { GeoJSONSourceSpecification, LayerSpecification, VectorSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
 import type { Map } from 'maplibre-gl';
-import type { RestJSAuthenticationManager } from './Util';
 import AttributionControl from './AttributionControl';
+import type { RestJSAuthenticationManager } from './Util';
 
 /**
  * Union type representing the MapLibre source specifications supported by hosted layers.
@@ -37,7 +37,7 @@ export type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSo
 /**
  * Options for creating a HostedLayer instance.
  */
-export interface HostedLayerOptions {
+export interface IHostedLayerOptions {
   token?: string; // Access token as a string
   authentication?: RestJSAuthenticationManager | string; // Authentication as a REST JS object or access token string
   portalUrl?: string;
@@ -47,7 +47,7 @@ export interface HostedLayerOptions {
 /**
  * Structure representing metadata for an ArcGIS item.
  */
-export interface ItemInfo {
+export interface IItemInfo {
   portalUrl: string;
   itemId: string;
   accessInformation?: string; // Attribution information from item JSON
@@ -59,7 +59,7 @@ export interface ItemInfo {
   // spatialReference?: string
 }
 
-export interface DataServiceInfo {
+export interface IDataServiceInfo {
   serviceUrl: string;
   copyrightText?: string; // Attribution information from service JSON
   /*

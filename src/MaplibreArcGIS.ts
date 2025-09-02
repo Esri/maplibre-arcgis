@@ -17,7 +17,7 @@ import { AttributionControl, AttributionControlOptions, EsriAttribution } from '
 import { BasemapSession, BasemapSessionEventMap, IBasemapSessionOptions, SessionRefreshedData, SessionResponse } from './BasemapSession';
 import { BasemapPreferences, BasemapSelfResponse, BasemapStyle, BasemapStyleEventMap, BasemapStyleObject, CodeNamePair, IBasemapStyleOptions, MaplibreStyleOptions, PlacesOptions, StyleEnum, StyleFamily, UpdateStyleOptions } from './BasemapStyle';
 import { FeatureLayer, GeoJSONLayerOptions, QueryOptions } from './FeatureLayer';
-import { HostedLayer, HostedLayerOptions, ItemInfo, SupportedSourceSpecification } from './HostedLayer';
+import { HostedLayer, ItemInfo, SupportedSourceSpecification } from './HostedLayer';
 import { RestJSAuthenticationManager } from './Util';
 import { VectorTileLayer, VectorTileLayerOptions, VectorTileServiceInfo } from './VectorTileLayer';
 

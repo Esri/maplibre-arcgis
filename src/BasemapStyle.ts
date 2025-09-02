@@ -1,7 +1,8 @@
-import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
+import { request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
-import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
+import { AttributionControl as EsriAttributionControl, type IAttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
+import type BasemapSession from './BasemapSession';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
 /**
@@ -10,6 +11,10 @@ import { checkItemId, type RestJSAuthenticationManager } from './Util';
 export type BasemapSelfResponse = {
 /**
  * Structure of the self response from the Basemap Styles service.
+ */
+export type BasemapSelfResponse = {
+/**
+ * Structure of the self response from the Basemap Styles service. See the [ArcGIS Rest reference](https://developers.arcgis.com/rest/basemap-styles/styles-self-get) to learn more.
  */
 export type BasemapSelfResponse = {
   customStylesUrl: string;
@@ -127,9 +132,19 @@ export interface IBasemapStyleOptions {
 };
 
 /**
+ * Options for applyStyle
+ */
+export interface IApplyStyleOptions extends IBasemapStyleOptions {
+  /**
+   * Passthrough options for maplibre-gl map.setStyle()
+   */
+  maplibreStyleOptions?: MaplibreStyleOptions;
+};
+
+/**
  * Supported options for updating the properties of an existing BasemapStyle object.
  */
-export interface UpdateStyleOptions {
+export interface IUpdateStyleOptions {
   /**
    * A basemap style enumeration or item ID.
    */
@@ -165,24 +180,6 @@ export interface IBasemapPreferences {
    */
   maplibreStyleOptions?: MaplibreStyleOptions;
 }
-
-/**
- * Options for the Basemap style parameters.
- */
-export type BasemapPreferences = {
-  places?: PlacesOptions;
-  worldview?: string;
-  language?: string;
-};
-
-export type BasemapStyleEventMap = {
-  BasemapStyleLoad: BasemapStyle;
-  BasemapAttributionLoad: EsriAttributionControl;
-  BasemapStyleError: Error;
-};
-
-const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
-// const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 
 /**
  * Class representing a basemap style for MapLibre GL JS.
