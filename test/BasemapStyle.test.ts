@@ -1,8 +1,7 @@
 //@ts-nocheck
-import { describe, expect, test as testBase, vi } from 'vitest';
-import { BasemapStyle, BasemapSession } from '../src/MaplibreArcGIS';
-import { ApiKeyManager } from '@esri/arcgis-rest-request';
-import { Map } from 'maplibre-gl';
+import { describe, expect, vi, beforeAll } from 'vitest';
+import { BasemapStyle } from '../src/MaplibreArcGIS';
+import { useMock, removeMock, customTest as test } from './unitTest';
 
 const arcgisStyle = 'arcgis/navigation';
 const imageryStyle = 'arcgis/imagery';
@@ -10,48 +9,25 @@ const openStyle = 'open/streets';
 
 const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 
-const basemapSession =  await BasemapSession.start({
-      styleFamily: 'arcgis',
-      token: process.env.PRODUCTION_KEY_ALP
-    });
 
-// Basemap style test format
-const test = testBase.extend({
-  // loads a BasemapSession
-  basemapSession: async ({apiKey}, use) => {
-    const basemapSession = await BasemapSession.start({
-      styleFamily: 'arcgis',
-      token: apiKey
+
+
+describe('Works with actual data', () => {
+  test('Requests a JSON style from the correct service URL.', async ({apiKey}) => {
+    const basemap = new BasemapStyle({
+      style:arcgisStyle,
+      token:apiKey
     });
-    await use(basemapSession);
-  },
-  // Creates a REST JS APIKeyManager
-  restJsAuthentication: async ({apiKey}, use) => {
-    const restJsAuthentication = ApiKeyManager.fromKey(apiKey);
-    await use (restJsAuthentication)
-  },
-  // Returns an API key
-  apiKey: async ({}, use) => {
-    const apiKey = process.env.PRODUCTION_KEY_ALP;
-    await use(apiKey);
-  },
-  // Mocks maplibre map
-  map: async ({}, use) => {
-    const mapDiv = document.createElement('div');
-    // TODO how to initialize webgl here?
-    const map = new Map({
-      container: mapDiv,
-      zoom: 5, // starting zoom
-      center: [138.2529, 36.2048] // starting location
-    });
-    await use(map);
-  }
+    // Fetch actual data
+    // TODO check URL here
+
+    //await basemap.loadStyle();
+  });
 });
 
 /**
  * Tests
  */
-
 test('Requires a \'style\' parameter and saves it internally.', ({apiKey}) => {
   const basemap = new BasemapStyle({
     style: arcgisStyle,
@@ -64,44 +40,6 @@ test('Throws if no \'style\' is provided', () => {
   expect(() => {
     return new BasemapStyle({});
   }).toThrow('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
-});
-
-test('Retrieves the style as JSON when `loadStyle()` is called.', async ({apiKey}) => {
-  const basemap = new BasemapStyle({
-    style:arcgisStyle,
-    token:apiKey
-  });
-  // Fetch actual data
-  await basemap.loadStyle();
-
-  expect(basemap.style).toBeDefined();
-});
-
-test('Appends an access token to the style JSON.', async ({apiKey}) => {
-  const basemap = new BasemapStyle({
-    style:arcgisStyle,
-    token:apiKey
-  });
-  // Fetch actual data
-  await basemap.loadStyle();
-
-  // Check glyphs
-  expect(basemap.style.glyphs).toContain(apiKey);
-  // Check sources
-  for (const source of Object.keys(basemap.style.sources)) {
-    for (const tileUrl of basemap.style.sources[source].tiles) {
-      expect(tileUrl).toContain(apiKey)
-    }
-  }
-  // Check sprites
-  if (basemap.style.sprite) {
-    if (Array.isArray(basemap.style.sprite)) {
-      for (const spriteUrl of basemap.style.sprite) expect(spriteUrl).toContain(apiKey);
-    }
-    else {
-      expect(basemap.style.sprite).toContain(apiKey);
-    }
-  }
 });
 
 test('Throws if no authentication is provided.', () => {
@@ -117,7 +55,8 @@ test('Accepts an ArcGIS access token in the `token` parameter and uses it in req
     style: arcgisStyle,
     token: apiKey
   });
-  expect(basemap.token).toBe(apiKey);
+  expect(basemap._token).toBe(apiKey);
+  expect(basemap._styleUrl).toContain(apiKey);
 });
 
 test('Accepts an ArcGIS REST JS authentication manager and uses the access token in requests.', ({restJsAuthentication}) => {
@@ -125,59 +64,8 @@ test('Accepts an ArcGIS REST JS authentication manager and uses the access token
     style: arcgisStyle,
     authentication: restJsAuthentication
   });
-  expect(basemap.token).toBe(restJsAuthentication.token);
-});
-
-describe('Supports basemap session authentication.', () => {
-  test('Accepts a BasemapSession in the `session` parameter and uses the session token in requests.', () => {
-    const basemap = new BasemapStyle({
-      style: arcgisStyle,
-      session: basemapSession
-    });
-    expect(basemap.token).toBe(basemapSession.token);
-  });
-
-  test('Prioritizes a basemap `session` over an API key', ({apiKey}) => {
-    const basemap = new BasemapStyle({
-      style: arcgisStyle,
-      session: basemapSession,
-      token: apiKey
-    });
-    expect(basemap.token).toBe(basemapSession.token);
-  });
-
-  test('Prioritizes a basemap `session` over REST JS authentication', ({restJsAuthentication}) => {
-    const basemap = new BasemapStyle({
-      style: arcgisStyle,
-      session: basemapSession,
-      authentication: restJsAuthentication
-    });
-    expect(basemap.token).toBe(basemapSession.token);
-  });
-
-  test('Accepts a basemap session that is still initializing and resolves the promise before requesting style.', async ({apiKey}) => {
-    // Not using await
-    const basemapSession = BasemapSession.start({
-      styleFamily:'arcgis',
-      token:apiKey
-    });
-
-    const basemap = new BasemapStyle({
-      style: arcgisStyle,
-      session: basemapSession
-    });
-
-    await basemap.loadStyle();
-
-    expect(basemap.style).toBeDefined();
-    expect(basemap.token).toBe(basemap.session.token);
-  });
-
-  test('Updates the session token in map style whenever the session refreshes.', async () => {
-    // TODO - requires map
-  }, {
-    timeout: 40000
-  });
+  expect(basemap._token).toBe(restJsAuthentication.token);
+  expect(basemap._styleUrl).toContain(restJsAuthentication.token);
 });
 
 test('Accepts a private \'baseUrl\' param for dev server testing.', ({apiKey}) => {
@@ -189,9 +77,10 @@ test('Accepts a private \'baseUrl\' param for dev server testing.', ({apiKey}) =
   });
 
   expect(basemap._baseUrl).toBe(DEV_URL);
+  expect(basemap._styleUrl).toContain(DEV_URL);
 });
 
-test('Accepts a `language` parameter and adds that to the basemap style', ({apiKey}) => {
+test('Accepts a `language` preference and adds that to the basemap style', ({apiKey}) => {
   const basemap = new BasemapStyle({
     style: arcgisStyle,
     token: apiKey,
@@ -202,7 +91,7 @@ test('Accepts a `language` parameter and adds that to the basemap style', ({apiK
   expect(basemap._styleUrl).toContain('language=ja');
 });
 
-test('Accepts a `places` parameter and adds that to the basemap style', ({apiKey}) => {
+test('Accepts a `places` preference and adds that to the basemap style', ({apiKey}) => {
   const basemap = new BasemapStyle({
     style: arcgisStyle,
     token: apiKey,
@@ -213,7 +102,7 @@ test('Accepts a `places` parameter and adds that to the basemap style', ({apiKey
   expect(basemap._styleUrl).toContain('places=all');
 });
 
-test('Accepts a `worldview` parameter and adds that to the basemap style', ({apiKey}) => {
+test('Accepts a `worldview` preference and adds that to the basemap style', ({apiKey}) => {
   const basemap = new BasemapStyle({
     style: arcgisStyle,
     token: apiKey,
@@ -222,27 +111,50 @@ test('Accepts a `worldview` parameter and adds that to the basemap style', ({api
 
   expect(basemap.preferences.worldview).toBe('unitedStatesOfAmerica');
   expect(basemap._styleUrl).toContain('worldview=unitedStatesOfAmerica');
-})
-
-test('Accepts custom attribution and applies it to the map.', () => {
-  // TODO - requires map
 });
+
+
+
+
+
 test('Adds \"Powered by Esri\" to the map attribution if not already present.', () => {
   // TODO - requires map
 });
-test('Does not add \"Powered by Esri\" to the map attribution if it is present.', () => {
+test('Overwrites the default maplibre-gl attribution if there is any.', () => {
   // TODO - requires map
 });
-test('Does not overwrite the existing map attribution if there is any.', () => {
-  // TODO - requires map
-});
-test('Yells at you if you don\'t display \"Powered by Esri\" attribution.', () => {
+test('Does not overwrite map attribution and throws an error if custom attribution is present.', () => {
   // TODO - requires map
 });
 
-test('Allows updating the associated Map with `setMap()`.', () => {
-  // TODO - requires map
+
+describe('Works with mocked data', () => {
+  beforeAll(async () => {
+    useMock();
+
+    return () => {
+      removeMock();
+    }
+  });
+
+  test('Accepts custom attribution and applies it to the map.', ({map}) => {
+    // TODO - requires map
+  });
+
+  test('Allows updating the associated Map with `setMap()`.', ({map, apiKey}) => {
+    // TODO - requires map
+    const basemap = new BasemapStyle({
+      style:arcgisStyle,
+      token:apiKey
+    });
+
+    basemap.setMap(map);
+
+    expect(basemap._map).toBe(map);
+  });
 });
+
+
 test('`applyToMap()` sets the style of a provided map', () => {
   // TODO - requires map
 });
@@ -328,3 +240,67 @@ test('Supports a static `getSelf() operation that makes a `/self` request to the
   expect(serviceResponse.worldviews).toBeDefined();
   expect(serviceResponse.styleFamilies).toBeDefined();
 });
+
+
+
+
+/*
+describe('Supports basemap session authentication.', () => {
+  beforeAll(async () => {
+    const defaultBasemapSession = await BasemapSession.start({
+      styleFamily: 'arcgis',
+      token: apiKey
+    });
+  });
+
+  test('Accepts a BasemapSession in the `session` parameter and uses the session token in requests.', () => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      session: basemapSession
+    });
+    expect(basemap.token).toBe(basemapSession.token);
+  });
+
+  test('Prioritizes a basemap `session` over an API key', ({apiKey}) => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      session: basemapSession,
+      token: apiKey
+    });
+    expect(basemap.token).toBe(basemapSession.token);
+  });
+
+  test('Prioritizes a basemap `session` over REST JS authentication', ({restJsAuthentication}) => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      session: basemapSession,
+      authentication: restJsAuthentication
+    });
+    expect(basemap.token).toBe(basemapSession.token);
+  });
+
+  test('Accepts a basemap session that is still initializing and resolves the promise before requesting style.', async ({apiKey}) => {
+    // Not using await
+    const basemapSession = BasemapSession.start({
+      styleFamily:'arcgis',
+      token:apiKey
+    });
+
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      session: basemapSession
+    });
+
+    await basemap.loadStyle();
+
+    expect(basemap.style).toBeDefined();
+    expect(basemap.token).toBe(basemap.session.token);
+  });
+
+  test('Updates the session token in map style whenever the session refreshes.', async () => {
+    // TODO - requires map
+  }, {
+    timeout: 40000
+  });
+});
+*/

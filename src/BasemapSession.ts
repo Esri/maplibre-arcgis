@@ -25,9 +25,9 @@ interface IBasemapSessionOptions {
    */
   startSessionUrl?: string;
 
-  endTime: Date;
-  expires: Date;
-  startTime: Date;
+  endTime?: Date;
+  expires?: Date;
+  startTime?: Date;
 }
 
 type SessionResponse = {
