@@ -5,6 +5,9 @@ import { AttributionControl as EsriAttributionControl, type AttributionControlOp
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 import mitt, { type Emitter } from 'mitt';
 
+/**
+ * The response of the basemap styles /self request. To learn more, go to ...
+ */
 type BasemapSelfResponse = {
   customStylesUrl: string;
   selfUrl: string;
@@ -12,7 +15,21 @@ type BasemapSelfResponse = {
   worldviews: [CodeNamePair];
   places: [CodeNamePair];
   styleFamilies: [CodeNamePair];
-  styles: [BasemapStyleObject];
+  styles: [{
+    complete: boolean;
+    deprecated?: boolean;
+    name: string;
+    path: StyleEnum;
+    provider: string;
+    styleFamily: string;
+    styleUrl: string;
+    selfUrl: string;
+    thumbnailUrl: string;
+    detailUrl?: string;
+    labelsUrl?: string;
+    rootUrl?: string;
+    baseUrl?: string;
+  }];
 };
 
 type CodeNamePair = {
@@ -22,22 +39,6 @@ type CodeNamePair = {
 type PlacesOptions = 'all' | 'attributed' | 'none';
 export type StyleFamily = 'arcgis' | 'open' | 'osm';
 type StyleEnum = `${StyleFamily}/${string}`;
-
-type BasemapStyleObject = {
-  complete: boolean;
-  deprecated?: boolean;
-  name: string;
-  path: StyleEnum;
-  provider: string;
-  styleFamily: string;
-  styleUrl: string;
-  selfUrl: string;
-  thumbnailUrl: string;
-  detailUrl?: string;
-  labelsUrl?: string;
-  rootUrl?: string;
-  baseUrl?: string;
-};
 
 type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
 
