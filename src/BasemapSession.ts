@@ -48,6 +48,8 @@ type BasemapSessionEventMap = {
   BasemapSessionError: Error;
 };
 
+const DEFAULT_START_BASEMAP_STYLE_SESSION_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start';
+const DEV_STYLE_SESSION_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/sessions/start';
 /**
  * Manages basemap style sessions with automatic refresh and event handling
  */
@@ -133,6 +135,7 @@ export class BasemapSession {
       duration: this._options.duration,
       safetyMargin: this._options.safetyMargin,
       styleFamily: this._options.styleFamily,
+      startSessionUrl: this._options.startSessionUrl,
     };
 
     if (sessionParams.autoRefresh) {

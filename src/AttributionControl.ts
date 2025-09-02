@@ -83,14 +83,16 @@ export class AttributionControl extends MaplibreAttributionControl {
         if ('_toggleAttribution' in control) {
           const attributionControl = control as MaplibreAttributionControl;
           if (attributionControl.options.customAttribution === defaultMaplibreAttributionString) {
-            throw new Error('Unable to add Esri attribution. Disable the map\'s default attribution control.');
+            map.removeControl(attributionControl);
+            // console.warn('Map attribution is handled by ArcGIS BasemapStyle. The default attribution control was overwritten.');
           }
           else if (attributionControl.options.customAttribution.includes(esriAttributionString)) {
             // Esri string already exists,
             attributionExists = true;
           }
           else {
-            throw new Error('Unable to add Esri attribution. Your map\'s custom attribution is not configured properly.');
+            const errorMessage = 'Unable to load Esri attribution. Set the attributionControl property of BasemapStyle to display custom attribution.';
+            throw new Error(errorMessage);
           }
         }
       });
