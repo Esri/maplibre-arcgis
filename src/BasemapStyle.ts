@@ -1,5 +1,7 @@
 import { request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
+import mitt, { type Emitter } from 'mitt';
+import { AttributionControl as EsriAttributionControl, type IAttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
 import type BasemapSession from './BasemapSession';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
