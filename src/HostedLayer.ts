@@ -2,6 +2,7 @@ import type { GeoJSONSourceSpecification, LayerSpecification, VectorSourceSpecif
 import type { Map } from 'maplibre-gl';
 import AttributionControl from './AttributionControl';
 import type { RestJSAuthenticationManager } from './Util';
+import AttributionControl from './AttributionControl';
 
 /**
  * Union type representing the MapLibre source specifications supported by hosted layers.
@@ -189,6 +190,14 @@ export abstract class HostedLayer {
 
   set layer(_) {
     throwReadOnlyError('layer');
+  }
+
+  protected _onAdd(map: Map) {
+    if (map) this._map = map;
+    if (!this._map) throw new Error('No map');
+    // Handle attribution
+    const esriAttribution = new AttributionControl();
+    if (esriAttribution.canAdd(this._map)) this._map.addControl(esriAttribution);
   }
 
   protected _onAdd(map: Map) {
