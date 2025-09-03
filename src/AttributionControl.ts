@@ -5,7 +5,10 @@ import {
   type AttributionControlOptions as MaplibreAttributionControlOptions,
 } from 'maplibre-gl';
 
-export interface AttributionControlOptions {
+/**
+ * Interface for AttributionControl options.
+ */
+export interface IAttributionControlOptions {
   customAttribution?: string | Array<string>;
   compact?: boolean;
   closed?: boolean;
@@ -24,7 +27,11 @@ export class AttributionControl extends MaplibreAttributionControl {
   _closed?: boolean;
   attributionOptions: MaplibreAttributionControlOptions;
 
-  constructor(options: AttributionControlOptions = {}) {
+  /**
+   * Constructor for AttributionControl.
+   * @param options - Options for the attribution control.
+   */
+  constructor(options: IAttributionControlOptions = {}) {
     // Incompatible options - 'closed' overrides 'compact'
     if ((!options?.compact) && options?.closed) options.compact = true;
 

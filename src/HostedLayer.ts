@@ -84,6 +84,14 @@ export abstract class HostedLayer {
    */
   authentication?: RestJSAuthenticationManager | string;
 
+  /**
+   * Prevent public constructor from appearing in docs by making it protected.
+   * This keeps the class abstract while avoiding a displayed public constructor.
+   */
+  protected constructor() {
+    // intentionally empty
+  }
+
   protected get token(): string {
     if (!this.authentication) return undefined;
     return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
