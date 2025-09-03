@@ -11,7 +11,6 @@ import mitt, { type Emitter } from 'mitt';
  * Options for initializing a BasemapStyleSession
  */
 export interface IBasemapSessionOptions {
-export interface IBasemapSessionOptions {
   /** Access token for authentication. The token must be from an ArcGIS Location Platform account and have the Basemaps privelege. */
   token?: string;
   /** Duration in seconds for the session. */

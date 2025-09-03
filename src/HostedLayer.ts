@@ -42,10 +42,10 @@ export interface IHostedLayerOptions {
   authentication?: RestJSAuthenticationManager | string; // Authentication as a REST JS object or access token string
   portalUrl?: string;
   attribution?: string;
-};
+}
 
 /**
- * Structure representing metadata for an ArcGIS item.
+ * Structure representing the metadata for an ArcGIS item. Go to {@link https://developers.arcgis.com/rest/users-groups-and-items/item/#response-properties | ArcGIS REST API - Item} to learn more.
  */
 export interface IItemInfo {
   portalUrl: string;
@@ -97,12 +97,12 @@ export abstract class HostedLayer {
   /**
    * Retrieves information about the associated hosted data service in ArcGIS.
    */
-  protected _serviceInfo: DataServiceInfo;
+  protected _serviceInfo: IDataServiceInfo;
 
   /**
    * Retrieves information about the associated ArcGIS item.
    */
-  protected _itemInfo?: ItemInfo;
+  protected _itemInfo?: IItemInfo;
 
   /**
    * Contains formatted maplibre sources for adding to map.
@@ -127,8 +127,10 @@ export abstract class HostedLayer {
     return Object.freeze(this._sources);
   }
 
-  set sources(_) { throwReadOnlyError('sources'); }
-  ;
+  set sources(_) {
+    throwReadOnlyError('sources');
+  }
+
   /**
    *
    */
@@ -139,7 +141,9 @@ export abstract class HostedLayer {
     return Object.freeze(this._sources[sourceIds[0]]);
   }
 
-  set source(_) { throwReadOnlyError('source'); }
+  set source(_) {
+    throwReadOnlyError('source');
+  }
 
   /**
    *
@@ -151,7 +155,9 @@ export abstract class HostedLayer {
     return Object.freeze(sourceIds[0]);
   }
 
-  set sourceId(_) { throwReadOnlyError('sourceId'); }
+  set sourceId(_) {
+    throwReadOnlyError('sourceId');
+  }
 
   /**
    *
@@ -160,7 +166,9 @@ export abstract class HostedLayer {
     return Object.freeze(this._layers);
   }
 
-  set layers(_) { throwReadOnlyError('layers'); }
+  set layers(_) {
+    throwReadOnlyError('layers');
+  }
 
   /**
    *
@@ -171,7 +179,9 @@ export abstract class HostedLayer {
     return Object.freeze(this._layers[0]);
   }
 
-  set layer(_) { throwReadOnlyError('layer'); }
+  set layer(_) {
+    throwReadOnlyError('layer');
+  }
 
   protected _onAdd(map: Map) {
     if (map) this._map = map;

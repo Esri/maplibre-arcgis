@@ -3,7 +3,7 @@ import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arc
 import { getItem } from '@esri/arcgis-rest-portal';
 import { type IParams } from '@esri/arcgis-rest-request';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
-import type { HostedLayerOptions } from './HostedLayer';
+import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, warn } from './Util';
 
@@ -40,34 +40,21 @@ const defaultLayerPaintMap = {
     'fill-outline-color': 'rgb(0,0,0)',
   }, // "Esri blue" alternates: #0064ff #6e6e6e
 };
-/**
- * Supported options for instantiating a GeoJSONLayer.
- */
-export interface GeoJSONLayerOptions extends HostedLayerOptions {
-/**
- * Supported options for instantiating a GeoJSONLayer.
- */
-export interface GeoJSONLayerOptions extends HostedLayerOptions {
-  itemId?: string;
-  url?: string;
-  query?: QueryOptions;
-}
 
 /**
- * Options for querying a feature layer.
+ * Supported options for instantiating a GeoJSONLayer.
  */
-export interface QueryOptions {
-type EsriGeoJSON = GeoJSON.GeoJSON & {
-  properties: {
-    exceededTransferLimit: boolean;
-  };
-};
+export interface IFeatureLayerOptions extends IHostedLayerOptions {
+  itemId?: string;
+  url?: string;
+  query?: IQueryOptions;
+}
 
 /**
  * Parameters for feature layer query request.
  * @see https://developers.arcgis.com/rest/services-reference/enterprise/query-feature-service-layer/#request-parameters
  */
-export interface QueryOptions {
+export interface IQueryOptions {
   gdbVersion?: string;
   geometry?: IGeometry;
   geometryType?: GeometryType;
@@ -80,7 +67,7 @@ export interface QueryOptions {
   where?: string;
 }
 
-type ISupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
+export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
 
 /**
  * Class representing a feature layer for MapLibre GL JS.
@@ -91,11 +78,15 @@ export class FeatureLayer extends HostedLayer {
   declare protected _sources: { [_: string]: GeoJSONSourceSpecification };
   declare protected _layers: LayerSpecification[];
 
-  private _inputType: ISupportedInputTypes;
+  private _inputType: SupportedInputTypes;
 
-  query?: QueryOptions;
+  query?: IQueryOptions;
 
-  constructor(options: GeoJSONLayerOptions) {
+  /**
+   * Constructor for FeatureLayer.
+   * @param options - Configuration options for the feature layer.
+   */
+  constructor(options: IFeatureLayerOptions) {
     super();
 
     if (!options || !(options.itemId || options.url)) throw new Error('Feature layer must be constructed with either an \'itemId\' or \'url\'.');
@@ -105,7 +96,8 @@ export class FeatureLayer extends HostedLayer {
 
     if (options?.attribution) this._customAttribution = options.attribution;
 
-    if (options.itemId && options.url) console.warn('Both an item ID and service URL have been passed to the constructor. The item ID will be preferred, and the URL ignored.');
+    if (options.itemId && options.url)
+      console.warn('Both an item ID and service URL have been passed to the constructor. The item ID will be preferred, and the URL ignored.');
 
     if (options.itemId && checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
     else {
@@ -138,7 +130,10 @@ export class FeatureLayer extends HostedLayer {
     }
 
     if (options?.query) {
-      if (this._inputType !== 'FeatureLayer') throw new Error('Feature service queries are only supported with layer URLs, not item IDs. To use query parameters, call \'FeatureLayer.fromUrl\' with a service URL ending in \/0, \/1, etc.');
+      if (this._inputType !== 'FeatureLayer')
+        throw new Error(
+          'Feature service queries are only supported with layer URLs, not item IDs. To use query parameters, call \'FeatureLayer.fromUrl\' with a service URL ending in \/0, \/1, etc.'
+        );
 
       this.query = options.query;
     }
@@ -152,14 +147,16 @@ export class FeatureLayer extends HostedLayer {
     let layerData: GeoJSON.GeoJSON;
     if (layerInfo.supportsExceedsLimitStatistics) {
       // Check if feature count exceeds limit
-      const featureCount = await queryFeatures({
+      const featureCount = (await queryFeatures({
         url: layerUrl,
         authentication: this.token,
         ...this.query,
         returnCountOnly: true,
-      }) as IQueryResponse;
+      })) as IQueryResponse;
       if (featureCount.count > 2000) {
-        console.warn('You are loading a large feature layer ( >2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.');
+        console.warn(
+          'You are loading a large feature layer ( >2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.'
+        );
       }
 
       // Get all features
@@ -173,7 +170,9 @@ export class FeatureLayer extends HostedLayer {
       layerData = response as unknown as GeoJSON.GeoJSON;
     }
     else {
-      throw new Error('Feature layers hosted in old versions of ArcGIS Enterprise are not currently supported in this plugin. Support will be added in a future release: https://github.com/ArcGIS/maplibre-arcgis/issues/5');
+      throw new Error(
+        'Feature layers hosted in old versions of ArcGIS Enterprise are not currently supported in this plugin. Support will be added in a future release: https://github.com/ArcGIS/maplibre-arcgis/issues/5'
+      );
     }
     if (!layerData) throw new Error('Unable to load data.');
 
@@ -191,7 +190,8 @@ export class FeatureLayer extends HostedLayer {
 
     // Create maplibre source and layer for data
     let sourceId = layerInfo.name;
-    if (sourceId in this._sources) { // ensure source ID is unique
+    if (sourceId in this._sources) {
+      // ensure source ID is unique
       sourceId += layerUrl[layerUrl.length - 2]; // URL always ends in 0/, 1/, etc
     }
     this._sources[sourceId] = {
@@ -252,7 +252,7 @@ export class FeatureLayer extends HostedLayer {
         if (serviceInfo.layers.length > 10) {
           console.warn('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
         }
-        for (let i = 0; (i < serviceInfo.layers.length) && (i < 10); i++) {
+        for (let i = 0; i < serviceInfo.layers.length && i < 10; i++) {
           if (serviceInfo.layers[i]['subLayerIds']) {
             console.warn('Feature layers with sublayers are not supported. This layer will not be added.');
             return;
@@ -287,7 +287,7 @@ export class FeatureLayer extends HostedLayer {
     return this;
   }
 
-  static async fromUrl(serviceUrl: string, options: GeoJSONLayerOptions): Promise<FeatureLayer> {
+  static async fromUrl(serviceUrl: string, options: IFeatureLayerOptions): Promise<FeatureLayer> {
     const inputType = checkServiceUrlType(serviceUrl);
     if (!inputType || !(inputType === 'FeatureService' || inputType === 'FeatureLayer')) throw new Error('Must provide a valid feature layer URL.');
 
@@ -300,7 +300,7 @@ export class FeatureLayer extends HostedLayer {
     return geojsonLayer;
   }
 
-  static async fromPortalItem(itemId: string, options: GeoJSONLayerOptions): Promise<FeatureLayer> {
+  static async fromPortalItem(itemId: string, options: IFeatureLayerOptions): Promise<FeatureLayer> {
     if (checkItemId(itemId) !== 'ItemId') throw new Error('Must provide a valid item ID for an ArcGIS hosted feature layer.');
 
     const geojsonLayer = new FeatureLayer({

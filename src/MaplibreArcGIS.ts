@@ -15,11 +15,11 @@
  */
 import { AttributionControl, AttributionControlOptions, EsriAttribution } from './AttributionControl';
 import { BasemapSession, BasemapSessionEventMap, IBasemapSessionOptions, SessionRefreshedData, SessionResponse } from './BasemapSession';
-import { BasemapPreferences, BasemapSelfResponse, BasemapStyle, BasemapStyleEventMap, BasemapStyleObject, CodeNamePair, IBasemapStyleOptions, MaplibreStyleOptions, PlacesOptions, StyleEnum, StyleFamily, UpdateStyleOptions } from './BasemapStyle';
-import { FeatureLayer, GeoJSONLayerOptions, QueryOptions } from './FeatureLayer';
-import { HostedLayer, ItemInfo, SupportedSourceSpecification } from './HostedLayer';
+import { IBasemapPreferences, BasemapSelfResponse, BasemapStyle, BasemapStyleEventMap, BasemapStyleObject, CodeNamePair, IBasemapStyleOptions, PlacesOptions, StyleEnum, StyleFamily, IUpdateStyleOptions, IApplyStyleOptions, MaplibreStyleOptions } from './BasemapStyle';
+import { FeatureLayer, IFeatureLayerOptions, IQueryOptions } from './FeatureLayer';
+import { HostedLayer, IItemInfo, SupportedSourceSpecification, IHostedLayerOptions } from './HostedLayer';
 import { RestJSAuthenticationManager } from './Util';
-import { VectorTileLayer, VectorTileLayerOptions, VectorTileServiceInfo } from './VectorTileLayer';
+import { VectorTileLayer, IVectorTileLayerOptions, IVectorTileServiceInfo } from './VectorTileLayer';
 
 import packageInfo from '../package.json';
 
@@ -35,8 +35,8 @@ const version = packageInfo.version;
 
 export {
   AttributionControl,
-  AttributionControlOptions, BasemapPreferences, BasemapSelfResponse, BasemapSession, BasemapSessionEventMap, BasemapStyle, BasemapStyleEventMap, BasemapStyleObject, CodeNamePair, EsriAttribution, FeatureLayer,
-  GeoJSONLayerOptions, HostedLayer,
-  HostedLayerOptions, IBasemapSessionOptions, IBasemapStyleOptions, ItemInfo, MaplibreStyleOptions, PlacesOptions, QueryOptions,
-  RestJSAuthenticationManager, SessionRefreshedData, SessionResponse, StyleEnum, StyleFamily, SupportedSourceSpecification, UpdateStyleOptions, VectorTileLayer, VectorTileLayerOptions, VectorTileServiceInfo, version as VERSION,
+  AttributionControlOptions, IBasemapPreferences, BasemapSelfResponse, BasemapSession, BasemapSessionEventMap, BasemapStyle, BasemapStyleEventMap, BasemapStyleObject, CodeNamePair, EsriAttribution, FeatureLayer,
+  IFeatureLayerOptions, HostedLayer,
+  IHostedLayerOptions, IBasemapSessionOptions, IBasemapStyleOptions, IItemInfo, PlacesOptions, IQueryOptions,
+  RestJSAuthenticationManager, SessionRefreshedData, SessionResponse, StyleEnum, StyleFamily, SupportedSourceSpecification, IUpdateStyleOptions, IApplyStyleOptions, VectorTileLayer, IVectorTileLayerOptions, IVectorTileServiceInfo, version as VERSION, MaplibreStyleOptions,
 };

@@ -1,40 +1,32 @@
-import { AttributionControl as MaplibreAttributionControl, type IControl, type Map, type AttributionControlOptions as MaplibreAttributionControlOptions } from 'maplibre-gl';
+import {
+  AttributionControl as MaplibreAttributionControl,
+  type IControl,
+  type Map,
+  type AttributionControlOptions as MaplibreAttributionControlOptions,
+} from 'maplibre-gl';
 
-/**
- * Supported options for the attribution control.
- */
-export interface IAttributionControlOptions {
+export interface AttributionControlOptions {
   customAttribution?: string | Array<string>;
   compact?: boolean;
   closed?: boolean;
 }
 
-const esriAttributionString = `Powered by <a href="https://www.esri.com/">Esri</a>`;
-const maplibreAttributionString = `<a href="https://maplibre.org/">MapLibre</a>`;
-const defaultMaplibreAttributionString = `<a href="https://maplibre.org/" target="_blank">MapLibre</a>`;
+const esriAttributionString = 'Powered by \<a href=\"https:\/\/www.esri.com\/\"\>Esri\<\/a\>';
+const maplibreAttributionString = '\<a href=\"https:\/\/maplibre.org\/\"\>MapLibre\<\/a\>';
+const defaultMaplibreAttributionString = '\<a href=\"https:\/\/maplibre.org\/\" target=\"_blank\"\>MapLibre\<\/a\>';
 
 export const EsriAttribution: MaplibreAttributionControlOptions = {
   customAttribution: `${maplibreAttributionString} | ${esriAttributionString}`,
   compact: true,
 };
 
-/**
- * Custom attribution control for MapLibre GL JS that includes Esri attribution.
- * This control can be configured to be compact and closed by default.
- * It extends the Maplibre attribution control to include custom attribution text.
- */
 export class AttributionControl extends MaplibreAttributionControl {
   _closed?: boolean;
   attributionOptions: MaplibreAttributionControlOptions;
 
-  /**
-   * Creates a new AttributionControl instance with Esri attribution.
-   *
-   * @param options - Configuration options for the attribution control
-   */
-  constructor(options: IAttributionControlOptions = {}) {
+  constructor(options: AttributionControlOptions = {}) {
     // Incompatible options - 'closed' overrides 'compact'
-    if (!options?.compact && options?.closed) options.compact = true;
+    if ((!options?.compact) && options?.closed) options.compact = true;
 
     const attributions = [];
 
@@ -56,7 +48,7 @@ export class AttributionControl extends MaplibreAttributionControl {
     attributions.push(esriAttributionString, maplibreAttributionString);
 
     const attributionOptions = {
-      compact: options?.compact !== undefined ? options.compact : true,
+      compact: (options?.compact !== undefined) ? options.compact : true,
       customAttribution: attributions.join(' | '),
     };
     super(attributionOptions);
@@ -65,16 +57,6 @@ export class AttributionControl extends MaplibreAttributionControl {
     this._closed = options?.closed;
   }
 
-  /**
-   * Adds the attribution control to the map.
-   *
-   * @param map - The MapLibre map instance to add the control to
-   * @returns The HTML element for the control, or null if the control cannot be added
-   *
-   * @remarks
-   * This method checks if Esri attribution already exists on the map before adding.
-   * If the control is configured to be closed initially, it will remove the 'show' class.
-   */
   onAdd(map: Map): HTMLElement | null {
     this._map = map;
     if (!this.canAdd(this._map)) {
@@ -90,16 +72,6 @@ export class AttributionControl extends MaplibreAttributionControl {
     return htmlElement;
   }
 
-  /**
-   * Checks if the attribution control can be added to the map.
-   *
-   * @param map - The MapLibre map instance to check
-   * @returns True if the control can be added, false otherwise
-   *
-   * @remarks
-   * This method checks if Esri attribution already exists on the map before adding.
-   * If the control is configured to be closed initially, it will remove the 'show' class.
-   */
   canAdd(map?: Map): boolean {
     if (!map && !this._map) throw new Error('No map provided to attribution control.');
     if (!map) map = this._map;

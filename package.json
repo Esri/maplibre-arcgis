@@ -42,7 +42,7 @@
     "start": "node build.js prod watch",
     "start-dev": "node build.js dev watch & npm run docs:watch",
     "format": "eslint . --fix",
-    "docs": "typedoc && cp ./docs/typedoc.json /Users/mark4582/_esri/dx/open-source-and-third-party-doc/maplibre-arcgis-typedoc.json"
+    "docs": "typedoc"
   },
   "dependencies": {
     "@esri/arcgis-rest-basemap-sessions": "^1.0.0",
