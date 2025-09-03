@@ -9,8 +9,17 @@ import {
  * Interface for AttributionControl options.
  */
 export interface IAttributionControlOptions {
+  /**
+   * Custom attribution string or array of strings.
+   */
   customAttribution?: string | Array<string>;
+  /**
+   * Whether to display the attribution in a compact format.
+   */
   compact?: boolean;
+  /**
+   * Whether to display the attribution in a closed format.
+   */
   closed?: boolean;
 }
 

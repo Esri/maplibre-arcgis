@@ -1,5 +1,4 @@
 {
-  "$schema": "https://typedoc.org/schema.json",
   "entryPoints": ["./src/MaplibreArcGIS.ts"],
   "out": "docs",
   "json": "docs/typedoc.json",
