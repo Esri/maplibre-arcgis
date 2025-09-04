@@ -1,225 +1,126 @@
 //@ts-nocheck
-import { describe, expect, vi, beforeAll } from 'vitest';
+import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { BasemapStyle } from '../src/MaplibreArcGIS';
 import { useMock, removeMock, customTest as test } from './BaseTest.test';
 import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
 import basemapStyleStreets from './mock/BasemapStyle/OpenStreets.json';
 import { tokenError } from './mock/authentication/invalidTokenError';
+import { Map } from 'maplibre-gl';
 
 const arcgisStyle = 'arcgis/navigation';
 const imageryStyle = 'arcgis/imagery';
 const openStyle = 'open/streets';
 
 const customAttributionString = 'Internal distribution. For unit tests.'
+const esriAttributionString = 'Powered by \<a href=\"https:\/\/www.esri.com\/\"\>Esri\<\/a\>';
 
 const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
-
-describe('Works with actual data', () => {
-  test('Requests a JSON style from the correct service URL.', async ({apiKey}) => {
-    const basemap = new BasemapStyle({
-      style:arcgisStyle,
-      token:apiKey
-    });
-    // Fetch actual data
-    // TODO check URL here
-
-    //await basemap.loadStyle();
-  });
-});
 
 /**
  * Tests
  */
-test('Requires a \'style\' parameter and saves it internally.', ({apiKey}) => {
-  const basemap = new BasemapStyle({
-    style: arcgisStyle,
-    token: apiKey,
-  });
-  expect(basemap.styleId).toBe('arcgis/navigation');
-});
 
-test('Throws if no \'style\' is provided', () => {
-  expect(() => {
-    return new BasemapStyle({});
-  }).toThrow('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
-});
-
-test('Throws if no authentication is provided.', () => {
-  expect(() => {
-    return new BasemapStyle({
-      style: arcgisStyle
-    })
-  }).toThrow('https://developers.arcgis.com/documentation/security-and-authentication/get-started/');
-});
-
-test('Accepts an ArcGIS access token in the `token` parameter and uses it in requests.', ({apiKey}) => {
-  const basemap = new BasemapStyle({
-    style: arcgisStyle,
-    token: apiKey
-  });
-  expect(basemap._token).toBe(apiKey);
-  expect(basemap._styleUrl).toContain(apiKey);
-});
-
-test('Accepts an ArcGIS REST JS authentication manager and uses the access token in requests.', ({restJsAuthentication}) => {
-  const basemap = new BasemapStyle({
-    style: arcgisStyle,
-    authentication: restJsAuthentication
-  });
-  expect(basemap._token).toBe(restJsAuthentication.token);
-  expect(basemap._styleUrl).toContain(restJsAuthentication.token);
-});
-
-test('Accepts a private \'baseUrl\' param for dev server testing.', ({apiKey}) => {
-  const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
-  const basemap = new BasemapStyle({
-    style:arcgisStyle,
-    token:apiKey,
-    baseUrl:DEV_URL
-  });
-
-  expect(basemap._baseUrl).toBe(DEV_URL);
-  expect(basemap._styleUrl).toContain(DEV_URL);
-});
-
-test('Accepts a `language` preference and adds that to the basemap style', ({apiKey}) => {
-  const basemap = new BasemapStyle({
-    style: arcgisStyle,
-    token: apiKey,
-    preferences: {
-      language: 'ja'
-    }
-  });
-
-  expect(basemap.preferences.language).toBe('ja');
-  expect(basemap._styleUrl).toContain('language=ja');
-});
-
-test('Accepts a `places` preference and adds that to the basemap style', ({apiKey}) => {
-  const basemap = new BasemapStyle({
-    style: arcgisStyle,
-    token: apiKey,
-    preferences: {
-      places: 'all'
-    }
-  });
-
-  expect(basemap.preferences.places).toBe('all');
-  expect(basemap._styleUrl).toContain('places=all');
-});
-
-test('Accepts a `worldview` preference and adds that to the basemap style', ({apiKey}) => {
-  const basemap = new BasemapStyle({
-    style: arcgisStyle,
-    token: apiKey,
-    preferences: {
-      worldview: 'unitedStatesOfAmerica'
-    }
-  });
-
-  expect(basemap.preferences.worldview).toBe('unitedStatesOfAmerica');
-  expect(basemap._styleUrl).toContain('worldview=unitedStatesOfAmerica');
-});
-
-describe('Works with a mocked \'Map\'.', () => {
+describe('BasemapStyle unit tests', () => {
   beforeAll(async () => {
     useMock();
-
     return () => {
       removeMock();
     }
   });
+  beforeEach(() => {
+    fetchMock.resetMocks();
+  });
 
-  test('Allows updating the saved Map with `setMap()`.', ({apiKey, map}) => {
+  test('Requires a \'style\' parameter and saves it internally.', ({apiKey}) => {
     const basemap = new BasemapStyle({
-      style:arcgisStyle,
-      token:apiKey
+      style: arcgisStyle,
+      token: apiKey,
     });
-
-    basemap.setMap(map);
-
-    expect(basemap._map).toBe(map);
+    expect(basemap.styleId).toBe(arcgisStyle);
+    expect(basemap._styleUrl).toContain(arcgisStyle);
   });
 
-  test('Applies the loaded style to the map with `applyToMap()`', async ({apiKey, loadedBasemap, map}) => {
-    fetchMock.mockResponse(JSON.stringify({}));
-    loadedBasemap.applyToMap(map);
-
-    expect(loadedBasemap._map).toBe(map);
-
-    // TODO Map events do not fire properly -- why?
-    const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
-
-    expect(mapStyle.glyphs).toBe(loadedBasemap.style.glyphs);
-    expect(mapStyle.sprite).toBe(loadedBasemap.style.sprite);
-    expect(mapStyle.sources).toEqual(loadedBasemap.style.sources);
-
-    expect(loadedBasemap.style).toMatchObject(mapStyle);
+  test('Throws if no \'style\' is provided', () => {
+    expect(() => {
+      return new BasemapStyle({});
+    }).toThrow('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
   });
 
-  test('`applyToMap()` applies MapLibre style options such as `transformStyle`, and applies them to the map.', async ({apiKey, loadedBasemap, map}) => {
-    const maplibreStyleOptions = {
-      transformStyle: (oldStyleIfAny, newStyle) => ({
-        ...newStyle,
-        layers: [
-          newStyle.layers[0]
-        ]
+  test('Throws if no authentication is provided.', () => {
+    expect(() => {
+      return new BasemapStyle({
+        style: arcgisStyle
       })
-    }
-
-    fetchMock.mockResponse(JSON.stringify({}));
-    loadedBasemap.applyToMap(map, maplibreStyleOptions);
-
-    const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
-
-    expect(mapStyle.layers.length).toBe(1);
+    }).toThrow('https://developers.arcgis.com/documentation/security-and-authentication/get-started/');
   });
 
-  test('`applyStyle` factory method creates, loads, and applies a basemap style to a map.', async ({apiKey, map}) => {
-    fetchMock.once(JSON.stringify(basemapStyleNavigation));
-    const basemap = BasemapStyle.applyStyle(map, {
-      style:'arcgis/navigation',
+  test('Accepts an ArcGIS access token in the `token` parameter and uses it in requests.', ({apiKey}) => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
       token: apiKey
     });
-
-    const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
-    expect(basemap.style).toMatchObject(mapStyle);
+    expect(basemap._token).toBe(apiKey);
+    expect(basemap._styleUrl).toContain(apiKey);
   });
 
-  test('`updateStyle` changes the map style after a style already exists.', async ({apiKey, loadedBasemap, map}) => {
-
-    fetchMock.mockResponse(JSON.stringify({}));
-    loadedBasemap.applyToMap(map);
-
-    setTimeout(async () => {
-
-      fetchMock.once(JSON.stringify(basemapStyleStreets));
-      loadedBasemap.updateStyle({
-        style:'open/streets'
-      });
-
-      const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
-
-      expect(loadedBasemap.style).toMatchObject(mapStyle);
-    },1000);
+  test('Accepts an ArcGIS REST JS authentication manager and uses the access token in requests.', ({restJsAuthentication}) => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      authentication: restJsAuthentication
+    });
+    expect(basemap._token).toBe(restJsAuthentication.token);
+    expect(basemap._styleUrl).toContain(restJsAuthentication.token);
   });
 
-  test('Accepts custom attribution and applies it to the map.', ({apiKey, map}) => {
-    // TODO - requires map
-    fetchMock.once(JSON.stringify(basemapStyleNavigation));
-    const basemap = BasemapStyle.applyStyle(map,{
-      style:'arcgis/navigation',
+  test('Accepts a private \'baseUrl\' param for dev server testing.', ({apiKey}) => {
+    const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
+    const basemap = new BasemapStyle({
+      style:arcgisStyle,
+      token:apiKey,
+      baseUrl:DEV_URL
+    });
+
+    expect(basemap._baseUrl).toBe(DEV_URL);
+    expect(basemap._styleUrl).toContain(DEV_URL);
+  });
+
+  test('Accepts a `language` preference and adds that to the basemap style', ({apiKey}) => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
       token: apiKey,
-      attributionControl: {
-        customAttribution: customAttributionString
+      preferences: {
+        language: 'ja'
       }
     });
 
-    setTimeout(()=>{
-      expect(map._controls[0].options.customAttribution).toMatch(customAttributionString);
-    },3000)
+    expect(basemap.preferences.language).toBe('ja');
+    expect(basemap._styleUrl).toContain('language=ja');
+  });
 
+  test('Accepts a `places` preference and adds that to the basemap style', ({apiKey}) => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      token: apiKey,
+      preferences: {
+        places: 'all'
+      }
+    });
 
+    expect(basemap.preferences.places).toBe('all');
+    expect(basemap._styleUrl).toContain('places=all');
+  });
+
+  test('Accepts a `worldview` preference and adds that to the basemap style', ({apiKey}) => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      token: apiKey,
+      preferences: {
+        worldview: 'unitedStatesOfAmerica'
+      }
+    });
+
+    expect(basemap.preferences.worldview).toBe('unitedStatesOfAmerica');
+    expect(basemap._styleUrl).toContain('worldview=unitedStatesOfAmerica');
   });
 
   test('Emits a BasemapStyleError event when a loading error occurs.', async () => {
@@ -241,68 +142,175 @@ describe('Works with a mocked \'Map\'.', () => {
     await expect(() => eventTriggersSpy('BasemapStyleError')).rejects.toThrowError();
   });
 
-    test('Fires a BasemapStyleLoad event when the style loads.', async ({apiKey}) => {
+  test('Fires a BasemapStyleLoad event when the style loads.', async ({apiKey}) => {
+    const basemap = new BasemapStyle({
+      style:arcgisStyle,
+      token:apiKey
+    });
+    fetchMock.once(JSON.stringify(basemapStyleNavigation));
+    basemap.loadStyle();
+
+    const loadEventSpy = vi.fn(async () => {return new Promise(resolve => {
+      basemap.on('BasemapStyleLoad', basemap => resolve(basemap));
+    })})
+    const style = await loadEventSpy();
+    expect(style).toBe(basemap);
+  });
+
+  test('Supports a static `url()` method that returns a formatted style URL.', ({apiKey}) => {
+    const styleUrl = BasemapStyle.url({
+      style:arcgisStyle,
+      token:apiKey
+    });
+    expect(styleUrl).toContain(DEFAULT_BASE_URL);
+    expect(styleUrl).toContain(arcgisStyle);
+    expect(styleUrl).toContain(`token=${apiKey}`);
+  });
+
+  describe('Handles map attribution properly', () => {
+    test('Adds \"Powered by Esri\" to the map attribution if not already present.', ({apiKey, map}) => {
+      fetchMock.once(JSON.stringify(basemapStyleNavigation)).mockResponse(JSON.stringify({}));
+      const basemap = BasemapStyle.applyStyle(map,{
+        style:'arcgis/navigation',
+        token: apiKey
+      });
+
+      setTimeout(() => {
+        expect(map._controls[0].options.customAttribution).toMatch(esriAttributionString);
+      },1000)
+    });
+
+    test('Accepts custom attribution and applies it to the map.', ({apiKey, map}) => {
+      fetchMock.once(JSON.stringify(basemapStyleNavigation)).mockResponse(JSON.stringify({}));
+      const basemap = BasemapStyle.applyStyle(map,{
+        style:'arcgis/navigation',
+        token: apiKey,
+        attributionControl: {
+          customAttribution: customAttributionString
+        }
+      });
+
+      setTimeout(()=>{
+        expect(map._controls[0].options.customAttribution).toMatch(customAttributionString);
+      },1500)
+    });
+
+    test('Does not overwrite map attribution and throws an error if custom attribution is present.', ({apiKey, loadedBasemap}) => {
+      const mapDiv = document.createElement('div');
+      const map = new Map({
+        container: mapDiv,
+        zoom: 5, // starting zoom
+        center: [138.2529, 36.2048], // starting location
+        attributionControl: {
+          customAttribution: customAttributionString
+        }
+      });
+
+      fetchMock.mockResponse(JSON.stringify({}));
+      expect(() => {
+        loadedBasemap.applyToMap(map);
+      }).toThrow('Unable to load Esri attribution');
+    });
+
+    test('Fires a BasemapAttributionLoad event when the attribution loads.', async ({apiKey}) => {
+      // TODO - requires map
+    });
+  });
+
+  describe('Works with a mocked \'Map\'.', () => {
+    test('Allows updating the saved Map with `setMap()`.', ({apiKey, map}) => {
       const basemap = new BasemapStyle({
         style:arcgisStyle,
         token:apiKey
       });
-      fetchMock.once(JSON.stringify(basemapStyleNavigation));
-      basemap.loadStyle();
 
-      const loadEventSpy = vi.fn(async () => {return new Promise(resolve => {
-        basemap.on('BasemapStyleLoad', basemap => resolve(basemap));
-      })})
-      const style = await loadEventSpy();
-      expect(style).toBe(basemap);
-
+      basemap.setMap(map);
+      expect(basemap._map).toBe(map);
     });
 
+    test('Applies the loaded style to the map with `applyToMap()`', async ({apiKey, loadedBasemap, map}) => {
+      fetchMock.mockResponse(JSON.stringify({}));
+      loadedBasemap.applyToMap(map);
 
-});
+      expect(loadedBasemap._map).toBe(map);
 
+      // TODO Map events do not fire properly -- why?
+      const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
 
-test('updateStyle() accepts parameters including a new basemap style and preferences.', () => {
-  // TODO - requires map
-});
+      expect(mapStyle.glyphs).toBe(loadedBasemap.style.glyphs);
+      expect(mapStyle.sprite).toBe(loadedBasemap.style.sprite);
+      expect(mapStyle.sources).toEqual(loadedBasemap.style.sources);
 
-test('Adds \"Powered by Esri\" to the map attribution if not already present.', () => {
-  // TODO - requires map
-});
-test('Overwrites the default maplibre-gl attribution if there is any.', () => {
-  // TODO - requires map
-});
-test('Does not overwrite map attribution and throws an error if custom attribution is present.', () => {
-  // TODO - requires map
-});
+      expect(loadedBasemap.style).toMatchObject(mapStyle);
+    });
 
-test('Fires a BasemapAttributionLoad event when the attribution loads.', async ({apiKey}) => {
-  // TODO - requires map
-});
+    test('`applyToMap()` applies MapLibre style options such as `transformStyle`, and applies them to the map.', async ({apiKey, loadedBasemap, map}) => {
+      const maplibreStyleOptions = {
+        transformStyle: (oldStyleIfAny, newStyle) => ({
+          ...newStyle,
+          layers: [
+            newStyle.layers[0]
+          ]
+        })
+      }
 
+      fetchMock.mockResponse(JSON.stringify({}));
+      loadedBasemap.applyToMap(map, maplibreStyleOptions);
 
-test('Supports a static `url()` method that returns a formatted style URL.', ({apiKey}) => {
-  const styleUrl = BasemapStyle.url({
-    style:arcgisStyle,
-    token:apiKey
+      const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
+      expect(mapStyle.layers.length).toBe(1);
+    });
+
+    test('`applyStyle` factory method creates, loads, and applies a basemap style to a map.', async ({apiKey, map}) => {
+      fetchMock.once(JSON.stringify(basemapStyleNavigation)).mockResponse(JSON.stringify({}));
+      const basemap = BasemapStyle.applyStyle(map, {
+        style:'arcgis/navigation',
+        token: apiKey
+      });
+
+      const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
+      expect(basemap.style).toMatchObject(mapStyle);
+    });
+
+    test('`updateStyle` changes the map style after a style already exists.', async ({apiKey, loadedBasemap, map}) => {
+      fetchMock.mockResponse(JSON.stringify({}));
+      loadedBasemap.applyToMap(map);
+
+      setTimeout(async () => {
+        fetchMock.once(JSON.stringify(basemapStyleStreets));
+        loadedBasemap.updateStyle({
+          style:'open/streets'
+        });
+
+        const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
+        expect(loadedBasemap.style).toMatchObject(mapStyle);
+      },1000);
+    });
   });
-  expect(styleUrl).toContain(DEFAULT_BASE_URL);
-  expect(styleUrl).toContain(arcgisStyle);
-  expect(styleUrl).toContain(`token=${apiKey}`);
-});
 
-test('Supports a static `getSelf() operation that makes a `/self` request to the service URL.', async ({apiKey}) => {
-  const serviceResponse = await BasemapStyle.getSelf({
-    token: apiKey
+  describe('Works with actual data', () => {
+    beforeAll(()=>{
+      removeMock();
+    });
+    beforeEach(()=>{
+      fetchMock.resetMocks();
+      fetchMock.dontMock();
+    });
+    test('Supports a static `getSelf() operation that makes a `/self` request to the service URL.', async ({apiKey}) => {
+      const serviceResponse = await BasemapStyle.getSelf({
+        token: apiKey
+      });
+
+      expect(serviceResponse.styles).toBeDefined();
+      expect(serviceResponse.languages).toBeDefined();
+      expect(serviceResponse.places).toBeDefined();
+      expect(serviceResponse.worldviews).toBeDefined();
+      expect(serviceResponse.styleFamilies).toBeDefined();
+    });
+
   });
 
-  expect(serviceResponse.styles).toBeDefined();
-  expect(serviceResponse.languages).toBeDefined();
-  expect(serviceResponse.places).toBeDefined();
-  expect(serviceResponse.worldviews).toBeDefined();
-  expect(serviceResponse.styleFamilies).toBeDefined();
 });
-
-// TODO - all data is mocked by default
 
 /*
 describe('Supports basemap session authentication.', () => {

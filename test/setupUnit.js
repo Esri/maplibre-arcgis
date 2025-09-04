@@ -8,4 +8,4 @@ window.URL.createObjectURL = vi.fn();
 //Enable fetch mock
 const fetchMocker = createFetchMock(vi);
 fetchMocker.enableMocks();
-fetchMocker.disableMocks();
+//fetchMocker.disableMocks();
