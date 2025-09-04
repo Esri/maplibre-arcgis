@@ -85,6 +85,8 @@ export class FeatureLayer extends HostedLayer {
   /**
    * Constructor for FeatureLayer.
    * @param options - Configuration options for the feature layer.
+   *
+   * Creating layers using the constructor directly is not recommended. Use {@link FeatureLayer.fromUrl} and {@link FeatureLayer.fromPortalItem} instead.
    */
   constructor(options: IFeatureLayerOptions) {
     super();
