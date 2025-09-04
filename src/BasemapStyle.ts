@@ -277,7 +277,7 @@ export class BasemapStyle {
   }
 
   /**
-   * Loads the basemap style from the basemap styles service.
+   * Loads the basemap style from the Basemap Styles service.
    * @returns The maplibre style specification of the basemap style, formatted properly.
    */
   async loadStyle(): Promise<StyleSpecification> {
@@ -468,10 +468,10 @@ export class BasemapStyle {
   }
 
   /**
-   * Static method that makes a `/self` request to the ArcGIS Basemap Styles Service.
+   * Static method that makes a `/self` request to the ArcGIS Basemap Styles service.
    * @see https://developers.arcgis.com/rest/basemap-styles/service-self-get/
    * @param options - Additional parameters including an ArcGIS access token
-   * @returns The response returned by the Basemap Styles Service.
+   * @returns The response returned by the Basemap Styles service.
    */
   static async getSelf(options: { token?: string; baseUrl?: string }): Promise<BasemapSelfResponse> {
     const basemapServiceUrl = options?.baseUrl ? options.baseUrl : DEFAULT_BASE_URL;
