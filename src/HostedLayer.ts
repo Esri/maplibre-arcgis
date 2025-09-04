@@ -8,7 +8,7 @@ import type { RestJSAuthenticationManager } from './Util';
  *
  * @remarks
  * This type defines the data source formats that can be used with ArcGIS hosted layers
- * in MapLibre maps. It currently supports vector tile sources and GeoJSON sources,
+ * in MapLibre maps. It currently supports loading data as vector tile sources and GeoJSON sources,
  * which cover the most common use cases for ArcGIS Feature Services and Vector Tile Services.
  *
  * - `VectorSourceSpecification` - For vector tile sources, typically used with ArcGIS Vector Tile Services
