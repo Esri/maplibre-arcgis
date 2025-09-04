@@ -58,7 +58,6 @@ export type SessionRefreshedData = {
 
 /**
  * Type representing the events emitted by the BasemapSession class.
- * Type representing the events emitted by the BasemapSession class.
  */
 export type BasemapSessionEventMap = {
   /**
