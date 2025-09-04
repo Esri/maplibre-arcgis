@@ -46,6 +46,7 @@ export interface IHostedLayerOptions {
 
 /**
  * Structure representing the metadata for an ArcGIS item. Go to {@link https://developers.arcgis.com/rest/users-groups-and-items/item/#response-properties | ArcGIS REST API - Item} to learn more.
+ * @internal
  */
 export interface IItemInfo {
   portalUrl: string;
@@ -59,6 +60,10 @@ export interface IItemInfo {
   // spatialReference?: string
 }
 
+/**
+ * Object representing the metadata for an ArcGIS data service.
+ * @internal
+ */
 export interface IDataServiceInfo {
   serviceUrl: string;
   copyrightText?: string; // Attribution information from service JSON
