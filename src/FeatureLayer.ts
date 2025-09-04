@@ -42,7 +42,7 @@ const defaultLayerPaintMap = {
 };
 
 /**
- * Supported options for instantiating a GeoJSONLayer.
+ * Options supported by FeatureLayer.
  */
 export interface IFeatureLayerOptions extends IHostedLayerOptions {
   itemId?: string;
