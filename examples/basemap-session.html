@@ -40,20 +40,6 @@
       style: 'arcgis/outdoor',
       session: basemapSession
     });
-    // Initialize the map
-    const map = new maplibregl.Map({
-      container: "map", // the id of the div element
-      zoom: 14, // starting zoom
-      center: [-117.805, 34.027], // starting location
-    });
-
-    // Start a new basemap session.
-    const basemapSession = await maplibreArcGIS.BasemapSession.start({
-      styleFamily: 'arcgis',
-      token: apiKey,
-      duration:30,
-      autoRefresh: true
-    });
 
     basemapSession.on(BasemapSession.BasemapSessionRefreshed, (event) => {
       console.log(`The basemap session was refreshed. previous token: ${event.previous.token}`);
@@ -67,11 +53,6 @@
       console.log("The basemap session was refreshed.");
     })
 
-    // Create a new basemap style
-    const arcgisBasemap =  maplibreArcGIS.BasemapStyle.applyStyle(map,{
-      style: "arcgis/outdoor",
-      session: basemapSession
-    });
 
 </script>
 </body>
