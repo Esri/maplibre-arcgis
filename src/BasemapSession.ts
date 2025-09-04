@@ -214,7 +214,7 @@ export class BasemapSession {
   }
 
   /**
-   * Starts the session.
+   * Starts the session if it has not been started already.
    *
    * @example
    * ```javascript
