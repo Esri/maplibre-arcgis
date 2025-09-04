@@ -43,7 +43,8 @@ export type BasemapStyleObject = {
 };
 
 /**
- * Options for basemap styles
+ * Options passed to Maplibre GL JS.
+ * @see {@link MapLibre API reference - Map.setStyle | https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/#setstyle}.
  */
 export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
 
