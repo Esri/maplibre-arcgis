@@ -82,7 +82,7 @@ export type BasemapSessionEventMap = {
  * - Event handling for session lifecycle (refresh, expiration, errors)
  * - Integration with ArcGIS Basemap Styles Service
  *
- * > An [access token](https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions.
+ * > An [access token](https://developers.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions.
  * > The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
  *
  * @example
