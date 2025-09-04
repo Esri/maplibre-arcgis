@@ -35,7 +35,7 @@ import type { RestJSAuthenticationManager } from './Util';
 export type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpecification;
 
 /**
- * Options for creating a HostedLayer instance.
+ * Options accepted by all instances of HostedLayer.
  */
 export interface IHostedLayerOptions {
   token?: string; // Access token as a string
