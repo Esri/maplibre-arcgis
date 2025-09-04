@@ -24,7 +24,7 @@ export interface IVectorTileServiceInfo extends IDataServiceInfo {
 }
 
 /**
- * VectorTileLayer class.
+ * Class representing a vector tile layer for MapLibre GL JS. This class allows you to load and display [ArcGIS vector tile layers](https://mapbox-migration-preview.gha.afd.arcgis.com/documentation/portal-and-data-services/data-services/vector-tile-services/introduction/) in a MapLibre GL JS map. It supports both item IDs from ArcGIS Online and feature service URLs.
  */
 export class VectorTileLayer extends HostedLayer {
   declare protected _serviceInfo: IVectorTileServiceInfo;
