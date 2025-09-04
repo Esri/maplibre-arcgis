@@ -1,11 +1,10 @@
-import { vi, test as testBase } from "vitest";
-import { BasemapSession, BasemapStyle } from '../src/MaplibreArcGIS';
+import { vi, expect, test as testBase } from "vitest";
+import { BasemapSession, BasemapStyle } from '../src/MaplibreArcGIS.js';
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
 import { Map } from 'maplibre-gl';
 import {MOCK_API_KEY} from './mock/authentication/basemapApiKey.js';
 import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
 
-// TODO load dummy data
 export let IS_MOCK = false;
 
 export function useMock() {
@@ -27,7 +26,7 @@ export function useMock() {
 export function removeMock() {
   vi.unstubAllGlobals();
 
-  IS_MOCK = false
+  IS_MOCK = false;
 }
 
 
@@ -89,3 +88,33 @@ export const customTest = testBase.extend({
   }
 });
 
+
+
+customTest('Test suite creates a virtual window and DOM', () => {
+  expect(typeof window).not.toBe('undefined');
+  expect(window instanceof Window).toBe(true);
+});
+
+
+
+customTest('Fetch mock works properly when enabled.', async () => {
+  fetchMock.enableMocks();
+
+  const mockResponse = {
+    glyphs:'test format',
+    sources:{
+      esri:{
+        url:'more test'
+      }
+    }
+  }
+
+  fetchMock.mockOnce(JSON.stringify(mockResponse))
+
+  const response = await fetch('https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/navigation');
+  const body = await response.json();
+
+  expect(body).toEqual(mockResponse)
+
+  fetchMock.disableMocks();
+});

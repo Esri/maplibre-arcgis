@@ -1,16 +1,13 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll } from 'vitest';
 import { BasemapStyle } from '../src/MaplibreArcGIS';
-import { useMock, removeMock, customTest as test } from './unitTest';
+import { useMock, removeMock, customTest as test } from './BaseTest.test';
 
 const arcgisStyle = 'arcgis/navigation';
 const imageryStyle = 'arcgis/imagery';
 const openStyle = 'open/streets';
 
 const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
-
-
-
 
 describe('Works with actual data', () => {
   test('Requests a JSON style from the correct service URL.', async ({apiKey}) => {
@@ -174,32 +171,32 @@ describe('Works with a mocked \'Map\'.', () => {
   test('Accepts custom attribution and applies it to the map.', ({}) => {
     // TODO - requires map
   });
+
+  test('`applyToMap()` sets the style of a provided map', ({map}) => {
+    // TODO - requires map
+  });
+
+  test('`applyToMap()` applies MapLibre style options such as `transformStyle`', ({apiKey}) => {
+    const maplibreStyleOptions = {
+      transformStyle: (oldStyleIfAny, newStyle) => ({
+        ...newStyle,
+        layers: [
+          newStyle.layers[0]
+        ]
+      })
+    }
+    // TODO - requires map
+  });
+
+  test('Customizes the style of the maplibre map with `updateStyle()`', () => {
+    // TODO - requires map
+  });
+  test('updateStyle() accepts parameters including a new basemap style and preferences.', () => {
+    // TODO - requires map
+  });
 });
 
 
-
-test('`applyToMap()` sets the style of a provided map', () => {
-  // TODO - requires map
-});
-
-test('`applyToMap()` applies MapLibre style options such as `transformStyle`', ({apiKey}) => {
-  const maplibreStyleOptions = {
-    transformStyle: (oldStyleIfAny, newStyle) => ({
-      ...newStyle,
-      layers: [
-        newStyle.layers[0]
-      ]
-    })
-  }
-  // TODO - requires map
-});
-
-test('Customizes the style of the maplibre map with `updateStyle()`', () => {
-  // TODO - requires map
-});
-test('updateStyle() accepts parameters including a new basemap style and preferences.', () => {
-  // TODO - requires map
-});
 
 test('Fires a BasemapStyleLoad event when the style loads.', async ({apiKey}) => {
   const basemap = new BasemapStyle({
