@@ -122,7 +122,7 @@ const DEV_STYLE_SESSION_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/re
  *
  * @see {@link IBasemapSessionOptions} for configuration options
  * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys} for more information on ArcGIS Authentication.
- * @see {@link https://basemap-sessions-preview.gha.afd.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/basemap-usage-styles/ | Basemap usage} for more information on the session usage models.
+ * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/basemap-usage-styles/ | Basemap usage} for more information on the session usage models.
  * @see {@link https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/maps/display-a-map-with-a-basemap-session/ | Display a map with a basemap session tutorial}
  *
  */
