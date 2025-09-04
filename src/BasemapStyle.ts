@@ -49,7 +49,7 @@ export type BasemapStyleObject = {
 export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
 
 /**
- * Events emitted by the BasemapStyle class
+ * Events emitted by the BasemapStyle class.
  */
 export type BasemapStyleEventMap = {
   BasemapStyleLoad: BasemapStyle;
