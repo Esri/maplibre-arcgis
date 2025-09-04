@@ -2,6 +2,7 @@ import type { ApiKeyManager, ApplicationCredentialsManager, ArcGISIdentityManage
 
 /**
  * Custom type to represent authentication managers used in ArcGIS REST JS.
+ * @see https://developers.arcgis.com/arcgis-rest-js/authentication/
  */
 export type RestJSAuthenticationManager = ApiKeyManager | ArcGISIdentityManager | ApplicationCredentialsManager;
 
