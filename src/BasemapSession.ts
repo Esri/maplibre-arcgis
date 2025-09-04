@@ -40,7 +40,7 @@ export interface IBasemapSessionOptions {
 }
 
 /**
- * Structure of the object returned from the session start request.
+ * The object returned from the session start request.
  */
 export type SessionResponse = {
   token: string;
