@@ -71,7 +71,7 @@ export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
 
 /**
  * Class representing a feature layer for MapLibre GL JS.
- * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) as GeoJSON sources in MapLibre.
+ * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) as GeoJSON sources in a MapLibre map.
  * It supports both item IDs from ArcGIS Online and feature service URLs.
  */
 export class FeatureLayer extends HostedLayer {
