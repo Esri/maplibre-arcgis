@@ -141,6 +141,7 @@ export class BasemapSession {
   /**
    * Creates a new `BasemapSession` instance but does not start it. Use the {@linkcode BasemapSession.initialize} method to begin the session manually.
    *
+   * Creating basemap sessions in this way using the constructor directly is discouraged. The recommended method is to use {@linkcode BasemapSession.start}.
    * @param options - Configuration options for the session
    *
    * @example
