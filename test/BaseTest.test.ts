@@ -1,3 +1,4 @@
+//@ts-nocheck
 import { vi, expect, test as testBase } from "vitest";
 import { BasemapSession, BasemapStyle } from '../src/MaplibreArcGIS.js';
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
@@ -18,7 +19,10 @@ export function useMock() {
     terminate: vi.fn(),
     addEventListener: window.addEventListener,
     removeEventListener: window.removeEventListener,
-  })))
+  })));
+
+  fetchMock.enableMocks();
+  fetchMock.doMock();
 
   IS_MOCK = true;
 }
@@ -26,9 +30,10 @@ export function useMock() {
 export function removeMock() {
   vi.unstubAllGlobals();
 
+  fetchMock.disableMocks();
+
   IS_MOCK = false;
 }
-
 
 export const customTest = testBase.extend({
   // API key
@@ -61,7 +66,7 @@ export const customTest = testBase.extend({
     await use(map);
   },
   // Unloaded basemap style
-  newBasemap: async ({apiKey}, use) => {
+  basemap: async ({apiKey}, use) => {
     const basemap = new BasemapStyle({
       style: 'arcgis/navigation',
       token: apiKey
@@ -74,16 +79,10 @@ export const customTest = testBase.extend({
       style: 'arcgis/navigation',
       token: apiKey
     });
-    // mock data
-    // TODO replace this with a mock 'request' ONLY
-    if (IS_MOCK) {
-      basemap.loadStyle = vi.fn().mockImplementation(async () => {
-        basemap.style = basemapStyleNavigation;
-        return basemapStyleNavigation;
-      });
-    }
 
+    fetchMock.once(JSON.stringify(basemapStyleNavigation));
     await basemap.loadStyle();
+
     await use(basemap);
   }
 });

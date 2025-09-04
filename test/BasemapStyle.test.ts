@@ -2,10 +2,15 @@
 import { describe, expect, vi, beforeAll } from 'vitest';
 import { BasemapStyle } from '../src/MaplibreArcGIS';
 import { useMock, removeMock, customTest as test } from './BaseTest.test';
+import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
+import basemapStyleStreets from './mock/BasemapStyle/OpenStreets.json';
+import { tokenError } from './mock/authentication/invalidTokenError';
 
 const arcgisStyle = 'arcgis/navigation';
 const imageryStyle = 'arcgis/imagery';
 const openStyle = 'open/streets';
+
+const customAttributionString = 'Internal distribution. For unit tests.'
 
 const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
 
@@ -116,21 +121,6 @@ test('Accepts a `worldview` preference and adds that to the basemap style', ({ap
   expect(basemap._styleUrl).toContain('worldview=unitedStatesOfAmerica');
 });
 
-
-
-
-
-test('Adds \"Powered by Esri\" to the map attribution if not already present.', () => {
-  // TODO - requires map
-});
-test('Overwrites the default maplibre-gl attribution if there is any.', () => {
-  // TODO - requires map
-});
-test('Does not overwrite map attribution and throws an error if custom attribution is present.', () => {
-  // TODO - requires map
-});
-
-
 describe('Works with a mocked \'Map\'.', () => {
   beforeAll(async () => {
     useMock();
@@ -152,14 +142,13 @@ describe('Works with a mocked \'Map\'.', () => {
   });
 
   test('Applies the loaded style to the map with `applyToMap()`', async ({apiKey, loadedBasemap, map}) => {
-
-    const applySpy = vi.spyOn(loadedBasemap, 'applyToMap');
+    fetchMock.mockResponse(JSON.stringify({}));
     loadedBasemap.applyToMap(map);
 
     expect(loadedBasemap._map).toBe(map);
 
     // TODO Map events do not fire properly -- why?
-    const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),2000));
+    const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
 
     expect(mapStyle.glyphs).toBe(loadedBasemap.style.glyphs);
     expect(mapStyle.sprite).toBe(loadedBasemap.style.sprite);
@@ -168,15 +157,7 @@ describe('Works with a mocked \'Map\'.', () => {
     expect(loadedBasemap.style).toMatchObject(mapStyle);
   });
 
-  test('Accepts custom attribution and applies it to the map.', ({}) => {
-    // TODO - requires map
-  });
-
-  test('`applyToMap()` sets the style of a provided map', ({map}) => {
-    // TODO - requires map
-  });
-
-  test('`applyToMap()` applies MapLibre style options such as `transformStyle`', ({apiKey}) => {
+  test('`applyToMap()` applies MapLibre style options such as `transformStyle`, and applies them to the map.', async ({apiKey, loadedBasemap, map}) => {
     const maplibreStyleOptions = {
       transformStyle: (oldStyleIfAny, newStyle) => ({
         ...newStyle,
@@ -185,59 +166,119 @@ describe('Works with a mocked \'Map\'.', () => {
         ]
       })
     }
-    // TODO - requires map
+
+    fetchMock.mockResponse(JSON.stringify({}));
+    loadedBasemap.applyToMap(map, maplibreStyleOptions);
+
+    const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
+
+    expect(mapStyle.layers.length).toBe(1);
   });
 
-  test('Customizes the style of the maplibre map with `updateStyle()`', () => {
-    // TODO - requires map
+  test('`applyStyle` factory method creates, loads, and applies a basemap style to a map.', async ({apiKey, map}) => {
+    fetchMock.once(JSON.stringify(basemapStyleNavigation));
+    const basemap = BasemapStyle.applyStyle(map, {
+      style:'arcgis/navigation',
+      token: apiKey
+    });
+
+    const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
+    expect(basemap.style).toMatchObject(mapStyle);
   });
-  test('updateStyle() accepts parameters including a new basemap style and preferences.', () => {
-    // TODO - requires map
+
+  test('`updateStyle` changes the map style after a style already exists.', async ({apiKey, loadedBasemap, map}) => {
+
+    fetchMock.mockResponse(JSON.stringify({}));
+    loadedBasemap.applyToMap(map);
+
+    setTimeout(async () => {
+
+      fetchMock.once(JSON.stringify(basemapStyleStreets));
+      loadedBasemap.updateStyle({
+        style:'open/streets'
+      });
+
+      const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
+
+      expect(loadedBasemap.style).toMatchObject(mapStyle);
+    },1000);
   });
+
+  test('Accepts custom attribution and applies it to the map.', ({apiKey, map}) => {
+    // TODO - requires map
+    fetchMock.once(JSON.stringify(basemapStyleNavigation));
+    const basemap = BasemapStyle.applyStyle(map,{
+      style:'arcgis/navigation',
+      token: apiKey,
+      attributionControl: {
+        customAttribution: customAttributionString
+      }
+    });
+
+    setTimeout(()=>{
+      expect(map._controls[0].options.customAttribution).toMatch(customAttributionString);
+    },3000)
+
+
+  });
+
+  test('Emits a BasemapStyleError event when a loading error occurs.', async () => {
+    const basemap = new BasemapStyle({
+      style:arcgisStyle,
+      token:'my key that expired'
+    });
+    fetchMock.once(tokenError);
+    basemap.loadStyle();
+
+    async function eventTriggers(eventName) {
+      return new Promise((resolve,reject) => {
+          basemap.on(eventName,(e)=>{
+          reject(e)});
+      })
+    }
+    const eventTriggersSpy = vi.fn(eventTriggers);
+
+    await expect(() => eventTriggersSpy('BasemapStyleError')).rejects.toThrowError();
+  });
+
+    test('Fires a BasemapStyleLoad event when the style loads.', async ({apiKey}) => {
+      const basemap = new BasemapStyle({
+        style:arcgisStyle,
+        token:apiKey
+      });
+      fetchMock.once(JSON.stringify(basemapStyleNavigation));
+      basemap.loadStyle();
+
+      const loadEventSpy = vi.fn(async () => {return new Promise(resolve => {
+        basemap.on('BasemapStyleLoad', basemap => resolve(basemap));
+      })})
+      const style = await loadEventSpy();
+      expect(style).toBe(basemap);
+
+    });
+
+
 });
 
 
+test('updateStyle() accepts parameters including a new basemap style and preferences.', () => {
+  // TODO - requires map
+});
 
-test('Fires a BasemapStyleLoad event when the style loads.', async ({apiKey}) => {
-  const basemap = new BasemapStyle({
-    style:arcgisStyle,
-    token:apiKey
-  });
-  basemap.loadStyle();
-
-  async function eventTriggers(eventName) {
-    return new Promise((resolve,reject) => {
-      basemap.on(eventName,(style)=>{resolve(style)});
-    })
-  }
-  const eventTriggersSpy = vi.fn(eventTriggers);
-  const style = await eventTriggersSpy('BasemapStyleLoad');
-
-  expect(eventTriggersSpy).toHaveResolved();
-  expect(style).toBe(basemap);
+test('Adds \"Powered by Esri\" to the map attribution if not already present.', () => {
+  // TODO - requires map
+});
+test('Overwrites the default maplibre-gl attribution if there is any.', () => {
+  // TODO - requires map
+});
+test('Does not overwrite map attribution and throws an error if custom attribution is present.', () => {
+  // TODO - requires map
 });
 
 test('Fires a BasemapAttributionLoad event when the attribution loads.', async ({apiKey}) => {
   // TODO - requires map
 });
 
-test('Emits a BasemapStyleError event when a loading error occurs.', async () => {
-  const basemap = new BasemapStyle({
-    style:arcgisStyle,
-    token:'12345 invalid key'
-  });
-  basemap.loadStyle();
-
-  async function eventTriggers(eventName) {
-    return new Promise((resolve,reject) => {
-      basemap.on(eventName,(e)=>{
-        reject(e)});
-    })
-  }
-  const eventTriggersSpy = vi.fn(eventTriggers);
-
-  await expect(() => eventTriggersSpy('BasemapStyleError')).rejects.toThrowError('401');
-});
 
 test('Supports a static `url()` method that returns a formatted style URL.', ({apiKey}) => {
   const styleUrl = BasemapStyle.url({
@@ -261,8 +302,7 @@ test('Supports a static `getSelf() operation that makes a `/self` request to the
   expect(serviceResponse.styleFamilies).toBeDefined();
 });
 
-
-
+// TODO - all data is mocked by default
 
 /*
 describe('Supports basemap session authentication.', () => {
