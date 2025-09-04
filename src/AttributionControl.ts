@@ -18,7 +18,7 @@ export interface IAttributionControlOptions {
    */
   compact?: boolean;
   /**
-   * Whether to display the attribution in a closed format.
+   * Whether the attribution control will be closed on initial map load.
    */
   closed?: boolean;
 }
