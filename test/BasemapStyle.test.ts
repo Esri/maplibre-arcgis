@@ -84,7 +84,9 @@ test('Accepts a `language` preference and adds that to the basemap style', ({api
   const basemap = new BasemapStyle({
     style: arcgisStyle,
     token: apiKey,
-    language: 'ja'
+    preferences: {
+      language: 'ja'
+    }
   });
 
   expect(basemap.preferences.language).toBe('ja');
@@ -95,7 +97,9 @@ test('Accepts a `places` preference and adds that to the basemap style', ({apiKe
   const basemap = new BasemapStyle({
     style: arcgisStyle,
     token: apiKey,
-    places: 'all'
+    preferences: {
+      places: 'all'
+    }
   });
 
   expect(basemap.preferences.places).toBe('all');
@@ -106,7 +110,9 @@ test('Accepts a `worldview` preference and adds that to the basemap style', ({ap
   const basemap = new BasemapStyle({
     style: arcgisStyle,
     token: apiKey,
-    worldview: 'unitedStatesOfAmerica'
+    preferences: {
+      worldview: 'unitedStatesOfAmerica'
+    }
   });
 
   expect(basemap.preferences.worldview).toBe('unitedStatesOfAmerica');
@@ -128,7 +134,7 @@ test('Does not overwrite map attribution and throws an error if custom attributi
 });
 
 
-describe('Works with mocked data', () => {
+describe('Works with a mocked \'Map\'.', () => {
   beforeAll(async () => {
     useMock();
 
@@ -137,12 +143,7 @@ describe('Works with mocked data', () => {
     }
   });
 
-  test('Accepts custom attribution and applies it to the map.', ({map}) => {
-    // TODO - requires map
-  });
-
-  test('Allows updating the associated Map with `setMap()`.', ({map, apiKey}) => {
-    // TODO - requires map
+  test('Allows updating the saved Map with `setMap()`.', ({apiKey, map}) => {
     const basemap = new BasemapStyle({
       style:arcgisStyle,
       token:apiKey
@@ -152,7 +153,29 @@ describe('Works with mocked data', () => {
 
     expect(basemap._map).toBe(map);
   });
+
+  test('Applies the loaded style to the map with `applyToMap()`', async ({apiKey, loadedBasemap, map}) => {
+
+    const applySpy = vi.spyOn(loadedBasemap, 'applyToMap');
+    loadedBasemap.applyToMap(map);
+
+    expect(loadedBasemap._map).toBe(map);
+
+    // TODO Map events do not fire properly -- why?
+    const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),2000));
+
+    expect(mapStyle.glyphs).toBe(loadedBasemap.style.glyphs);
+    expect(mapStyle.sprite).toBe(loadedBasemap.style.sprite);
+    expect(mapStyle.sources).toEqual(loadedBasemap.style.sources);
+
+    expect(loadedBasemap.style).toMatchObject(mapStyle);
+  });
+
+  test('Accepts custom attribution and applies it to the map.', ({}) => {
+    // TODO - requires map
+  });
 });
+
 
 
 test('`applyToMap()` sets the style of a provided map', () => {
@@ -194,7 +217,7 @@ test('Fires a BasemapStyleLoad event when the style loads.', async ({apiKey}) =>
   const style = await eventTriggersSpy('BasemapStyleLoad');
 
   expect(eventTriggersSpy).toHaveResolved();
-  expect(style).toBe(basemap.style)
+  expect(style).toBe(basemap);
 });
 
 test('Fires a BasemapAttributionLoad event when the attribution loads.', async ({apiKey}) => {

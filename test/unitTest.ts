@@ -1,8 +1,9 @@
 import { vi, test as testBase } from "vitest";
-import { BasemapSession } from '../src/MaplibreArcGIS';
+import { BasemapSession, BasemapStyle } from '../src/MaplibreArcGIS';
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
 import { Map } from 'maplibre-gl';
 import {MOCK_API_KEY} from './mock/authentication/basemapApiKey.js';
+import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
 
 // TODO load dummy data
 export let IS_MOCK = false;
@@ -11,6 +12,14 @@ export function useMock() {
   vi.stubGlobal('ResizeObserver', class MockResizeObserver {
     observe = vi.fn();
   });
+
+  vi.stubGlobal('Worker', vi.fn(() => ({
+    postMessage: vi.fn(),
+    onmessage: vi.fn(),
+    terminate: vi.fn(),
+    addEventListener: window.addEventListener,
+    removeEventListener: window.removeEventListener,
+  })))
 
   IS_MOCK = true;
 }
@@ -41,7 +50,6 @@ export const customTest = testBase.extend({
     const restJsAuthentication = ApiKeyManager.fromKey(apiKey);
     await use (restJsAuthentication)
   },
-
   // maplibre-gl Map
   map: async ({}, use) => {
     const mapDiv = document.createElement('div');
@@ -52,6 +60,32 @@ export const customTest = testBase.extend({
       center: [138.2529, 36.2048] // starting location
     });
     await use(map);
+  },
+  // Unloaded basemap style
+  newBasemap: async ({apiKey}, use) => {
+    const basemap = new BasemapStyle({
+      style: 'arcgis/navigation',
+      token: apiKey
+    });
+    await use(basemap);
+  },
+  // Loaded basemap style
+  loadedBasemap: async ({apiKey}, use) => {
+    const basemap = new BasemapStyle({
+      style: 'arcgis/navigation',
+      token: apiKey
+    });
+    // mock data
+    // TODO replace this with a mock 'request' ONLY
+    if (IS_MOCK) {
+      basemap.loadStyle = vi.fn().mockImplementation(async () => {
+        basemap.style = basemapStyleNavigation;
+        return basemapStyleNavigation;
+      });
+    }
+
+    await basemap.loadStyle();
+    await use(basemap);
   }
 });
 

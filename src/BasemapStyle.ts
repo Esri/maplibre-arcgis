@@ -206,13 +206,13 @@ export class BasemapStyle {
 
     styleUrl += `?token=${this._token}`;
 
-    if (this.preferences.language) {
+    if (this.preferences?.language) {
       styleUrl += `&language=${this.preferences.language}`;
     }
-    if (this.preferences.worldview) {
+    if (this.preferences?.worldview) {
       styleUrl += `&worldview=${this.preferences.worldview}`;
     }
-    if (this.preferences.places) {
+    if (this.preferences?.places) {
       styleUrl += `&places=${this.preferences.places}`;
     }
 
