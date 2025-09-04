@@ -156,7 +156,6 @@ export class BasemapSession {
 
   /**
    * Gets the current session token.
-   * @readonly
    */
   get token(): string {
     if (!this._session?.token) {
