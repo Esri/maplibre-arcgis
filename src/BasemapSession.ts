@@ -19,7 +19,7 @@ export interface IBasemapSessionOptions {
   styleFamily: StyleFamily;
   /** Toggles auto-refresh functionality. */
   autoRefresh?: boolean;
-  /** Safety margin in seconds to refresh the session before it expires. */
+  /** Safety margin in seconds to refresh the session before the `endTime`. */
   safetyMargin?: number;
   /**
    * @internal
