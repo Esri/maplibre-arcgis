@@ -467,7 +467,8 @@ export class BasemapStyle {
   }
 
   /**
-   * Static method that returns a basemap style URL.
+   * Static method that makes a `/self` request to the ArcGIS Basemap Styles Service.
+   * @see https://developers.arcgis.com/rest/basemap-styles/service-self-get/
    * @param options - Additional parameters including an ArcGIS access token
    * @returns The URL of the specified ArcGIS basemap style with all included parameters
    */
