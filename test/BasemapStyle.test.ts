@@ -19,7 +19,6 @@ const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/servi
 /**
  * Tests
  */
-
 describe('BasemapStyle unit tests', () => {
   beforeAll(async () => {
     useMock();
@@ -31,7 +30,7 @@ describe('BasemapStyle unit tests', () => {
     fetchMock.resetMocks();
   });
 
-  test('Requires a \'style\' parameter and saves it internally.', ({apiKey}) => {
+  test('Accepts a \'style\' parameter and saves it internally.', ({apiKey}) => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,
       token: apiKey,
@@ -73,7 +72,7 @@ describe('BasemapStyle unit tests', () => {
   });
 
   test('Accepts a private \'baseUrl\' param for dev server testing.', ({apiKey}) => {
-    const DEV_URL = 'https://basemapstylesdev-api.arcgis.com/arcgis/rest/services/styles/v2/styles';
+    const DEV_URL = 'https://DEVELOPMENT_URL';
     const basemap = new BasemapStyle({
       style:arcgisStyle,
       token:apiKey,
@@ -213,12 +212,12 @@ describe('BasemapStyle unit tests', () => {
     });
 
     test('Fires a BasemapAttributionLoad event when the attribution loads.', async ({apiKey}) => {
-      // TODO - requires map
+      // TODO
     });
   });
 
   describe('Works with a mocked \'Map\'.', () => {
-    test('Allows updating the saved Map with `setMap()`.', ({apiKey, map}) => {
+    test('Allows updating the saved Map with `setMap`.', ({apiKey, map}) => {
       const basemap = new BasemapStyle({
         style:arcgisStyle,
         token:apiKey
@@ -228,7 +227,7 @@ describe('BasemapStyle unit tests', () => {
       expect(basemap._map).toBe(map);
     });
 
-    test('Applies the loaded style to the map with `applyToMap()`', async ({apiKey, loadedBasemap, map}) => {
+    test('Applies the loaded style to the map with `applyToMap`', async ({apiKey, loadedBasemap, map}) => {
       fetchMock.mockResponse(JSON.stringify({}));
       loadedBasemap.applyToMap(map);
 
@@ -244,7 +243,7 @@ describe('BasemapStyle unit tests', () => {
       expect(loadedBasemap.style).toMatchObject(mapStyle);
     });
 
-    test('`applyToMap()` applies MapLibre style options such as `transformStyle`, and applies them to the map.', async ({apiKey, loadedBasemap, map}) => {
+    test('`applyToMap` applies MapLibre style options such as `transformStyle`, and applies them to the map.', async ({apiKey, loadedBasemap, map}) => {
       const maplibreStyleOptions = {
         transformStyle: (oldStyleIfAny, newStyle) => ({
           ...newStyle,
@@ -261,15 +260,18 @@ describe('BasemapStyle unit tests', () => {
       expect(mapStyle.layers.length).toBe(1);
     });
 
-    test('`applyStyle` factory method creates, loads, and applies a basemap style to a map.', async ({apiKey, map}) => {
+    test('`applyStyle` factory method creates and loads a basemap, then applies it to a map with applyToMap.', async ({apiKey, map}) => {
       fetchMock.once(JSON.stringify(basemapStyleNavigation)).mockResponse(JSON.stringify({}));
+
       const basemap = BasemapStyle.applyStyle(map, {
         style:'arcgis/navigation',
         token: apiKey
       });
+      const applyToMapSpy = vi.spyOn(basemap, 'applyToMap');
 
       const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
       expect(basemap.style).toMatchObject(mapStyle);
+      expect(applyToMapSpy).toBeCalled();
     });
 
     test('`updateStyle` changes the map style after a style already exists.', async ({apiKey, loadedBasemap, map}) => {

@@ -11,7 +11,7 @@ import mitt, { type Emitter } from 'mitt';
  */
 interface IBasemapSessionOptions {
   /** Access token for authentication. The token must be from an ArcGIS Location Platform account and have the Basemaps privelege. */
-  token?: string;
+  token: string;
   /** Duration in seconds for the session. */
   duration?: number;
   /** Style family for the session. */
@@ -62,8 +62,8 @@ export class BasemapSession {
   autoRefresh: boolean;
 
   constructor(options: IBasemapSessionOptions) {
-    if (!options?.token) throw new Error('An valid ArcGIS access token is required to start a session.');
-
+    if (!options?.token) throw new Error('A valid ArcGIS access token is required to start a session.');
+    if (!options.styleFamily) throw new Error('BasemapSession must be initialized with a styleFamily: `arcgis` or `open`.');
     this._parentToken = options.token;
     this.autoRefresh = options.autoRefresh ? true : false;
     this._options = options;
@@ -81,7 +81,7 @@ export class BasemapSession {
   }
 
   get styleFamily(): StyleFamily | undefined {
-    return this._session?.styleFamily;
+    return this._session ? this._session.styleFamily : this._options.styleFamily;
   }
 
   /**
