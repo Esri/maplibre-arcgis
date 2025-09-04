@@ -49,7 +49,7 @@ export type SessionResponse = {
   expires: Date;
 };
 /**
- * Structure representing the object returned in the basemap session refreshed event.
+ * The object returned by the `BasemapSessionRefreshed` event.
  */
 export type SessionRefreshedData = {
   previous: SessionResponse;
