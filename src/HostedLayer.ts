@@ -307,7 +307,7 @@ export abstract class HostedLayer {
    * @param map - A maplibre map object
    * @returns
    */
-  addLayersTo(map: MapLibreMap): HostedLayer {
+  addLayersTo(map: Map): HostedLayer {
     if (!this._ready) throw new Error('Cannot add layers to map: Object has not finished loading.');
     this._map = map;
     this._layers.forEach((layer) => {
