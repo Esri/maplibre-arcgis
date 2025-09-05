@@ -30,7 +30,7 @@ export interface IBasemapSessionOptions {
    */
   endTime: Date;
   /**
-   * The date of expiration for the session taking into account the {@link safetyMargin} applied.
+   * The date of expiration for the session taking into account the {@link safetyMargin}.
    */
   expires: Date;
   /**
@@ -123,7 +123,13 @@ export class BasemapSession {
 
   /**
    * Gets or sets whether the session should automatically request a new token after expiration.
-   * @defaultValue false
+   * ```javascript
+   * const basemapSession = new BasemapSession({
+   *   token: 'YOUR_ACCESS_TOKEN',
+   * });
+   * basemapSession.autoRefresh = true;
+   * console.log(basemapSession.autoRefresh);
+   * ```
    */
   autoRefresh: boolean;
 
@@ -132,8 +138,6 @@ export class BasemapSession {
    *
    * Creating basemap sessions in this way using the constructor directly is discouraged. The recommended method is to use {@linkcode BasemapSession.start}.
    * @param options - Configuration options for the session
-   *
-   * @example
    * ```javascript
    * const basemapSession = new BasemapSession({
    *   token: 'your-arcgis-token',
@@ -204,7 +208,6 @@ export class BasemapSession {
   /**
    * Starts the session if it has not been started already.
    *
-   * @example
    * ```javascript
    * const basemapSession = new BasemapSession({
    *   token: 'your-arcgis-token',

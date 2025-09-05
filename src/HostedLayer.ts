@@ -38,8 +38,17 @@ export type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSo
  * Options accepted by all instances of HostedLayer.
  */
 export interface IHostedLayerOptions {
-  token?: string; // Access token as a string
-  authentication?: RestJSAuthenticationManager | string; // Authentication as a REST JS object or access token string
+  /**
+   * An access token as a string.
+   */
+  token?: string;
+  /**
+   * Authentication as a REST JS object or access token string.
+   */
+  authentication?: RestJSAuthenticationManager | string;
+  /**
+   * The URL of the ArcGIS portal.
+   */
   portalUrl?: string;
   attribution?: string;
 }
@@ -85,7 +94,7 @@ const throwReadOnlyError = (propertyName: string) => {
  */
 export abstract class HostedLayer {
   /**
-   * An ArcGIS access token is required for accessing secure data layers. To get a token, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.
+   * An ArcGIS access token is required for accessing secure data layers. To get a token, go to the [Security and Authentication Guide](https://developers.arcgis.com/documentation/security-and-authentication/get-started/).
    */
   authentication?: RestJSAuthenticationManager | string;
 
@@ -134,18 +143,21 @@ export abstract class HostedLayer {
   protected _map?: Map;
 
   /**
-   *
+   * Retrieves the sources for the hosted layer.
    */
   get sources(): Readonly<{ [_: string]: SupportedSourceSpecification }> {
     return Object.freeze(this._sources);
   }
 
-  set sources(_) {
+  /**
+   * Sets the sources for the hosted layer.
+   */
+  set sources(value: { [_: string]: SupportedSourceSpecification }) {
     throwReadOnlyError('sources');
   }
 
   /**
-   *
+   * Retrieves the source for the hosted layer.
    */
   get source(): Readonly<SupportedSourceSpecification> | undefined {
     const sourceIds = Object.keys(this._sources);
@@ -154,12 +166,15 @@ export abstract class HostedLayer {
     return Object.freeze(this._sources[sourceIds[0]]);
   }
 
+  /**
+   * Sets the source for the hosted layer.
+   */
   set source(_) {
     throwReadOnlyError('source');
   }
 
   /**
-   *
+   * Retrieves the source ID for the hosted layer.
    */
   get sourceId(): Readonly<string> | undefined {
     const sourceIds = Object.keys(this._sources);
@@ -168,23 +183,29 @@ export abstract class HostedLayer {
     return Object.freeze(sourceIds[0]);
   }
 
+  /**
+   * Sets the source ID for the hosted layer.
+   */
   set sourceId(_) {
     throwReadOnlyError('sourceId');
   }
 
   /**
-   *
+   * Retrieves the layers for the hosted layer.
    */
   get layers(): Readonly<LayerSpecification[]> {
     return Object.freeze(this._layers);
   }
 
+  /**
+   * Sets the layers for the hosted layer.
+   */
   set layers(_) {
     throwReadOnlyError('layers');
   }
 
   /**
-   *
+   * Retrieves the layer for the hosted layer.
    */
   get layer(): Readonly<LayerSpecification> | undefined {
     if (this._layers.length !== 1) return undefined;
@@ -256,7 +277,7 @@ export abstract class HostedLayer {
 
   /**
    * Convenience method that adds all associated Maplibre sources and data layers to a map.
-   * @param map - A MapLibre GL JS map
+   * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
    */
   addSourcesAndLayersTo(map: Map): HostedLayer {
     if (!this._ready) throw new Error('Cannot add sources and layers to map: Object has not finished loading.');
@@ -281,7 +302,12 @@ export abstract class HostedLayer {
     return this;
   }
 
-  addLayersTo(map: Map): HostedLayer {
+  /**
+   * Add layers to a maplibre map.
+   * @param map - A maplibre map object
+   * @returns
+   */
+  addLayersTo(map: MapLibreMap): HostedLayer {
     if (!this._ready) throw new Error('Cannot add layers to map: Object has not finished loading.');
     this._map = map;
     this._layers.forEach((layer) => {
