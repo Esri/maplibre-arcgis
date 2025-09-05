@@ -83,9 +83,8 @@ export type BasemapSessionEventMap = {
  * - Integration with ArcGIS Basemap Styles Service
  *
  * > An [access token](https://developers.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions.
- * > The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
+ *The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
  *
- * @example
  * ```javascript
  * // Create and start a session
  * const basemapSession = await BasemapSession.start({
@@ -108,12 +107,6 @@ export type BasemapSessionEventMap = {
  *   console.error("Session error", e);
  * });
  * ```
- *
- * @see {@link IBasemapSessionOptions} for configuration options
- * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys} for more information on ArcGIS Authentication.
- * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/mapping/basemaps/basemap-usage-styles/ | Basemap usage} for more information on the session usage models.
- * @see {@link https://mapbox-migration-preview.gha.afd.arcgis.com/maplibre-gl-js/maps/display-a-map-with-a-basemap-session/ | Display a map with a basemap session tutorial}
- *
  */
 export class BasemapSession {
   private _session?: ArcgisRestBasemapStyleSession;
@@ -134,10 +127,7 @@ export class BasemapSession {
   autoRefresh: boolean;
 
   /**
-   * Creates a new `BasemapSession` instance but does not start it. Use the {@linkcode BasemapSession.initialize} method to begin the session manually.
-   *
-   * Creating basemap sessions in this way using the constructor directly is discouraged. The recommended method is to use {@linkcode BasemapSession.start}.
-   * @param options - Configuration options for the session
+   * Creates a new `BasemapSession` instance but does not start it. Use the {@link BasemapSession.initialize} method to begin the session manually. Creating basemap sessions in this way using the constructor directly is discouraged. The recommended method is to use {@link BasemapSession.start}.
    * ```javascript
    * const basemapSession = new BasemapSession({
    *   token: 'your-arcgis-token',
@@ -147,8 +137,7 @@ export class BasemapSession {
    * });
    * await session.initialize();
    * ```
-   *
-   * @see {@link https://developers.arcgis.com/documentation/mapping-and-location-services/security-and-authentication/api-keys/ | ArcGIS API Keys } for more information on ArcGIS Authentication.
+   * @param options - Configuration options for the session
    */
   constructor(options: IBasemapSessionOptions) {
     if (!options?.token) throw new Error('An valid ArcGIS access token is required to start a session.');
