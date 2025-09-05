@@ -1,13 +1,27 @@
 import {
   AttributionControl as MaplibreAttributionControl,
-  type AttributionControlOptions as MaplibreAttributionControlOptions,
-  type Map,
   type IControl,
+  type Map,
+  type AttributionControlOptions as MaplibreAttributionControlOptions,
 } from 'maplibre-gl';
 
-export interface AttributionControlOptions {
+type MapLibreMap = Map;
+
+/**
+ * Interface for AttributionControl options.
+ */
+export interface IAttributionControlOptions {
+  /**
+   * Custom attribution string or array of strings.
+   */
   customAttribution?: string | Array<string>;
+  /**
+   * Whether to display the attribution in a compact format.
+   */
   compact?: boolean;
+  /**
+   * Whether the attribution control will be closed on initial map load.
+   */
   closed?: boolean;
 }
 
@@ -20,11 +34,26 @@ export const EsriAttribution: MaplibreAttributionControlOptions = {
   compact: true,
 };
 
+/**
+ * The attribution control adds attribution information for ArcGIS Data services in a MapLibre GL JS Map.
+ */
 export class AttributionControl extends MaplibreAttributionControl {
-  _closed?: boolean;
-  attributionOptions: MaplibreAttributionControlOptions;
+  /** @internal */
+  private _closed?: boolean;
+  private attributionOptions: MaplibreAttributionControlOptions;
 
-  constructor(options: AttributionControlOptions = {}) {
+  /**
+   * Constructor for AttributionControl.
+   * @param options - Options for the attribution control.
+   * ```javascript
+   * const attributionControl = new AttributionControl({
+   *   customAttribution: ['Custom Attribution 1', 'Custom Attribution 2'],
+   *   closed: false,
+   *   compact: true,
+   * });
+   * ```
+   */
+  constructor(options: IAttributionControlOptions = {}) {
     // Incompatible options - 'closed' overrides 'compact'
     if ((!options?.compact) && options?.closed) options.compact = true;
 
@@ -57,7 +86,13 @@ export class AttributionControl extends MaplibreAttributionControl {
     this._closed = options?.closed;
   }
 
-  onAdd(map: Map): HTMLElement | null {
+  /**
+   * Event that runs after the control is added to the map.
+   * @param map - A MapLibre GL JS Map
+   * @returns HTMLElement | null
+   * @internal
+   */
+  onAdd(map: MapLibreMap): HTMLElement | null {
     this._map = map;
     if (!this.canAdd(this._map)) {
       console.warn('Esri attribution already present on map. This attribution control will not be added.');
@@ -72,7 +107,13 @@ export class AttributionControl extends MaplibreAttributionControl {
     return htmlElement;
   }
 
-  canAdd(map?: Map): boolean {
+  /**
+   * Checks if the control can be added to the map.
+   * @param map - {@link MaplibreMap}
+   * @returns boolean
+   * @internal
+   */
+  canAdd(map?: MapLibreMap): boolean {
     if (!map && !this._map) throw new Error('No map provided to attribution control.');
     if (!map) map = this._map;
 
@@ -100,6 +141,10 @@ export class AttributionControl extends MaplibreAttributionControl {
     return !attributionExists;
   }
 
+  /**
+   * Returns the default Esri attribution control options.
+   * @returns MaplibreAttributionControlOptions
+   */
   static get esriAttribution(): MaplibreAttributionControlOptions {
     const defaultAttribution = new AttributionControl();
     return defaultAttribution.attributionOptions;

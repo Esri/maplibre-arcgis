@@ -45,3 +45,4 @@ docs/
 typedoc/
 
 *.code-workspace
+/.zed

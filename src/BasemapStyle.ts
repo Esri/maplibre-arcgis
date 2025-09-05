@@ -1,11 +1,14 @@
-import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import { request } from '@esri/arcgis-rest-request';
-import type BasemapSession from './BasemapSession';
-import { AttributionControl as EsriAttributionControl, type AttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
-import { checkItemId, type RestJSAuthenticationManager } from './Util';
+import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
+import { AttributionControl as EsriAttributionControl, type IAttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
+import type BasemapSession from './BasemapSession';
+import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
-type BasemapSelfResponse = {
+/**
+ * Structure of a BasemapStyle object. Go to {@link https://developers.arcgis.com/rest/basemap-styles/styles-self-get/ } to learn more.
+ */
+export type BasemapSelfResponse = {
   customStylesUrl: string;
   selfUrl: string;
   languages: [CodeNamePair];
@@ -15,15 +18,15 @@ type BasemapSelfResponse = {
   styles: [BasemapStyleObject];
 };
 
-type CodeNamePair = {
+export type CodeNamePair = {
   code: string;
   name: string;
 };
-type PlacesOptions = 'all' | 'attributed' | 'none';
+export type PlacesOptions = 'all' | 'attributed' | 'none';
 export type StyleFamily = 'arcgis' | 'open' | 'osm';
-type StyleEnum = `${StyleFamily}/${string}`;
+export type StyleEnum = `${StyleFamily}/${string}`;
 
-type BasemapStyleObject = {
+export type BasemapStyleObject = {
   complete: boolean;
   deprecated?: boolean;
   name: string;
@@ -39,9 +42,16 @@ type BasemapStyleObject = {
   baseUrl?: string;
 };
 
-type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
+/**
+ * Options passed to Maplibre GL JS.
+ * Go to the [MapLibre GL JS Map.setStyle](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/#setstyle) for more information.
+ */
+export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
 
-type BasemapStyleEventMap = {
+/**
+ * Events emitted by the BasemapStyle class.
+ */
+export type BasemapStyleEventMap = {
   BasemapStyleLoad: BasemapStyle;
   BasemapAttributionLoad: EsriAttributionControl;
   BasemapStyleError: Error;
@@ -171,9 +181,8 @@ export class BasemapStyle {
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
 
   /**
-   *
-   * @param style - The basemap style enumeration
-   * @param options - Additional options, including access token and style preferences
+   * Constructor for BasemapStyle.
+   * @param options - Configuration options for the basemap style.
    */
   constructor(options: IBasemapStyleOptions) {
     if (!options || !options.style) throw new Error('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
@@ -268,7 +277,7 @@ export class BasemapStyle {
   }
 
   /**
-   * Loads the basemap style from the basemap styles service.
+   * Loads the basemap style from the Basemap Styles service.
    * @returns The maplibre style specification of the basemap style, formatted properly.
    */
   async loadStyle(): Promise<StyleSpecification> {
@@ -432,8 +441,7 @@ export class BasemapStyle {
   }
 
   /**
-   * Static method that returns a basemap style URL. Does not add a basemap style to the map.
-   * @param style - The basemap style enumeration being requested
+   * Static method that returns a basemap style URL.
    * @param options - Additional parameters including an ArcGIS access token
    * @returns The URL of the specified ArcGIS basemap style with all included parameters
    */
@@ -460,8 +468,10 @@ export class BasemapStyle {
   }
 
   /**
-   * Makes a \'/self\' request to the basemap styles service endpoint
-   * @param token - An ArcGIS access token
+   * Static method that makes a `/self` request to the ArcGIS Basemap Styles service.
+   * @see https://developers.arcgis.com/rest/basemap-styles/service-self-get/
+   * @param options - Additional parameters including an ArcGIS access token
+   * @returns The response returned by the Basemap Styles service.
    */
   static async getSelf(options: { token?: string; baseUrl?: string }): Promise<BasemapSelfResponse> {
     const basemapServiceUrl = options?.baseUrl ? options.baseUrl : DEFAULT_BASE_URL;
