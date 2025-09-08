@@ -1,11 +1,12 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { BasemapStyle } from '../src/MaplibreArcGIS';
-import { useMock, removeMock, customTest as test } from './BaseTest.test';
+import { customTest as test } from './BaseTest.test';
 import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
 import basemapStyleStreets from './mock/BasemapStyle/OpenStreets.json';
 import { tokenError } from './mock/authentication/invalidTokenError';
 import { Map } from 'maplibre-gl';
+import { useMock, removeMock } from './setupUnit';
 
 const arcgisStyle = 'arcgis/navigation';
 const imageryStyle = 'arcgis/imagery';

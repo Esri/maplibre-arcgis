@@ -1,7 +1,8 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { useMock, removeMock, customTest as test } from './BaseTest.test'
+import { customTest as test } from './BaseTest.test'
 import { BasemapSession } from '../src/BasemapSession';
+import { useMock, removeMock } from './setupUnit';
 
 describe('Basemap session unit tests', () => {
   beforeAll(async () => {

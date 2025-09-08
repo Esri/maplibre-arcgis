@@ -6,40 +6,10 @@ import { Map } from 'maplibre-gl';
 import {MOCK_API_KEY} from './mock/authentication/basemapApiKey.js';
 import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
 
-export let IS_MOCK = false;
-
-export function useMock() {
-  vi.stubGlobal('ResizeObserver', class MockResizeObserver {
-    observe = vi.fn();
-  });
-
-  vi.stubGlobal('Worker', vi.fn(() => ({
-    postMessage: vi.fn(),
-    onmessage: vi.fn(),
-    terminate: vi.fn(),
-    addEventListener: window.addEventListener,
-    removeEventListener: window.removeEventListener,
-  })));
-
-  fetchMock.enableMocks();
-  fetchMock.doMock();
-
-  IS_MOCK = true;
-}
-
-export function removeMock() {
-  vi.unstubAllGlobals();
-
-  fetchMock.disableMocks();
-
-  IS_MOCK = false;
-}
-
 export const customTest = testBase.extend({
   // API key
   apiKey: async ({}, use) => {
-    if (IS_MOCK) await use (MOCK_API_KEY);
-    else await use (process.env.PRODUCTION_KEY_ALP);
+    await use (process.env.PRODUCTION_KEY_ALP);
   },
   // BasemapSession
   basemapSession: async ({apiKey}, use) => {
@@ -94,8 +64,6 @@ customTest('Test suite creates a virtual window and DOM', () => {
   expect(window instanceof Window).toBe(true);
 });
 
-
-
 customTest('Fetch mock works properly when enabled.', async () => {
   fetchMock.enableMocks();
 
@@ -109,11 +77,8 @@ customTest('Fetch mock works properly when enabled.', async () => {
   }
 
   fetchMock.mockOnce(JSON.stringify(mockResponse))
-
   const response = await fetch('https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/navigation');
   const body = await response.json();
 
   expect(body).toEqual(mockResponse)
-
-  fetchMock.disableMocks();
 });
