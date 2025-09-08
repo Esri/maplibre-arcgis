@@ -24,7 +24,18 @@ export interface IVectorTileServiceInfo extends IDataServiceInfo {
 }
 
 /**
- * Class representing a vector tile layer for MapLibre GL JS. This class allows you to load and display [ArcGIS vector tile layers](https://mapbox-migration-preview.gha.afd.arcgis.com/documentation/portal-and-data-services/data-services/vector-tile-services/introduction/) in a MapLibre GL JS map. It supports both item IDs from ArcGIS Online and feature service URLs.
+ * This class allows you to load and display [ArcGIS vector tile layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/vector-tile-services/introduction/) in a MapLibre map. It supports both item IDs from ArcGIS Online and feature service URLs.
+ * ```javascript
+ * import { VectorTileLayer } from '@esri/maplibre-arcgis';
+ *
+ * // Add a vector tile layer from an ArcGIS item ID
+ * const vectorLayer = await maplibreArcGIS.VectorTileLayer.fromPortalItem('e0b5e1aa287845d78b1dabd3223ebed1');
+ * vectorLayer.addSourcesAndLayersTo(map);
+ *
+ * // Add a vector tile layer from an ArcGIS vector tile service URL
+ * const vectorLayer2 = await maplibreArcGIS.VectorTileLayer.fromUrl('https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_parcels_VTL/VectorTileServer');
+ * vectorLayer2.addSourcesAndLayersTo(map);
+ * ```
  */
 export class VectorTileLayer extends HostedLayer {
   declare protected _serviceInfo: IVectorTileServiceInfo;
@@ -43,7 +54,19 @@ export class VectorTileLayer extends HostedLayer {
    */
   style: StyleSpecification;
 
-  /* */
+  /**
+   * Creates a new VectorTileLayer instance. You must provide either an ArcGIS item ID or a vector tile service URL. If both are provided, the item ID will be used and the URL ignored.
+   * ```javascript
+   * import { VectorTileLayer } from '@esri/maplibre-arcgis';
+   * const vectorLayer = new VectorTileLayer({url: 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_parcels_VTL/VectorTileServer', authentication: "YOUR_ACCESS_TOKEN"});
+   * await vectorLayer.initialize();
+   * vectorLayer.addSourcesAndLayersTo(map);
+   * ```
+   *
+   * @param options - Configuration options for the vector tile layer. You must provide either an ArcGIS item ID or a vector tile service URL. If both are provided, the item ID will be used and the URL ignored.
+   *
+   * > Creating layers using the constructor directly is not recommended. Use {@link VectorTileLayer.fromUrl} and {@link VectorTileLayer.fromPortalItem} instead.
+   */
   constructor(options: IVectorTileLayerOptions) {
     super();
     this._ready = false;
@@ -312,6 +335,21 @@ export class VectorTileLayer extends HostedLayer {
     return this;
   }
 
+  /**
+   * Creates a new VectorTileLayer instance from an ArcGIS vector tile service URL. You must provide a valid vector tile service URL.
+   * ```javascript
+   * import { VectorTileLayer } from '@esri/maplibre-arcgis';
+   *
+   * // Add a vector tile layer from an ArcGIS item ID
+   * const vectorLayer = await maplibreArcGIS.VectorTileLayer.fromPortalItem('e0b5e1aa287845d78b1dabd3223ebed1');
+   * vectorLayer.addSourcesAndLayersTo(map);
+   * ```
+   *
+   * @param itemId - ArcGIS item ID of a vector tile layer.
+   * @param options - Configuration options for the vector tile layer.
+   * @returns A promise that resolves to a VectorTileLayer instance.
+   *
+   */
   static async fromPortalItem(itemId: string, options: IVectorTileLayerOptions): Promise<VectorTileLayer> {
     if (checkItemId(itemId) !== 'ItemId') throw new Error('Input is not a valid ArcGIS item ID.');
 
@@ -324,6 +362,19 @@ export class VectorTileLayer extends HostedLayer {
     return vtl;
   }
 
+  /**
+   * Creates a new VectorTileLayer instance from an ArcGIS vector tile service URL. You must provide a valid vector tile service URL.
+   * ```javascript
+   * import { VectorTileLayer } from '@esri/maplibre-arcgis';
+   *
+   * // Add a vector tile layer from an ArcGIS vector tile service URL
+   * const vectorLayer = await maplibreArcGIS.VectorTileLayer.fromUrl('https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_parcels_VTL/VectorTileServer');
+   * vectorLayer.addSourcesAndLayersTo(map);
+   * ```
+   * @param serviceUrl - URL to an ArcGIS vector tile service.
+   * @param options - Configuration options for the vector tile layer.
+   * @returns A promise that resolves to a VectorTileLayer instance.
+   */
   static async fromUrl(serviceUrl: string, options: IVectorTileLayerOptions): Promise<VectorTileLayer> {
     if (checkServiceUrlType(serviceUrl) !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.');
 
