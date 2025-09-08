@@ -8,7 +8,7 @@ import {
 export interface AttributionControlOptions {
   customAttribution?: string | Array<string>;
   compact?: boolean;
-  closed?: boolean;
+  collapsed?: boolean;
 }
 
 const esriAttributionString = 'Powered by \<a href=\"https:\/\/www.esri.com\/\"\>Esri\<\/a\>';
@@ -26,7 +26,7 @@ export class AttributionControl extends MaplibreAttributionControl {
 
   constructor(options: AttributionControlOptions = {}) {
     // Incompatible options - 'closed' overrides 'compact'
-    if ((!options?.compact) && options?.closed) options.compact = true;
+    if ((!options?.compact) && options?.collapsed) options.compact = true;
 
     const attributions = [];
 
@@ -54,7 +54,7 @@ export class AttributionControl extends MaplibreAttributionControl {
     super(attributionOptions);
 
     this.attributionOptions = attributionOptions;
-    this._closed = options?.closed;
+    this._closed = options?.collapsed;
   }
 
   onAdd(map: Map): HTMLElement | null {
