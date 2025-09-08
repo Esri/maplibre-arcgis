@@ -3,4 +3,3 @@ import { customTest as test } from './BaseTest.test';
 import { HostedLayer } from '../src/HostedLayer';
 
 test('Cannot be instantiated directly.', () => {});
-test('Accepts a `token` parameter for authentication.', () => {});
