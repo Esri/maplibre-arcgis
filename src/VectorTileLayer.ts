@@ -1,29 +1,34 @@
-import type { LayerSpecification, VectorSourceSpecification, StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
-import { checkServiceUrlType, checkItemId, toCdnUrl, isRelativePath, parseRelativeUrl, warn, cleanUrl } from './Util';
-import { HostedLayer } from './HostedLayer';
-import type { DataServiceInfo, ItemInfo, HostedLayerOptions } from './HostedLayer';
+import { getItem, getItemResource, getItemResources } from '@esri/arcgis-rest-portal';
 import { request } from '@esri/arcgis-rest-request';
-import { getItem, getItemResources, getItemResource } from '@esri/arcgis-rest-portal';
+import type { LayerSpecification, StyleSpecification, VectorSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
+import { type IDataServiceInfo, type IHostedLayerOptions, type IItemInfo, HostedLayer } from './HostedLayer';
+import { checkItemId, checkServiceUrlType, cleanUrl, isRelativePath, parseRelativeUrl, toCdnUrl, warn } from './Util';
 
-interface IVectorTileServiceDefinition {
+export interface IVectorTileServiceDefinition {
   tiles: string[];
   defaultStyles: string;
   copyrightText: string;
-};
+}
 
-interface VectorTileLayerOptions extends HostedLayerOptions {
+export interface IVectorTileLayerOptions extends IHostedLayerOptions {
   itemId?: string;
   url?: string;
-};
+}
 
-interface VectorTileServiceInfo extends DataServiceInfo {
+/**
+ * VectorTileServiceInfo interface.
+ */
+export interface IVectorTileServiceInfo extends IDataServiceInfo {
   styleEndpoint?: string; // Usually "/resources/styles"
   tiles?: string[]; // Usually "[tile/{z}/{y}/{x}.pbf]"
 }
 
+/**
+ * Class representing a vector tile layer for MapLibre GL JS. This class allows you to load and display [ArcGIS vector tile layers](https://mapbox-migration-preview.gha.afd.arcgis.com/documentation/portal-and-data-services/data-services/vector-tile-services/introduction/) in a MapLibre GL JS map. It supports both item IDs from ArcGIS Online and feature service URLs.
+ */
 export class VectorTileLayer extends HostedLayer {
-  declare protected _serviceInfo: VectorTileServiceInfo;
-  declare protected _itemInfo: ItemInfo;
+  declare protected _serviceInfo: IVectorTileServiceInfo;
+  declare protected _itemInfo: IItemInfo;
 
   declare protected _sources: { [_: string]: VectorSourceSpecification };
   declare protected _layers: LayerSpecification[];
@@ -33,9 +38,13 @@ export class VectorTileLayer extends HostedLayer {
   private _itemInfoLoaded: boolean;
   private _serviceInfoLoaded: boolean;
 
+  /**
+   * Style specification.
+   */
   style: StyleSpecification;
 
-  constructor(options: VectorTileLayerOptions) {
+  /* */
+  constructor(options: IVectorTileLayerOptions) {
     super();
     this._ready = false;
     this._styleLoaded = false;
@@ -49,7 +58,8 @@ export class VectorTileLayer extends HostedLayer {
 
     if (options.attribution) this._customAttribution = options.attribution;
 
-    if (options.itemId && options.url) console.warn('Both an item ID and service URL have been passed to the constructor. The item ID will be preferred, and the URL ignored.');
+    if (options.itemId && options.url)
+      console.warn('Both an item ID and service URL have been passed to the constructor. The item ID will be preferred, and the URL ignored.');
 
     if (options.itemId && checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
     else if (options.url && checkServiceUrlType(options.url) == 'VectorTileService') this._inputType = 'VectorTileService';
@@ -68,7 +78,10 @@ export class VectorTileLayer extends HostedLayer {
     }
   }
 
-  // Loads the style from ArcGIS
+  /**
+   * Loads the style from ArcGIS.
+   * @internal
+   */
   async _loadStyle(): Promise<StyleSpecification> {
     let styleInfo: StyleSpecification | null = null;
 
@@ -106,11 +119,11 @@ export class VectorTileLayer extends HostedLayer {
     let styleInfo: StyleSpecification | null = null;
     // Try loading default style name first
     try {
-      const rootStyle = await getItemResource(this._itemInfo.itemId, {
+      const rootStyle = (await getItemResource(this._itemInfo.itemId, {
         ...params,
         fileName: 'styles/root.json',
         readAs: 'json',
-      }) as StyleSpecification;
+      })) as StyleSpecification;
       styleInfo = rootStyle;
       // Check for other style resources associated with the item
     }
@@ -128,11 +141,11 @@ export class VectorTileLayer extends HostedLayer {
         });
       }
       if (styleFile) {
-        const customStyle = await getItemResource(this._itemInfo.itemId, {
+        const customStyle = (await getItemResource(this._itemInfo.itemId, {
           ...params,
           fileName: styleFile,
           readAs: 'json',
-        }) as StyleSpecification;
+        })) as StyleSpecification;
         styleInfo = customStyle;
       }
     }
@@ -143,19 +156,19 @@ export class VectorTileLayer extends HostedLayer {
     if (!this._serviceInfo.serviceUrl) throw new Error('No data service provided');
     if (!this._serviceInfo.styleEndpoint) this._serviceInfo.styleEndpoint = 'resources/styles/';
 
-    const styleInfo = await request(`${this._serviceInfo.serviceUrl}${this._serviceInfo.styleEndpoint}`, {
+    const styleInfo = (await request(`${this._serviceInfo.serviceUrl}${this._serviceInfo.styleEndpoint}`, {
       authentication: this.authentication,
-    }) as StyleSpecification;
+    })) as StyleSpecification;
     return styleInfo;
   }
 
   /**
    * Retrieves information from the data service about data attribution, associated item IDs, and more.
    */
-  async _loadServiceInfo(): Promise<VectorTileServiceInfo> {
-    const serviceResponse = await request(this._serviceInfo.serviceUrl, {
+  async _loadServiceInfo(): Promise<IVectorTileServiceInfo> {
+    const serviceResponse = (await request(this._serviceInfo.serviceUrl, {
       authentication: this.authentication,
-    }) as IVectorTileServiceDefinition;
+    })) as IVectorTileServiceDefinition;
 
     this._serviceInfo = {
       ...this._serviceInfo,
@@ -170,7 +183,7 @@ export class VectorTileLayer extends HostedLayer {
   /**
    * Retrieves information from the portal about item attribution and associated service URLs
    */
-  async _loadItemInfo(): Promise<ItemInfo> {
+  async _loadItemInfo(): Promise<IItemInfo> {
     const itemResponse = await getItem(this._itemInfo.itemId, {
       authentication: this.authentication,
       portal: this._itemInfo.portalUrl,
@@ -227,7 +240,7 @@ export class VectorTileLayer extends HostedLayer {
         if (isRelativePath(style.sprite)) style.sprite = parseRelativeUrl(style.sprite, styleUrl);
         style.sprite = toCdnUrl(style.sprite);
         if (this.authentication) style.sprite = `${style.sprite}?token=${this.token}`;
-      };
+      }
     }
 
     // Validate layers
@@ -267,6 +280,12 @@ export class VectorTileLayer extends HostedLayer {
     this._layers = style.layers;
   }
 
+  /**
+   * Get attribution for a source.
+   * @param sourceId - Source ID.
+   * @returns Attribution.
+   * @internal
+   */
   _getAttribution(sourceId: string): string | null {
     // Custom attribution is highest priority
     if (this._customAttribution) return this._customAttribution;
@@ -294,7 +313,7 @@ export class VectorTileLayer extends HostedLayer {
     return this;
   }
 
-  static async fromPortalItem(itemId: string, options: VectorTileLayerOptions): Promise<VectorTileLayer> {
+  static async fromPortalItem(itemId: string, options: IVectorTileLayerOptions): Promise<VectorTileLayer> {
     if (checkItemId(itemId) !== 'ItemId') throw new Error('Input is not a valid ArcGIS item ID.');
 
     const vtl = new VectorTileLayer({
@@ -306,7 +325,7 @@ export class VectorTileLayer extends HostedLayer {
     return vtl;
   }
 
-  static async fromUrl(serviceUrl: string, options: VectorTileLayerOptions): Promise<VectorTileLayer> {
+  static async fromUrl(serviceUrl: string, options: IVectorTileLayerOptions): Promise<VectorTileLayer> {
     if (checkServiceUrlType(serviceUrl) !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.');
 
     const vtl = new VectorTileLayer({

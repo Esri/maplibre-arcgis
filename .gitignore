@@ -46,3 +46,4 @@ typedoc/
 coverage/
 
 *.code-workspace
+/.zed

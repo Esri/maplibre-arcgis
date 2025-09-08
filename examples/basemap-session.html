@@ -40,6 +40,20 @@
       style: 'arcgis/outdoor',
       session: basemapSession
     });
+
+    basemapSession.on(BasemapSession.BasemapSessionRefreshed, (event) => {
+      console.log(`The basemap session was refreshed. previous token: ${event.previous.token}`);
+    });
+
+    basemapSession.on(BasemapSession.BasemapSessionExpired, () => {
+      console.log("The basemap session is about to expire.");
+    });
+
+    basemapSession.on(BasemapSessionRefreshed, ()=>{
+      console.log("The basemap session was refreshed.");
+    })
+
+
 </script>
 </body>
 
