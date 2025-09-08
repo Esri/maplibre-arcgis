@@ -14,6 +14,7 @@ describe('Vector tile layer tests', () => {
   });
 
   test('Throws if neither an item ID nor service URL are provided.', () => {});
+  test('Throws if the URL is invalid.', () => {});
 
   describe('Works with secure layers', () => {
     test('Accepts authentication as an access token string.', () => {});
@@ -33,7 +34,7 @@ describe('Vector tile layer tests', () => {
 
   describe('Loads data from an item ID', () => {
     test('Accepts an item ID in the constructor.', () => {});
-
+    test('Prefers an item ID over a service URL if both are provided.', () => {});
     test('Fetches the style of an item ID from the item resources.', () => {});
     test('Prefers the correct style when multiple style resources are present.', () => {});
     test('Falls back to the style of the service URL if no style resource is found on the item.', () => {});
