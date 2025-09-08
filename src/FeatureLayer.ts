@@ -70,26 +70,25 @@ export interface IQueryOptions {
 export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
 
 /**
- * Class representing a feature layer for MapLibre GL JS.
- * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) to a MapLibre map.
+ * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) in a MapLibre map.
  * It supports both item IDs and feature service URLs.
  *
  * ```javascript
  * import { FeatureLayer } from '@esri/maplibre-arcgis';
  *
- * // Load trailheads from service URL
- * const lineService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
+ * // Load trailheads from the service URL
+ * const pointService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
  * const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointService);
  * trailheads.addSourcesAndLayersTo(map);
  *
- * // Load trails from service URL and query
+ * // Load trails from the service URL and query
+ * const lineService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
  * const trails = await maplibreArcGIS.FeatureLayer.fromUrl(lineService, {
  *  query: { // Query parameter supported with layer URLs
  *    outFields: ['TRL_ID', 'ELEV_MIN', 'ELEV_MAX'],
  *    where: 'ELEV_MIN > 200'
  *  }
  * });
- *
  * trails.addSourcesAndLayersTo(map);
  *
  * // Load parks from from portal item ID
