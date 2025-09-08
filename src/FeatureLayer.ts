@@ -115,7 +115,7 @@ export class FeatureLayer extends HostedLayer {
    * const trails = new maplibreArcGIS.FeatureLayer({
    *    url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0",
    * });
-   *
+   * await trails.initialize();
    * trails.addLayerandSourcesTo(map);
    * ```
    * > Creating layers using the constructor directly is not recommended. Use {@link FeatureLayer.fromUrl} and {@link FeatureLayer.fromPortalItem} instead.
