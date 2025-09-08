@@ -280,7 +280,7 @@ export class BasemapStyle {
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
     const style = await (request(styleUrl, {
-      authentication: this._token, // TODO ask pat about this warning
+      authentication: this._token,
       httpMethod: 'GET',
       params: {
         ...this.preferences,

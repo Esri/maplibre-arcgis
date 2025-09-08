@@ -29,7 +29,7 @@
       center: [-117.805, 34.027], // starting location
     });
 
-    const basemapSession = maplibreArcGIS.BasemapSession.start({
+    const basemapSession = await maplibreArcGIS.BasemapSession.start({
       styleFamily: 'arcgis',
       token: sessionKey2,
       duration:30, // Only valid for 30 seconds, for testing
