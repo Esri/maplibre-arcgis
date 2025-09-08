@@ -1,5 +1,7 @@
 //@ts-nocheck
 import { vi, expect, test as testBase } from "vitest";
+import puppeteer from 'puppeteer';
+
 import { BasemapSession, BasemapStyle } from '../src/MaplibreArcGIS.js';
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
 import { Map } from 'maplibre-gl';
@@ -33,6 +35,18 @@ export function removeMock() {
   fetchMock.disableMocks();
 
   IS_MOCK = false;
+}
+
+let browser;
+async function setupBrowser() {
+  if (browser) {
+    return browser
+  };
+
+  browser = await puppeteer.launch({
+    headless: true // true by default, set to false to see the browser
+  });
+  return browser;
 }
 
 export const customTest = testBase.extend({
@@ -84,6 +98,31 @@ export const customTest = testBase.extend({
     await basemap.loadStyle();
 
     await use(basemap);
+  },
+  setupPage : async ({}, use) => {
+    async function loadPage (mockPageFile) {
+      //setup the browser if it isn't already
+      const browser = await setupBrowser();
+
+      // Create a new page
+      const page = await browser.newPage();
+
+      // Set the viewport to a standard size
+      page.setViewport({width: 1440, height: 960});
+
+      // Set the API key for the page, this runs before any scripts on the page
+      await page.evaluateOnNewDocument(({apiKey}) => {
+        window.__ARCGIS_API_KEY__ = apiKey;
+      }, { apiKey: process.env.PRODUCTION_KEY_ALP });
+
+      // Navigate to the mock page
+      await page.goto(`file://${process.cwd()}/test/mock/pages/${mockPageFile}`, {});
+
+      // Return the page object to the test
+      return page;
+    }
+
+    await use(loadPage);
   }
 });
 
