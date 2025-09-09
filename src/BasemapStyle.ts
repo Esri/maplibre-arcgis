@@ -207,7 +207,7 @@ export class BasemapStyle {
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
 
   /**
-   * Creates an instance of BasemapStyle. Creating basemap styles in this way using the constructor directly is discouraged. The recommended method is to use the static {@link BasemapStyle.applyStyle} method.
+   * Creates an instance of BasemapStyle. Creating basemap styles using the constructor directly is discouraged. The recommended method is to use the static {@link BasemapStyle.applyStyle} method.
    *
    * ```javascript
    * import { BasemapStyle } from '@esri/maplibre-arcgis';
