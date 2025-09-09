@@ -210,7 +210,7 @@ export class BasemapStyle {
    * Creates an instance of BasemapStyle. Creating basemap styles in this way using the constructor directly is discouraged. The recommended method is to use the static {@link BasemapStyle.applyStyle} method.
    *
    * ```javascript
-   * import { BasemapStyle } from '@esri/basemap-style';
+   * import { BasemapStyle } from '@esri/maplibre-arcgis';
    *
    * const basemapStyle = new BasemapStyle({
    *   style: 'arcgis/streets',
