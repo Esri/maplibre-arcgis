@@ -62,10 +62,8 @@ export class VectorTileLayer extends HostedLayer {
    * await vectorLayer.initialize();
    * vectorLayer.addSourcesAndLayersTo(map);
    * ```
-   *
+   * > Creating layers using the constructor directly is not recommended. Use the {@link VectorTileLayer.fromUrl} and {@link VectorTileLayer.fromPortalItem} static methods instead.
    * @param options - Configuration options for the vector tile layer. You must provide either an ArcGIS item ID or a vector tile service URL. If both are provided, the item ID will be used and the URL ignored.
-   *
-   * > Creating layers using the constructor directly is not recommended. Use {@link VectorTileLayer.fromUrl} and {@link VectorTileLayer.fromPortalItem} instead.
    */
   constructor(options: IVectorTileLayerOptions) {
     super();
