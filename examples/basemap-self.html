@@ -34,6 +34,8 @@
     const styleNames = selfResponse.styles;
     const languageOptions = selfResponse.languages;
 
+    console.log(selfResponse)
+
     const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map,{
       token: apiKey,
       style: styleNames[1].path,
