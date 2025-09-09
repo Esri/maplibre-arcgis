@@ -7,7 +7,7 @@
 
 A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps, vector tiles, and feature layers.
 
-[Basemap Style with Vector Tile Layer](./examples/BasemapStyleWithVectorTileLayer.png)
+![Basemap Style with Vector Tile Layer](./examples/BasemapStyleWithVectorTileLayer.png)
 
 > This project is maintained with ❤️ by folks at Esri, but we provide no guarantee of individual features, nor a traditional product lifecycle to support planning.
 
