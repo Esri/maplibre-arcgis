@@ -156,7 +156,7 @@ export interface IBasemapPreferences {
  *
  * ```javascript
  * import { Map } from 'maplibre-gl';
- * import { BasemapStyle } from '@esri/basemap-style';
+ * import { BasemapStyle } from '@esri/maplibre-arcgis';
  * // create a maplibre map
  * const map = new Map({
  *   container: 'map', // container id
