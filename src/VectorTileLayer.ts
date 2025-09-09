@@ -26,7 +26,7 @@ export interface IVectorTileServiceInfo extends IDataServiceInfo {
 /**
  * This class allows you to load and display [ArcGIS vector tile layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/vector-tile-services/introduction/) in a MapLibre map.
  *
- * The `VectorTileLayer` class provides:
+ * The `VectorTileLayer` class provides functionality for:
  * - Loading and displaying vector tile layers from ArcGIS Online item IDs or feature service URLs.
  * - Adding sources and layers to a MapLibre map.
  * - Managing vector tile layer styles.
