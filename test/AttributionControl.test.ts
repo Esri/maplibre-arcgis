@@ -24,7 +24,7 @@ describe('Attribution control unit tests', () => {
   test('Accepts a `compact` option and passes it to the maplibre super().', () => {});
   test('Accepts a `collapsed` option that causes the attribution control to initially load in a closed state.', () => {});
 
-  describes('Analyzes existing map attribution when `onAdd` is called.', () => {
+  describe('Analyzes existing map attribution when `onAdd` is called.', () => {
     test('Checks if Esri attribution is already present and skips adding if it is, logs a warning with no error.', () => {});
     test('Overwrites the default maplibre attribution if the default is present.', () => {});
     test('Throws if custom attribution was provided to the `map`, and instructs users to add to the Esri attribution control instead.', () => {});
