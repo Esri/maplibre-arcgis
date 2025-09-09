@@ -217,7 +217,7 @@ export class BasemapStyle {
    *   token  : 'YOUR_ACCESS_TOKEN',
    *   preferences: {
    *     language: 'en',
-   *     worldview: 'satellite',
+   *     worldview: 'unitedStatesOfAmerica',
    *     places: 'attributed
    *   }
    * });
