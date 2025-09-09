@@ -40,8 +40,10 @@
         // Update map preferences after 3 seconds
         await basemapStyle.updateStyle({
           style: 'arcgis/navigation',
-          worldview: 'unitedStatesOfAmerica',
-          language: 'ja'
+          preferences:{
+            worldview: 'unitedStatesOfAmerica',
+            language: 'ja'
+          }
         });
       }, 3000);
     });

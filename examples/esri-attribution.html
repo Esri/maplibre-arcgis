@@ -37,7 +37,7 @@
       attributionControl: false
     });
 
-    // Attribution is handled automatically by BasemapStyle.applyStyle. This is usually not necessary
+    // Attribution is also handled automatically if BasemapStyle.applyStyle is called.
     map.addControl(new maplibreArcGIS.AttributionControl({
       customAttribution: "Your custom attribution here",
       closed:true

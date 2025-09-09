@@ -1,8 +1,24 @@
 {
   "name": "@esri/maplibre-arcgis",
   "description": "Wrapper for integrating ArcGIS data sources with MapLibre GL JS",
-  "version": "1.0.0-beta.1",
-  "author": "George Owen (https://github.com/gowin20)",
+  "version": "1.0.0-beta.2",
+  "author": {
+    "name": "George Owen",
+    "email": "gowen@esri.com",
+    "url": " https://github.com/gowin20"
+  },
+  "contributors": [
+    {
+      "name": "Mark Torrey",
+      "email": "mtorrey@esri.com",
+      "url": "https://github.com/MarkTorrey"
+    },
+    {
+      "name": "Patrick Arlt",
+      "email": "parlt@esri.com",
+      "url": "https://github.com/patrickarlt"
+    }
+  ],
   "license": "Apache-2.0",
   "type": "module",
   "keywords": [
