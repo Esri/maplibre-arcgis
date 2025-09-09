@@ -105,7 +105,7 @@ export class FeatureLayer extends HostedLayer {
     else {
       const urlType = checkServiceUrlType(options.url);
       if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
-      else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
+      else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or feature service URL.');
     }
 
     // Set up

@@ -22,7 +22,7 @@ export interface IAttributionControlOptions {
   /**
    * Whether the attribution control will be closed on initial map load.
    */
-  closed?: boolean;
+  collapsed?: boolean;
 }
 
 const esriAttributionString = 'Powered by \<a href=\"https:\/\/www.esri.com\/\"\>Esri\<\/a\>';
@@ -55,7 +55,7 @@ export class AttributionControl extends MaplibreAttributionControl {
    */
   constructor(options: IAttributionControlOptions = {}) {
     // Incompatible options - 'closed' overrides 'compact'
-    if ((!options?.compact) && options?.closed) options.compact = true;
+    if ((!options?.compact) && options?.collapsed) options.compact = true;
 
     const attributions = [];
 
@@ -83,7 +83,7 @@ export class AttributionControl extends MaplibreAttributionControl {
     super(attributionOptions);
 
     this.attributionOptions = attributionOptions;
-    this._closed = options?.closed;
+    this._closed = options?.collapsed;
   }
 
   /**

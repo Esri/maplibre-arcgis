@@ -306,6 +306,7 @@ export class VectorTileLayer extends HostedLayer {
 
   // Public API
   async initialize(): Promise<VectorTileLayer> {
+    if (this._ready) throw new Error('Vector tile layer has already been initialized. Cannot initialize again.');
     const style = await this._loadStyle();
     this._cleanStyle(style);
     this._ready = true;
