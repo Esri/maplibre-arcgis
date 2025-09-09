@@ -1,42 +1,52 @@
-# MapLibre ArcGIS plugin
+[![apache 2.0 licensed][license-img]][license-url]
 
+[license-img]: https://img.shields.io/badge/license-Apache%202.0-orange.svg?style=flat-square
+[license-url]: #license
 
+# @esri/maplibre-arcgis
 
 A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps, vector tiles, and feature layers.
 
 > This project is maintained with ❤️ by folks at Esri, but we provide no guarantee of individual features, nor a traditional product lifecycle to support planning.
 
-![Trails and parks styled with MapLibre ArcGIS.](./example.png)
+![Trails and parks styled with MapLibre ArcGIS.](./examples/trails-parks-styled.png)
 
 ## Table of contents
 
-* [Quick start](#quick-start)
-* [Features](#features)
-* [Tutorials and API reference](#tutorials-and-api-reference)
-* [Issues](#issues)
-* [Dependencies](#dependencies)
+- [@esri/maplibre-arcgis](#esrimaplibre-arcgis)
+  - [Quick start](#quick-start)
+  - [Features](#features)
+  - [Tutorials and API reference](#tutorials-and-api-reference)
+  - [Issues](#issues)
+  - [Dependencies](#dependencies)
 
 ## Quick start
 
-The easiest way to get started is to load MapLibre ArcGIS via CDN. Once imported, the library can easily be used to display a basemap style.
+MapLibre ArcGIS is available via ESM and CDN. Once imported, the library can be used to display a basemap style and add layers.
 
-```html
-  <!-- Load Maplibre ArcGIS -->
-  <script src="../dist/maplibre-arcgis-debug.js"></script>
-  <script>
-    // MapLibre GL JS map
-    const map = new maplibregl.Map({
-      container: "map",
-      zoom: 5,
-      center: [138.2529, 36.2048],
-    });
+```js
+  import maplibregl from 'maplibre-gl';
+  import maplibreArcGIS from '@esri/maplibre-arcgis';
 
-    // ArcGIS basemap style
-    const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
-      style: 'arcgis/navigation', // Style name
-      token: apiKey // ArcGIS access token
-    });
-  </script>
+  // Initialize MapLibre GL JS map
+  const map = new maplibregl.Map({
+    container: "map",
+    zoom: 5,
+    center: [138.2529, 36.2048],
+  });
+
+  // Apply an ArcGIS basemap style to the map
+  const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
+    style: 'arcgis/navigation',
+    token: apiKey
+  });
+
+  // Listen for the map 'load' event.
+  map.on('load', async () => {
+    // Add a vector tile layer using an ArcGIS Item ID.
+    const vectorLayer = await maplibreArcGIS.VectorTileLayer.fromPortalItem('b8f6941ceb874d72a7c37418c3e8108d');
+    vectorLayer.addSourcesAndLayersTo(map);
+  });
 ```
 
 For a complete example, go to the developer guide: [Maplibre ArcGIS quick start](https://developers.arcgis.com/maplibre-gl-js/get-started/).
@@ -54,9 +64,13 @@ MapLibre ArcGIS provides layers and utilities for accessing ArcGIS resources in 
 
 Tutorials, samples, and API reference can be found at [developers.com/maplibre-gl-js](https://developers.arcgis.com/maplibre-gl-js/).
 
+<!--## Frequently asked questions
+
+TODO-->
+
 ## Issues
 
-Find a bug? Want a new feature? Let us know by submitting an [issue](https://github.com/ArcGIS/maplibre-arcgis/issues).
+Find a bug? Want a new feature? Let us know by submitting an [issue](https://github.com/Esri/maplibre-arcgis/issues).
 
 For more help, you can post on the open source forum of [Esri Community](https://community.esri.com/t5/open-source-mapping-libraries/ct-p/open-source-mapping-libraries) or contact [Esri Technical Support](https://support.esri.com/en-us/contact).
 
