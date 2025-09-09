@@ -43,6 +43,7 @@ dist/
 debug/
 docs/
 typedoc/
+coverage/
 
 *.code-workspace
 /.zed
