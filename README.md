@@ -67,6 +67,7 @@ For more help, you can post on the open source forum of [Esri Community](https:/
     * [arcgis-rest-request](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-request)
     * [arcgis-rest-feature-service](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-feature-service)
     * [arcgis-rest-portal](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-portal)
+    * [arcgis-rest-basemap-sessions](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-basemap-sessions)
 
 ---
 
