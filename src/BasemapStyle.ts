@@ -218,7 +218,7 @@ export class BasemapStyle {
    *   preferences: {
    *     language: 'en',
    *     worldview: 'unitedStatesOfAmerica',
-   *     places: 'attributed
+   *     places: 'attributed'
    *   }
    * });
    *
