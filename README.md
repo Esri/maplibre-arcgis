@@ -18,7 +18,28 @@ A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps
 
 ## Quick start
 
-The easiest way to get started is to load MapLibre ArcGIS via CDN. For a complete example, go here: [Maplibre ArcGIS quick start](https://developers.arcgis.com/maplibre-gl-js/get-started/).
+The easiest way to get started is to load MapLibre ArcGIS via CDN. Once imported, the library can easily be used to display a basemap style.
+
+```html
+  <!-- Load Maplibre ArcGIS -->
+  <script src="../dist/maplibre-arcgis-debug.js"></script>
+  <script>
+    // MapLibre GL JS map
+    const map = new maplibregl.Map({
+      container: "map",
+      zoom: 5,
+      center: [138.2529, 36.2048],
+    });
+
+    // ArcGIS basemap style
+    const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
+      style: 'arcgis/navigation', // Style name
+      token: apiKey // ArcGIS access token
+    });
+  </script>
+```
+
+For a complete example, go to the developer guide: [Maplibre ArcGIS quick start](https://developers.arcgis.com/maplibre-gl-js/get-started/).
 
 ## Features
 
