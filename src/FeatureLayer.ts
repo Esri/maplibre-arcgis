@@ -71,7 +71,11 @@ export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
 
 /**
  * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) in a MapLibre map.
- * It supports both item IDs and feature service URLs.
+ *
+ * The `FeatureLayer` class provides:
+ * - Loading and displaying feature layers from item IDs or feature service URLs.
+ * - Querying of feature layer attributes.
+ * - Adding sources and layers to a MapLibre map.
  *
  * ```javascript
  * import { FeatureLayer } from '@esri/maplibre-arcgis';

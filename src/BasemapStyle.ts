@@ -146,7 +146,8 @@ export interface IBasemapPreferences {
 
 /**
  * The BasemapStyle class is used to load and apply ArcGIS basemap styles to a maplibre map.
- * The BasemapStyle class provides:
+ *
+ * The `BasemapStyle` class provides:
  * - Loading of basemap styles from the [ArcGIS Basemap Styles service](https://developers.arcgis.com/rest/basemap-styles/).
  * - Support for ArcGIS access tokens and sessions for authentication.
  * - Support for style preferences such as `language`, `places`, and `worldview`.
