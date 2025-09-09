@@ -1,34 +1,37 @@
 # MapLibre ArcGIS plugin
 
-(TODO npm version once published)
+
 
 A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps, vector tiles, and feature layers.
 
 > This project is maintained with ❤️ by folks at Esri, but we provide no guarantee of individual features, nor a traditional product lifecycle to support planning.
 
+![Trails and parks styled with MapLibre ArcGIS.](./example.png)
 
 ## Table of contents
 
-...
-
-## Features
-
-MapLibre ArcGIS allows seamless integration of ArcGIS services into MapLibre GL JS.
+* [Quick start](#quick-start)
+* [Features](#features)
+* [Tutorials and API reference](#samples-tutorials-and-api-reference)
+* [Issues](#issues)
+* [Dependencies](#dependencies)
 
 ## Quick start
 
 The easiest way to get started is to load MapLibre ArcGIS via CDN. For a complete example, go here: [Maplibre ArcGIS quick start](https://developers.arcgis.com/maplibre-gl-js/get-started/).
 
-TODO photo here
+## Features
 
+MapLibre ArcGIS provides layers and utilities for accessing ArcGIS resources in a MapLibre GL JS application. In addition to the wide variety of basemap styles offered by ArcGIS, this package also allows you to access and display your own hosted data using MapLibre GL JS. The following resources are supported:
 
-## Samples, tutorials, and API reference
+* Basemap styles ([`BasemapStyle`](/))
+* Feature layers and feature services as GeoJSON ([`FeatureLayer`](/))
+* Vector tile layers ([`VectorTileLayer`](/))
+* Session tokens authentication for ArcGIS basemap styles ([`BasemapSession`](/))
+
+## Tutorials and API reference
 
 Tutorials, samples, and API reference can be found at [developers.com/maplibre-gl-js](https://developers.arcgis.com/maplibre-gl-js/).
-
-## Frequently asked questions
-
-TODO
 
 ## Issues
 
@@ -50,7 +53,7 @@ For more help, you can post on the open source forum of [Esri Community](https:/
 
 Esri welcomes contributions from anyone and everyone. Please see our [guidelines for contributing](/CONTRIBUTING.md).
 
-## Development instructions
+### Development instructions
 
 To start developing locally:
 
@@ -63,7 +66,7 @@ To start developing locally:
 
 If you'd like to contribute to this repository, create a [pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request) containing your work.
 
-## Versioning
+### Versioning
 
 For transparency into the release cycle and in striving to maintain backward compatibility, Esri MapLibre is maintained under Semantic Versioning guidelines and will adhere to these rules whenever possible.
 
