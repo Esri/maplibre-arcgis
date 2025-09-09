@@ -74,8 +74,6 @@ For more help, you can post on the open source forum of [Esri Community](https:/
     * [arcgis-rest-feature-service](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-feature-service)
     * [arcgis-rest-portal](https://github.com/Esri/arcgis-rest-js/tree/main/packages/arcgis-rest-portal)
 
----
-
 ## Contributing
 
 Esri welcomes contributions from anyone and everyone. Please see our [guidelines for contributing](/CONTRIBUTING.md).
