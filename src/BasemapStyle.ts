@@ -1,7 +1,7 @@
 import { request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
-import { AttributionControl as EsriAttributionControl, type IAttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
+import { AttributionControl, type IAttributionControlOptions } from './AttributionControl';
 import type BasemapSession from './BasemapSession';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
@@ -67,7 +67,7 @@ export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
  */
 export type BasemapStyleEventMap = {
   BasemapStyleLoad: BasemapStyle;
-  BasemapAttributionLoad: EsriAttributionControl;
+  BasemapAttributionLoad: AttributionControl;
   BasemapStyleError: Error;
 };
 
@@ -101,7 +101,7 @@ export interface IBasemapStyleOptions {
   /**
    * Options for customizing the maplibre-gl attribution control.
    */
-  attributionControl?: EsriAttributionControlOptions;
+  attributionControl?: IAttributionControlOptions;
   /**
    * @internal For setting the service url to QA, devext, etc.
    */
@@ -170,7 +170,7 @@ export class BasemapStyle {
   /**
    * A reference to the map's AttributionControl.
    */
-  attributionControl: EsriAttributionControl;
+  attributionControl: AttributionControl;
   /**
    * An ArcGIS access token. Used for authentication
    */
@@ -188,7 +188,7 @@ export class BasemapStyle {
    */
   preferences: IBasemapPreferences;
   // private _transformStyleFn?:TransformStyleFunction;
-  private _attributionControlOptions: EsriAttributionControlOptions;
+  private _attributionControlOptions: IAttributionControlOptions;
   private _isItemId: boolean;
   private _map?: Map;
   private _baseUrl: string;
@@ -347,7 +347,7 @@ export class BasemapStyle {
   private _setEsriAttribution(): void {
     if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
 
-    this.attributionControl = new EsriAttributionControl(this._attributionControlOptions);
+    this.attributionControl = new AttributionControl(this._attributionControlOptions);
     if (this.attributionControl.canAdd(this._map)) {
       this._map.addControl(this.attributionControl);
       this._attributionLoadHandler(this.attributionControl);
@@ -432,7 +432,7 @@ export class BasemapStyle {
     this._emitter.emit('BasemapStyleError', e);
   };
 
-  private _attributionLoadHandler = (e: EsriAttributionControl): void => {
+  private _attributionLoadHandler = (e: AttributionControl): void => {
     this._emitter.emit('BasemapAttributionLoad', e);
   };
 
