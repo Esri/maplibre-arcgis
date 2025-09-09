@@ -12,7 +12,7 @@ A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps
 
 * [Quick start](#quick-start)
 * [Features](#features)
-* [Tutorials and API reference](#samples-tutorials-and-api-reference)
+* [Tutorials and API reference](#tutorials-and-api-reference)
 * [Issues](#issues)
 * [Dependencies](#dependencies)
 
