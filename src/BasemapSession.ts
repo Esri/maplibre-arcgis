@@ -25,18 +25,6 @@ export interface IBasemapSessionOptions {
    * @internal
    */
   startSessionUrl?: string;
-  /**
-   * The end time of the session.
-   */
-  endTime: Date;
-  /**
-   * The date of expiration for the session taking into account the {@link safetyMargin}.
-   */
-  expires: Date;
-  /**
-   * The start time of the session
-   */
-  startTime: Date;
 }
 
 /**
@@ -48,6 +36,7 @@ export type SessionResponse = {
   startTime: Date;
   expires: Date;
 };
+
 /**
  * The object returned by the `BasemapSessionRefreshed` event.
  */
