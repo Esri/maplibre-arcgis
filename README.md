@@ -15,12 +15,16 @@ A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps
 
 - [@esri/maplibre-arcgis](#esrimaplibre-arcgis)
   - [Table of contents](#table-of-contents)
-    - [Installation](#installation)
-    - [Features](#features)
-    - [Quick start](#quick-start)
     - [Samples, tutorials, and API reference](#samples-tutorials-and-api-reference)
     <!--- [Frequently asked questions](#frequently-asked-questions)-->
     - [Issues](#issues)
+    - [Dependencies](#dependencies)
+    - [Contributing](#contributing)
+    - [Development instructions](#development-instructions)
+    - [Versioning](#versioning)
+    - [Credit](#credit)
+    - [Licensing](#licensing)
+
 
 ### Example
 ```js
