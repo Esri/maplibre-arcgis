@@ -351,7 +351,6 @@ export class BasemapStyle {
     }
 
     this.style = style;
-    this._ready = true;
     this._styleLoadHandler(this);
     return this.style;
   }
