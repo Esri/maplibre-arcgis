@@ -1,7 +1,7 @@
 [![apache 2.0 licensed][license-img]][license-url]
 
 [license-img]: https://img.shields.io/badge/license-Apache%202.0-orange.svg?style=flat-square
-[license-url]: #license
+[license-url]: #licensing
 
 # @esri/maplibre-arcgis
 
