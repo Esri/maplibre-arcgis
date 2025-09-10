@@ -14,7 +14,6 @@
  */
 import * as esbuild from 'esbuild';
 import pkg from './package.json' with { type: 'json'};
-import { globalExternals } from '@fal-works/esbuild-plugin-global-externals';
 import { umdWrapper } from 'esbuild-plugin-umd-wrapper';
 
 var copyright = '/* ' + pkg.name + ' - v' + pkg.version + ' - ' + new Date().toString() + '\n' +

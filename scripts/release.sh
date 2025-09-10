@@ -8,6 +8,7 @@ NAME=$(node --eval "console.log(require('./package.json').name);")
 npm i
 
 # build and test
+#npm run build
 #npm run test || exit 1
 
 # Integrity string and save to siteData.json
