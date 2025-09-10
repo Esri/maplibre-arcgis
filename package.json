@@ -31,6 +31,9 @@
   ],
   "type": "module",
   "main": "./dist/maplibre-arcgis.js",
+  "exports": {
+    "default": "./dist/maplibre-arcgis.js"
+  },
   "directories": {
     "example": "examples",
     "test": "test"

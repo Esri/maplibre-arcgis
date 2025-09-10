@@ -46,3 +46,5 @@ typedoc/
 
 *.code-workspace
 /.zed
+
+@esri/
