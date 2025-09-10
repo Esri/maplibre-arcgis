@@ -30,12 +30,13 @@
     }
   ],
   "type": "module",
-  "main": "dist/maplibre-arcgis.umd.min.js",
-  "module": "dist/maplibre-arcgis.esm.min.js",
+  "main": "dist/umd/maplibre-arcgis.umd.min.js",
+  "module": "dist/esm/maplibre-arcgis.esm.min.js",
+  "unpkg": "dist/umd/maplibre-arcgis.umd.min.js",
   "exports": {
     ".": {
-      "import": "./dist/maplibre-arcgis.esm.min.js",
-      "require": "./dist/maplibre-arcgis.umd.min.js"
+      "import": "./dist/esm/maplibre-arcgis.esm.min.js",
+      "require": "./dist/umd/maplibre-arcgis.umd.min.js"
     },
     "./package.json": "./package.json"
   },
