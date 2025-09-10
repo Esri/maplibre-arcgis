@@ -11,17 +11,13 @@
     "tile",
     "styles"
   ],
-  "homepage": "https://github.com/Esri/maplibre-arcgis#readme",
-  "bugs": {
-    "url": "https://github.com/Esri/maplibre-arcgis/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Esri/maplibre-arcgis.git"
-  },
   "license": "Apache-2.0",
-  "author": "George Owen <gowen@esri.com> ( https://github.com/gowin20)",
   "contributors": [
+    {
+      "name": "George Owen",
+      "email": "gowen@esri.com",
+      "url": "https://github.com/gowin20"
+    },
     {
       "name": "Mark Torrey",
       "email": "mtorrey@esri.com",
@@ -34,7 +30,7 @@
     }
   ],
   "type": "module",
-  "main": "src/MaplibreArcGIS.ts",
+  "main": "./dist/maplibre-arcgis.js",
   "directories": {
     "example": "examples",
     "test": "test"
@@ -73,5 +69,19 @@
   },
   "peerDependencies": {
     "maplibre-gl": "^5.6.1"
+  },
+  "homepage": "https://github.com/Esri/maplibre-arcgis#readme",
+  "bugs": {
+    "url": "https://github.com/Esri/maplibre-arcgis/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Esri/maplibre-arcgis.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "esri": {
+    "keyExports": ["BasemapStyle","FeatureLayer","VectorTileLayer","AttributionControl","BasemapSession"]
   }
 }
