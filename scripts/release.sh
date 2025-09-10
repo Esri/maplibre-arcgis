@@ -5,7 +5,7 @@ VERSION=$(node --eval "console.log(require('./package.json').version);")
 NAME=$(node --eval "console.log(require('./package.json').name);")
 
 # build and test
-npm test || exit 1
+npm run test || exit 1
 
 # Integrity string and save to siteData.json
 JS_INTEGRITY=$(cat dist/maplibre-arcgis.js | openssl dgst -sha512 -binary | openssl base64 -A)
@@ -24,12 +24,11 @@ git commit -m "build $VERSION"
 git push git@github.com:Esri/maplibre-arcgis.git gh-release
 
 # create a ZIP archive of the dist files
-cd dist
-7z a ../$NAME-v$VERSION.zip * -r
-cd ..
+
+7z a $NAME-v$VERSION.zip dist -r
 
 # run gh-release to create the tag and push release to github
-gh-release --assets $NAME-v$VERSION.zip
+gh-release --assets esri-maplibre-arcgis-v$VERSION.zip
 
 # publish release on NPM
 npm publish
