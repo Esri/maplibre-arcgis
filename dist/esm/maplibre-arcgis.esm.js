@@ -1,4 +1,4 @@
-/* @esri/maplibre-arcgis - v1.0.0-beta-4 - Wed Sep 10 2025 16:39:10 GMT-0700 (Pacific Daylight Time)
+/* @esri/maplibre-arcgis - v1.0.0-beta-4 - Wed Sep 10 2025 16:47:31 GMT-0700 (Pacific Daylight Time)
  * Copyright (c) 2025 Environmental Systems Research Institute, Inc.
  * Apache-2.0 */
 
@@ -3691,12 +3691,13 @@ var package_default = {
     }
   ],
   type: "module",
-  main: "dist/maplibre-arcgis.umd.min.js",
-  module: "dist/maplibre-arcgis.esm.min.js",
+  main: "dist/umd/maplibre-arcgis.umd.min.js",
+  module: "dist/esm/maplibre-arcgis.esm.min.js",
+  unpkg: "dist/umd/maplibre-arcgis.umd.min.js",
   exports: {
     ".": {
-      import: "./dist/maplibre-arcgis.esm.min.js",
-      require: "./dist/maplibre-arcgis.umd.min.js"
+      import: "./dist/esm/maplibre-arcgis.esm.min.js",
+      require: "./dist/umd/maplibre-arcgis.umd.min.js"
     },
     "./package.json": "./package.json"
   },
