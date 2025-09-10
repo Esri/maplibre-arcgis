@@ -1,4 +1,4 @@
-/* @esri/maplibre-arcgis - v1.0.0-beta-4 - Wed Sep 10 2025 16:47:31 GMT-0700 (Pacific Daylight Time)
+/* @esri/maplibre-arcgis - v1.0.0-beta-5 - Wed Sep 10 2025 16:50:47 GMT-0700 (Pacific Daylight Time)
  * Copyright (c) 2025 Environmental Systems Research Institute, Inc.
  * Apache-2.0 */
 
@@ -3661,7 +3661,7 @@ var VectorTileLayer = class _VectorTileLayer extends HostedLayer {
 // package.json
 var package_default = {
   name: "@esri/maplibre-arcgis",
-  version: "1.0.0-beta-4",
+  version: "1.0.0-beta-5",
   description: "Wrapper for integrating ArcGIS data sources with MapLibre GL JS",
   keywords: [
     "maplibre",

@@ -1,4 +1,4 @@
-/* @esri/maplibre-arcgis - v1.0.0-beta-4 - Wed Sep 10 2025 16:47:31 GMT-0700 (Pacific Daylight Time)
+/* @esri/maplibre-arcgis - v1.0.0-beta-5 - Wed Sep 10 2025 16:50:47 GMT-0700 (Pacific Daylight Time)
  * Copyright (c) 2025 Environmental Systems Research Institute, Inc.
  * Apache-2.0 */(function(g,f){if(typeof exports=="object"&&typeof module<"u"){module.exports=f(require)}else if("function"==typeof define && define.amd){define("maplibreArcGIS",["maplibre-gl"],function(_d_0){var d={"maplibre-gl": _d_0},r=function(m){if(m in d) return d[m];if(typeof require=="function") return require(m);throw new Error("Cannot find module '"+m+"'")};return f(r)})}else {var gN={"maplibre-gl":"maplibregl"},gReq=function(r){var mod = r in gN ? g[gN[r]] : g[r]; return mod };g["maplibreArcGIS"]=f(gReq)}}(typeof globalThis < "u" ? globalThis : typeof self < "u" ? self : this,function(require){var exports={};var __exports=exports;var module={exports};
 var __create = Object.create;
@@ -3702,7 +3702,7 @@ var VectorTileLayer = class _VectorTileLayer extends HostedLayer {
 // package.json
 var package_default = {
   name: "@esri/maplibre-arcgis",
-  version: "1.0.0-beta-4",
+  version: "1.0.0-beta-5",
   description: "Wrapper for integrating ArcGIS data sources with MapLibre GL JS",
   keywords: [
     "maplibre",
