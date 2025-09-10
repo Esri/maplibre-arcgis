@@ -65,7 +65,7 @@ const esmConfig = {
 if (LIVE_RELOAD) {
   const buildOptions = {
     ...umdConfig,
-    outfile: 'dist/umd/maplibre-arcgis.umd.js',
+    outfile: 'dist/umd/maplibre-arcgis.js',
   }
 
   console.log(`Starting live reload of ${buildOptions.outfile}...`);
@@ -80,23 +80,23 @@ if (LIVE_RELOAD) {
 else {
   const umd = await esbuild.build({
     ...umdConfig,
-    outfile: 'dist/umd/maplibre-arcgis.umd.js',
+    outfile: 'dist/umd/maplibre-arcgis.js',
   });
 
   const umdMin = await esbuild.build({
     ...umdConfig,
     minify: true,
-    outfile:'dist/umd/maplibre-arcgis.umd.min.js'
+    outfile:'dist/umd/maplibre-arcgis.min.js'
   });
 
   const esm = await esbuild.build({
     ...esmConfig,
-    outfile: 'dist/esm/maplibre-arcgis.esm.js'
+    outfile: 'dist/esm/maplibre-arcgis.js'
   });
 
   const esmMin = await esbuild.build({
     ...esmConfig,
     minify:true,
-    outfile: "dist/esm/maplibre-arcgis.esm.min.js"
+    outfile: "dist/esm/maplibre-arcgis.min.js"
   })
 }

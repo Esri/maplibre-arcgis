@@ -1,6 +1,6 @@
 {
   "name": "@esri/maplibre-arcgis",
-  "version": "1.0.0-beta-5",
+  "version": "1.0.0-beta-6",
   "description": "Wrapper for integrating ArcGIS data sources with MapLibre GL JS",
   "keywords": [
     "maplibre",
@@ -30,13 +30,13 @@
     }
   ],
   "type": "module",
-  "main": "dist/umd/maplibre-arcgis.umd.min.js",
-  "module": "dist/esm/maplibre-arcgis.esm.min.js",
-  "unpkg": "dist/umd/maplibre-arcgis.umd.min.js",
+  "main": "dist/umd/maplibre-arcgis.min.js",
+  "module": "dist/esm/maplibre-arcgis.min.js",
+  "unpkg": "dist/umd/maplibre-arcgis.min.js",
   "exports": {
     ".": {
-      "import": "./dist/esm/maplibre-arcgis.esm.min.js",
-      "require": "./dist/umd/maplibre-arcgis.umd.min.js"
+      "import": "./dist/esm/maplibre-arcgis.min.js",
+      "require": "./dist/umd/maplibre-arcgis.min.js"
     },
     "./package.json": "./package.json"
   },

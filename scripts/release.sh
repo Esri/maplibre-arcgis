@@ -4,6 +4,9 @@
 VERSION=$(node --eval "console.log(require('./package.json').version);")
 NAME=$(node --eval "console.log(require('./package.json').name);")
 
+#clear package-lock.json
+npm i
+
 # build and test
 #npm run test || exit 1
 
