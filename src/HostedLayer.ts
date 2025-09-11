@@ -104,6 +104,7 @@ export abstract class HostedLayer {
    */
   protected constructor() {
     // intentionally empty
+    if (new.target === HostedLayer) throw new Error('HostedLayer is an abstract class and cannot be instantiated directly.');
   }
 
   protected get token(): string {
