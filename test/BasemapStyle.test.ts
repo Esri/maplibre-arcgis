@@ -208,7 +208,7 @@ describe('BasemapStyle unit tests', () => {
 
       fetchMock.mockResponse(JSON.stringify({}));
       expect(() => {
-        loadedBasemap.applyToMap(map);
+        loadedBasemap.applyTo(map);
       }).toThrow('Unable to load Esri attribution');
     });
 
@@ -228,9 +228,9 @@ describe('BasemapStyle unit tests', () => {
       expect(basemap._map).toBe(map);
     });
 
-    test('Applies the loaded style to the map with `applyToMap`', async ({apiKey, loadedBasemap, map}) => {
+    test('Applies the loaded style to the map with `applyTo`', async ({apiKey, loadedBasemap, map}) => {
       fetchMock.mockResponse(JSON.stringify({}));
-      loadedBasemap.applyToMap(map);
+      loadedBasemap.applyTo(map);
 
       expect(loadedBasemap._map).toBe(map);
 
@@ -244,7 +244,7 @@ describe('BasemapStyle unit tests', () => {
       expect(loadedBasemap.style).toMatchObject(mapStyle);
     });
 
-    test('`applyToMap` applies MapLibre style options such as `transformStyle`, and applies them to the map.', async ({apiKey, loadedBasemap, map}) => {
+    test('`applyTo` applies MapLibre style options such as `transformStyle`, and applies them to the map.', async ({apiKey, loadedBasemap, map}) => {
       const maplibreStyleOptions = {
         transformStyle: (oldStyleIfAny, newStyle) => ({
           ...newStyle,
@@ -255,29 +255,29 @@ describe('BasemapStyle unit tests', () => {
       }
 
       fetchMock.mockResponse(JSON.stringify({}));
-      loadedBasemap.applyToMap(map, maplibreStyleOptions);
+      loadedBasemap.applyTo(map, maplibreStyleOptions);
 
       const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
       expect(mapStyle.layers.length).toBe(1);
     });
 
-    test('`applyStyle` factory method creates and loads a basemap, then applies it to a map with applyToMap.', async ({apiKey, map}) => {
+    test('`applyStyle` factory method creates and loads a basemap, then applies it to a map with applyTo.', async ({apiKey, map}) => {
       fetchMock.once(JSON.stringify(basemapStyleNavigation)).mockResponse(JSON.stringify({}));
 
       const basemap = BasemapStyle.applyStyle(map, {
         style:'arcgis/navigation',
         token: apiKey
       });
-      const applyToMapSpy = vi.spyOn(basemap, 'applyToMap');
+      const applyToSpy = vi.spyOn(basemap, 'applyTo');
 
       const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
       expect(basemap.style).toMatchObject(mapStyle);
-      expect(applyToMapSpy).toBeCalled();
+      expect(applyToSpy).toBeCalled();
     });
 
     test('`updateStyle` changes the map style after a style already exists.', async ({apiKey, loadedBasemap, map}) => {
       fetchMock.mockResponse(JSON.stringify({}));
-      loadedBasemap.applyToMap(map);
+      loadedBasemap.applyTo(map);
 
       setTimeout(async () => {
         fetchMock.once(JSON.stringify(basemapStyleStreets));
