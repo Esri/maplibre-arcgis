@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { BasemapStyle } from '../src/MaplibreArcGIS';
-import { customTest as test } from './BaseTest.test';
+import { customTest as test } from './BaseTest';
 import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
 import basemapStyleStreets from './mock/BasemapStyle/OpenStreets.json';
 import { tokenError } from './mock/authentication/invalidTokenError';

@@ -1,6 +1,6 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { customTest as test } from './BaseTest.test'
+import { customTest as test } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { AttributionControl } from '../src/AttributionControl';
 

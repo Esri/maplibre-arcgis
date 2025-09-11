@@ -1,6 +1,6 @@
 //@ts-nocheck
 import {expect, describe} from 'vitest';
-import { customTest as test } from './BaseTest.test';
+import { customTest as test } from './BaseTest';
 
 describe('Browser tests with WebGL', () => {
 
@@ -15,14 +15,11 @@ describe('Works on a real page', () => {
   test('puppeteer test', async ({setupPage}) => {
     // setup a specific page from the test/mock/pages folder
     const page = await setupPage("basemap-style.html");
-    console.log('page set up')
     // wait for the map and basemap to be set on the window
     await page.waitForFunction(() => window.map && window.basemapStyle);
-    console.log('functions defined')
     // wait for the map load event to fire and evaluate the style object
     const { style } = await page.evaluate(async() => {
       return await new Promise(resolve => {
-        console.log('resolved i think')
         window.map.once("load", ()=> {
           resolve({
             style: window.map.getStyle()
