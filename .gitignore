@@ -47,3 +47,5 @@ coverage/
 
 *.code-workspace
 /.zed
+
+@esri/

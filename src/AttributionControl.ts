@@ -1,9 +1,9 @@
 import {
-  AttributionControl as MaplibreAttributionControl,
   type IControl,
   type Map,
   type AttributionControlOptions as MaplibreAttributionControlOptions,
 } from 'maplibre-gl';
+import maplibregl from 'maplibre-gl';
 
 type MapLibreMap = Map;
 
@@ -37,7 +37,7 @@ export const EsriAttribution: MaplibreAttributionControlOptions = {
 /**
  * The attribution control adds attribution information for ArcGIS Data services in a MapLibre GL JS Map.
  */
-export class AttributionControl extends MaplibreAttributionControl {
+export class AttributionControl extends maplibregl.AttributionControl {
   /** @internal */
   private _closed?: boolean;
   private attributionOptions: MaplibreAttributionControlOptions;
@@ -122,7 +122,7 @@ export class AttributionControl extends MaplibreAttributionControl {
       map._controls.forEach((control: IControl) => {
         // Error if any other attribution control is present
         if ('_toggleAttribution' in control) {
-          const attributionControl = control as MaplibreAttributionControl;
+          const attributionControl = control as maplibregl.AttributionControl;
           if (attributionControl.options.customAttribution === defaultMaplibreAttributionString) {
             map.removeControl(attributionControl);
             // console.warn('Map attribution is handled by ArcGIS BasemapStyle. The default attribution control was overwritten.');
@@ -152,3 +152,18 @@ export class AttributionControl extends MaplibreAttributionControl {
 }
 
 export default AttributionControl;
+/*
+ * Copyright 2025 Esri
+ *
+ * Licensed under the Apache License Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */

@@ -115,7 +115,7 @@ export interface IApplyStyleOptions extends IBasemapStyleOptions {
   /**
    * The maplibre-gl map to apply the basemap style to.
    */
-  map?: Map;
+  map: Map;
   /**
    * Passthrough options for maplibre-gl map.setStyle()
    */
@@ -263,12 +263,22 @@ export class BasemapStyle {
    * @param maplibreStyleOptions - Optional style object for maplibre-gl, including the `transformStyle` function.
    * @returns - The maplibre-gl map that the style was applied to.
    */
-  applyToMap(map?: Map, maplibreStyleOptions?: MaplibreStyleOptions): Map {
+  applyTo(map: Map, maplibreStyleOptions?: MaplibreStyleOptions): Map {
     if (map) this._map = map;
     if (!this._map) throw new Error('Unable to apply basemap style: No \'Map\' object was provided.');
 
+    if (!this.style) throw new Error('Cannot apply style to map before style is loaded.');
     this._map.setStyle(this.style, maplibreStyleOptions);
     this._setEsriAttribution();
+
+    if (this.session) {
+      (this.session as BasemapSession).on('BasemapSessionRefreshed', (sessionData) => {
+        const oldToken = sessionData.previous.token;
+        const newToken = sessionData.current.token;
+
+        this._updateTiles(oldToken, newToken, map); // update the map with the new token
+      });
+    }
 
     return this._map;
   }
@@ -285,7 +295,7 @@ export class BasemapStyle {
     }
 
     await this.loadStyle();
-    this.applyToMap(this._map, options.maplibreStyleOptions);
+    this.applyTo(this._map, options.maplibreStyleOptions);
 
     return this.style;
   }
@@ -296,7 +306,8 @@ export class BasemapStyle {
    */
   async loadStyle(): Promise<StyleSpecification> {
     if (this.session) {
-      await this._setSession();
+      const session = await Promise.resolve(this.session);
+      this.session = session;
     }
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
@@ -369,26 +380,9 @@ export class BasemapStyle {
     if (preferences.worldview) this.preferences.worldview = preferences.worldview;
   }
 
-  private async _setSession(map?: Map): Promise<void> {
-    if (!this.session) throw new Error('No session was provided to the constructor.');
-
-    const session = await Promise.resolve(this.session);
-    this.session = session;
-
-    this.session.on('BasemapSessionRefreshed', (sessionData) => {
-      const oldToken = sessionData.previous.token;
-      const newToken = sessionData.current.token;
-
-      this._updateTiles(oldToken, newToken, map); // update the map with the new token
-    });
-
-    return;
-  }
-
-  private _updateTiles(fromToken: string, toToken: string, map?: Map): void {
-    if (map) this._map = map;
-
-    if (!this._map) throw new Error('Unable to update map tiles with new session token: Session does not have access to the map.');
+  private _updateTiles(fromToken: string, toToken: string, map: Map): void {
+    if (!map) throw new Error('Unable to update map tiles with new session token: Session does not have access to the map.');
+    this._map = map;
 
     // replace token in the styles tiles with the new session token
     for (const sourceCaches of Object.keys(this._map.style.sourceCaches)) {
@@ -475,7 +469,7 @@ export class BasemapStyle {
     const basemapStyle = new BasemapStyle(options);
 
     basemapStyle.loadStyle().then((_) => {
-      basemapStyle.applyToMap(map, options.maplibreStyleOptions);
+      basemapStyle.applyTo(map, options.maplibreStyleOptions);
     }).catch((e) => { throw e; });
 
     return basemapStyle;
@@ -498,3 +492,18 @@ export class BasemapStyle {
 }
 
 export default BasemapStyle;
+/*
+ * Copyright 2025 Esri
+ *
+ * Licensed under the Apache License Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
