@@ -1,10 +1,7 @@
 {
   "name": "@esri/maplibre-arcgis",
+  "version": "1.0.0-beta-6",
   "description": "Wrapper for integrating ArcGIS data sources with MapLibre GL JS",
-  "version": "1.0.0-beta.1",
-  "author": "George Owen (https://github.com/gowin20)",
-  "license": "Apache-2.0",
-  "type": "module",
   "keywords": [
     "maplibre",
     "arcgis",
@@ -14,27 +11,39 @@
     "tile",
     "styles"
   ],
-  "peerDependencies": {
-    "maplibre-gl": "^5.6.1"
+  "license": "Apache-2.0",
+  "contributors": [
+    {
+      "name": "George Owen",
+      "email": "gowen@esri.com",
+      "url": "https://github.com/gowin20"
+    },
+    {
+      "name": "Mark Torrey",
+      "email": "mtorrey@esri.com",
+      "url": "https://github.com/MarkTorrey"
+    },
+    {
+      "name": "Patrick Arlt",
+      "email": "parlt@esri.com",
+      "url": "https://github.com/patrickarlt"
+    }
+  ],
+  "type": "module",
+  "main": "dist/umd/maplibre-arcgis.min.js",
+  "module": "dist/esm/maplibre-arcgis.min.js",
+  "unpkg": "dist/umd/maplibre-arcgis.min.js",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/maplibre-arcgis.min.js",
+      "require": "./dist/umd/maplibre-arcgis.min.js"
+    },
+    "./package.json": "./package.json"
   },
-  "devDependencies": {
-    "@eslint/js": "^9.30.1",
-    "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
-    "@stylistic/eslint-plugin": "^5.2.2",
-    "@types/node": "^24.3.0",
-    "@vitest/eslint-plugin": "^1.3.4",
-    "esbuild": "^0.25.4",
-    "eslint": "^9.30.1",
-    "eslint-plugin-html": "^8.1.3",
-    "eslint-plugin-tsdoc": "^0.4.0",
-    "gh-release": "^7.0.2",
-    "globals": "^16.3.0",
-    "mkdirp": "^3.0.1",
-    "typedoc": "^0.28.9",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.36.0"
+  "directories": {
+    "example": "examples",
+    "test": "test"
   },
-  "main": "src/MaplibreArcGIS.ts",
   "scripts": {
     "prebuild": "mkdirp dist",
     "build": "node build.js prod",
@@ -50,5 +59,44 @@
     "@esri/arcgis-rest-portal": "^4.6.2",
     "@esri/arcgis-rest-request": "^4.7.2",
     "mitt": "3.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.1",
+    "@stylistic/eslint-plugin": "^5.2.2",
+    "@types/node": "^24.3.0",
+    "@vitest/eslint-plugin": "^1.3.4",
+    "esbuild": "^0.25.4",
+    "esbuild-plugin-umd-wrapper": "^3.0.0",
+    "eslint": "^9.30.1",
+    "eslint-plugin-html": "^8.1.3",
+    "eslint-plugin-tsdoc": "^0.4.0",
+    "globals": "^16.3.0",
+    "mkdirp": "^3.0.1",
+    "typedoc": "^0.28.9",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.36.0"
+  },
+  "peerDependencies": {
+    "maplibre-gl": "^5.6.1"
+  },
+  "homepage": "https://github.com/Esri/maplibre-arcgis#readme",
+  "bugs": {
+    "url": "https://github.com/Esri/maplibre-arcgis/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Esri/maplibre-arcgis.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "esri": {
+    "keyExports": [
+      "BasemapStyle",
+      "FeatureLayer",
+      "VectorTileLayer",
+      "AttributionControl",
+      "BasemapSession"
+    ]
   }
 }

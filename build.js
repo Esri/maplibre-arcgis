@@ -14,13 +14,13 @@
  */
 import * as esbuild from 'esbuild';
 import pkg from './package.json' with { type: 'json'};
-import { globalExternals } from '@fal-works/esbuild-plugin-global-externals';
+import { umdWrapper } from 'esbuild-plugin-umd-wrapper';
 
 var copyright = '/* ' + pkg.name + ' - v' + pkg.version + ' - ' + new Date().toString() + '\n' +
                 ' * Copyright (c) ' + new Date().getFullYear() + ' Environmental Systems Research Institute, Inc.\n' +
                 ' * ' + pkg.license + ' */';
-console.log(process.argv);
-const BUILD_MODE = process.argv[2];
+
+const ENVIRONMENT = process.argv[2];
 const LIVE_RELOAD = process.argv.length > 3 && process.argv[3] == 'watch';
 
 const globals = {
@@ -31,59 +31,71 @@ const globals = {
     }
 }
 
-const buildOptions = {
-    entryPoints: ['./src/MaplibreArcGIS.ts'],
-    bundle:true,
-    banner: {
-        js:copyright
-    },
-    globalName: 'maplibreArcGIS',
-    external: ['maplibre-gl'],
-    plugins: [globalExternals(globals)]
+const baseConfig = {
+  entryPoints: ['./src/MaplibreArcGIS.ts'],
+  banner: {
+    js:copyright
+  },
+  platform:'browser',
+  target: ['chrome132','firefox130'], //list of supported browsers
+  sourcemap:true,
+  bundle: true,
+  external: ['maplibre-gl'],
+
 }
 
-if (BUILD_MODE == 'dev') {
-    const debugOptions = {
-        //debug only - build sourcemap
-        sourcemap:true,
-        outfile: 'dist/maplibre-arcgis-debug.js',
-    };
+const umdConfig = {
+  ...baseConfig,
+  format:'umd',
+  plugins: [umdWrapper({
+    libraryName: 'maplibreArcGIS',
+    globals: {
+      'maplibre-gl':'maplibregl'
+    }
+  })],
+};
 
-    Object.assign(buildOptions,debugOptions);
+const esmConfig = {
+  ...baseConfig,
+  format: 'esm',
+  //plugins: [globalExternals(globals)],
 }
-if (BUILD_MODE == 'prod') {
-    const prodOptions = {
-        //prod only
-        outfile: 'dist/maplibre-arcgis.js',
-        minify: true, //minify output
-        platform:'browser',
-        format:'iife',
-        target: ['chrome132','firefox130'], //list of supported browsers
-    };
-
-    Object.assign(buildOptions,prodOptions);
-}
-
-
-console.log(buildOptions);
 
 if (LIVE_RELOAD) {
+  const buildOptions = {
+    ...umdConfig,
+    outfile: 'dist/umd/maplibre-arcgis.js',
+  }
 
-    buildOptions.define = {
-        TEST_ENVIRONMENT:'yes'
-    };
+  console.log(`Starting live reload of ${buildOptions.outfile}...`);
+  let app = await esbuild.context(buildOptions);
 
-    console.log(`Starting live reload of ${buildOptions.outfile}...`);
-    let app = await esbuild.context(buildOptions);
+  await app.watch();
 
-    await app.watch();
-
-    let {host,port} = app.serve({
-        servedir:'dist'
-    })
+  let {host,port} = await app.serve({
+      servedir:'dist'
+  });
 }
 else {
-    await esbuild.build(buildOptions);
+  const umd = await esbuild.build({
+    ...umdConfig,
+    outfile: 'dist/umd/maplibre-arcgis.js',
+  });
+
+  const umdMin = await esbuild.build({
+    ...umdConfig,
+    minify: true,
+    outfile:'dist/umd/maplibre-arcgis.min.js'
+  });
+
+  const esm = await esbuild.build({
+    ...esmConfig,
+    outfile: 'dist/esm/maplibre-arcgis.js'
+  });
+
+  const esmMin = await esbuild.build({
+    ...esmConfig,
+    minify:true,
+    outfile: "dist/esm/maplibre-arcgis.min.js"
+  })
 }
-
-

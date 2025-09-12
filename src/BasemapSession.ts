@@ -12,11 +12,11 @@ import mitt, { type Emitter } from 'mitt';
  */
 export interface IBasemapSessionOptions {
   /** Access token for authentication. The token must be from an ArcGIS Location Platform account and have the Basemaps privelege. */
-  token?: string;
-  /** Duration in seconds for the session. */
-  duration?: number;
+  token: string;
   /** Style family for the session. */
   styleFamily: StyleFamily;
+  /** Duration in seconds for the session. */
+  duration?: number;
   /** Toggles auto-refresh functionality. */
   autoRefresh?: boolean;
   /** Safety margin in seconds to refresh the session before the `endTime`. */
@@ -71,7 +71,7 @@ export type BasemapSessionEventMap = {
  * - Event handling for session lifecycle (refresh, expiration, errors)
  * - Integration with ArcGIS Basemap Styles Service
  *
- * > An [access token](https://developers.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions.
+ * \> An [access token](https://developers.arcgis.com/maplibre-gl-js/access-tokens/) is required to use basemap sessions.
  *The token must be from an [ArcGIS Location Platform account](https://location.arcgis.com) and have the Basemaps [privilege](https://developers.arcgis.com/documentation/security-and-authentication/reference/privileges/).
  *
  * ```javascript
@@ -104,18 +104,6 @@ export class BasemapSession {
   private _parentToken: string;
 
   /**
-   * Gets or sets whether the session should automatically request a new token after expiration.
-   * ```javascript
-   * const basemapSession = new BasemapSession({
-   *   token: 'YOUR_ACCESS_TOKEN',
-   * });
-   * basemapSession.autoRefresh = true;
-   * console.log(basemapSession.autoRefresh);
-   * ```
-   */
-  autoRefresh: boolean;
-
-  /**
    * Creates a new `BasemapSession` instance but does not start it. Use the {@link BasemapSession.initialize} method to begin the session manually. Creating basemap sessions in this way using the constructor directly is discouraged. The recommended method is to use {@link BasemapSession.start}.
    * ```javascript
    * const basemapSession = new BasemapSession({
@@ -129,10 +117,9 @@ export class BasemapSession {
    * @param options - Configuration options for the session
    */
   constructor(options: IBasemapSessionOptions) {
-    if (!options?.token) throw new Error('An valid ArcGIS access token is required to start a session.');
-
+    if (!options?.token) throw new Error('A valid ArcGIS access token is required to start a session.');
+    if (!options.styleFamily) throw new Error('BasemapSession must be initialized with a styleFamily: `arcgis` or `open`.');
     this._parentToken = options.token;
-    this.autoRefresh = options.autoRefresh ? true : false;
     this._options = options;
   }
 
@@ -150,13 +137,13 @@ export class BasemapSession {
    * Gets the sessions {@link StyleFamily} value.
    */
   get styleFamily(): StyleFamily | undefined {
-    return this._session?.styleFamily;
+    return this._session ? this._session.styleFamily : this._options.styleFamily;
   }
 
   /**
-   * Gets the sessions expiration date.
+   * Gets the functional end time of the session. This is equivalent to the session end time plus the safety margin, and is used to tell when the session should be refreshed.
    */
-  get expires(): Date {
+  get safeEndTime(): Date {
     if (!this._session) {
       throw new Error('Unable to get session expiration. Session not initialized.');
     }
@@ -167,8 +154,16 @@ export class BasemapSession {
    * Gets the session start time.
    */
   get startTime(): Date {
-    if (!this._session) throw new Error('Unable to fetch start time. Session not initialized.');
+    if (!this._session) throw new Error('Unable to get start time. Session not initialized.');
     return this._session.startTime;
+  }
+
+  /**
+   * Gets the end time of the session returned by the basemap styles service.
+   */
+  get endTime(): Date {
+    if (!this._session) throw new Error('Unable to get end time. Session not initialized.');
+    return this._session.endTime;
   }
 
   /**
@@ -207,7 +202,7 @@ export class BasemapSession {
 
     const sessionParams: IStartSessionParams = {
       authentication: ApiKeyManager.fromKey(this._parentToken),
-      autoRefresh: this.autoRefresh,
+      autoRefresh: this._options.autoRefresh ? true : false,
       duration: this._options.duration,
       safetyMargin: this._options.safetyMargin,
       styleFamily: this._options.styleFamily,
@@ -332,3 +327,18 @@ export class BasemapSession {
 }
 
 export default BasemapSession;
+/*
+ * Copyright 2025 Esri
+ *
+ * Licensed under the Apache License Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */

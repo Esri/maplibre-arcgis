@@ -1,7 +1,7 @@
 import { request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
-import { AttributionControl as EsriAttributionControl, type IAttributionControlOptions as EsriAttributionControlOptions } from './AttributionControl';
+import { AttributionControl, type IAttributionControlOptions } from './AttributionControl';
 import type BasemapSession from './BasemapSession';
 import { checkItemId, type RestJSAuthenticationManager } from './Util';
 
@@ -15,7 +15,21 @@ export type BasemapSelfResponse = {
   worldviews: [CodeNamePair];
   places: [CodeNamePair];
   styleFamilies: [CodeNamePair];
-  styles: [BasemapStyleObject];
+  styles: [{
+    complete: boolean;
+    deprecated?: boolean;
+    name: string;
+    path: StyleEnum;
+    provider: string;
+    styleFamily: string;
+    styleUrl: string;
+    selfUrl: string;
+    thumbnailUrl: string;
+    detailUrl?: string;
+    labelsUrl?: string;
+    rootUrl?: string;
+    baseUrl?: string;
+  }];
 };
 
 export type CodeNamePair = {
@@ -53,7 +67,7 @@ export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
  */
 export type BasemapStyleEventMap = {
   BasemapStyleLoad: BasemapStyle;
-  BasemapAttributionLoad: EsriAttributionControl;
+  BasemapAttributionLoad: AttributionControl;
   BasemapStyleError: Error;
 };
 
@@ -87,7 +101,7 @@ export interface IBasemapStyleOptions {
   /**
    * Options for customizing the maplibre-gl attribution control.
    */
-  attributionControl?: EsriAttributionControlOptions;
+  attributionControl?: IAttributionControlOptions;
   /**
    * @internal For setting the service url to QA, devext, etc.
    */
@@ -101,7 +115,7 @@ export interface IApplyStyleOptions extends IBasemapStyleOptions {
   /**
    * The maplibre-gl map to apply the basemap style to.
    */
-  map?: Map;
+  map: Map;
   /**
    * Passthrough options for maplibre-gl map.setStyle()
    */
@@ -182,7 +196,7 @@ export class BasemapStyle {
   /**
    * A reference to the map's AttributionControl.
    */
-  attributionControl: EsriAttributionControl;
+  attributionControl: AttributionControl;
   /**
    * An ArcGIS access token. Used for authentication
    */
@@ -200,7 +214,7 @@ export class BasemapStyle {
    */
   preferences: IBasemapPreferences;
   // private _transformStyleFn?:TransformStyleFunction;
-  private _attributionControlOptions: EsriAttributionControlOptions;
+  private _attributionControlOptions: IAttributionControlOptions;
   private _isItemId: boolean;
   private _map?: Map;
   private _baseUrl: string;
@@ -269,13 +283,13 @@ export class BasemapStyle {
 
     styleUrl += `?token=${this._token}`;
 
-    if (this.preferences.language) {
+    if (this.preferences?.language) {
       styleUrl += `&language=${this.preferences.language}`;
     }
-    if (this.preferences.worldview) {
+    if (this.preferences?.worldview) {
       styleUrl += `&worldview=${this.preferences.worldview}`;
     }
-    if (this.preferences.places) {
+    if (this.preferences?.places) {
       styleUrl += `&places=${this.preferences.places}`;
     }
 
@@ -304,12 +318,22 @@ export class BasemapStyle {
    * @param maplibreStyleOptions - Optional style object for maplibre-gl, including the `transformStyle` function.
    * @returns - The maplibre-gl map that the style was applied to.
    */
-  applyToMap(map?: Map, maplibreStyleOptions?: MaplibreStyleOptions): Map {
+  applyTo(map: Map, maplibreStyleOptions?: MaplibreStyleOptions): Map {
     if (map) this._map = map;
     if (!this._map) throw new Error('Unable to apply basemap style: No \'Map\' object was provided.');
 
+    if (!this.style) throw new Error('Cannot apply style to map before style is loaded.');
     this._map.setStyle(this.style, maplibreStyleOptions);
     this._setEsriAttribution();
+
+    if (this.session) {
+      (this.session as BasemapSession).on('BasemapSessionRefreshed', (sessionData) => {
+        const oldToken = sessionData.previous.token;
+        const newToken = sessionData.current.token;
+
+        this._updateTiles(oldToken, newToken, map); // update the map with the new token
+      });
+    }
 
     return this._map;
   }
@@ -326,7 +350,7 @@ export class BasemapStyle {
     }
 
     await this.loadStyle();
-    this.applyToMap(this._map, options.maplibreStyleOptions);
+    this.applyTo(this._map, options.maplibreStyleOptions);
 
     return this.style;
   }
@@ -337,13 +361,14 @@ export class BasemapStyle {
    */
   async loadStyle(): Promise<StyleSpecification> {
     if (this.session) {
-      await this._setSession();
+      const session = await Promise.resolve(this.session);
+      this.session = session;
     }
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
     const style = await (request(styleUrl, {
-      authentication: this._token, // TODO ask pat about this warning
+      authentication: this._token,
       httpMethod: 'GET',
       params: {
         ...this.preferences,
@@ -388,7 +413,7 @@ export class BasemapStyle {
   private _setEsriAttribution(): void {
     if (!this._map) throw new Error('No map was passed to ArcGIS BasemapStyle.');
 
-    this.attributionControl = new EsriAttributionControl(this._attributionControlOptions);
+    this.attributionControl = new AttributionControl(this._attributionControlOptions);
     if (this.attributionControl.canAdd(this._map)) {
       this._map.addControl(this.attributionControl);
       this._attributionLoadHandler(this.attributionControl);
@@ -410,26 +435,9 @@ export class BasemapStyle {
     if (preferences.worldview) this.preferences.worldview = preferences.worldview;
   }
 
-  private async _setSession(map?: Map): Promise<void> {
-    if (!this.session) throw new Error('No session was provided to the constructor.');
-
-    const session = await Promise.resolve(this.session);
-    this.session = session;
-
-    this.session.on('BasemapSessionRefreshed', (sessionData) => {
-      const oldToken = sessionData.previous.token;
-      const newToken = sessionData.current.token;
-
-      this._updateTiles(oldToken, newToken, map); // update the map with the new token
-    });
-
-    return;
-  }
-
-  private _updateTiles(fromToken: string, toToken: string, map?: Map): void {
-    if (map) this._map = map;
-
-    if (!this._map) throw new Error('Unable to update map tiles with new session token: Session does not have access to the map.');
+  private _updateTiles(fromToken: string, toToken: string, map: Map): void {
+    if (!map) throw new Error('Unable to update map tiles with new session token: Session does not have access to the map.');
+    this._map = map;
 
     // replace token in the styles tiles with the new session token
     for (const sourceCaches of Object.keys(this._map.style.sourceCaches)) {
@@ -473,7 +481,7 @@ export class BasemapStyle {
     this._emitter.emit('BasemapStyleError', e);
   };
 
-  private _attributionLoadHandler = (e: EsriAttributionControl): void => {
+  private _attributionLoadHandler = (e: AttributionControl): void => {
     this._emitter.emit('BasemapAttributionLoad', e);
   };
 
@@ -516,7 +524,7 @@ export class BasemapStyle {
     const basemapStyle = new BasemapStyle(options);
 
     basemapStyle.loadStyle().then((_) => {
-      basemapStyle.applyToMap(map, options.maplibreStyleOptions);
+      basemapStyle.applyTo(map, options.maplibreStyleOptions);
     }).catch((e) => { throw e; });
 
     return basemapStyle;
@@ -539,3 +547,18 @@ export class BasemapStyle {
 }
 
 export default BasemapStyle;
+/*
+ * Copyright 2025 Esri
+ *
+ * Licensed under the Apache License Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */

@@ -15,7 +15,7 @@
   <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
   <!-- Maplibre ArcGIS -->
-  <script src="../dist/maplibre-arcgis-debug.js"></script>
+  <script src="../dist/umd/maplibre-arcgis.min.js"></script>
 
 </head>
 
@@ -29,7 +29,7 @@
       center: [-117.805, 34.027], // starting location
     });
 
-    const basemapSession = maplibreArcGIS.BasemapSession.start({
+    const basemapSession = await maplibreArcGIS.BasemapSession.start({
       styleFamily: 'arcgis',
       token: sessionKey2,
       duration:30, // Only valid for 30 seconds, for testing
@@ -41,19 +41,13 @@
       session: basemapSession
     });
 
-    basemapSession.on(BasemapSession.BasemapSessionRefreshed, (event) => {
-      console.log(`The basemap session was refreshed. previous token: ${event.previous.token}`);
-    });
-
-    basemapSession.on(BasemapSession.BasemapSessionExpired, () => {
+    basemapSession.on('BasemapSessionExpired', () => {
       console.log("The basemap session is about to expire.");
     });
 
-    basemapSession.on(BasemapSessionRefreshed, ()=>{
-      console.log("The basemap session was refreshed.");
-    })
-
-
+    basemapSession.on('BasemapSessionRefreshed', (event) => {
+      console.log(`The basemap session was refreshed. previous token: ${event.previous.token}`);
+    });
 </script>
 </body>
 

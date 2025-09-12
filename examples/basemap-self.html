@@ -15,7 +15,7 @@
   <link href="../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
   <!-- Maplibre ArcGIS -->
-  <script src="../dist/maplibre-arcgis-debug.js"></script>
+  <script src="../dist/umd/maplibre-arcgis.min.js"></script>
 
 </head>
 
@@ -33,6 +33,8 @@
     const selfResponse = await maplibreArcGIS.BasemapStyle.getSelf();
     const styleNames = selfResponse.styles;
     const languageOptions = selfResponse.languages;
+
+    console.log(selfResponse)
 
     const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map,{
       token: apiKey,
