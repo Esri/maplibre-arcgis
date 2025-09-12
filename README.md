@@ -1,3 +1,4 @@
+![NPM Version](https://img.shields.io/npm/v/%40esri%2Fmaplibre-arcgis?style=flat-square&color=blue)
 [![apache 2.0 licensed][license-img]][license-url]
 
 [license-img]: https://img.shields.io/badge/license-Apache%202.0-orange.svg?style=flat-square
@@ -22,7 +23,7 @@ A MapLibre GL JS plugin for integrating with ArcGIS services, including basemaps
 
 ## Quick start
 
-MapLibre ArcGIS is available via ESM and CDN. Once imported, the library can be used to display a basemap style and add layers.
+MapLibre ArcGIS is available via CDN and NPM. Once imported, the library can be used to display a basemap style and add layers.
 
 ```js
   import maplibregl from 'maplibre-gl';
