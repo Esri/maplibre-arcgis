@@ -1,9 +1,9 @@
-import { request } from '@esri/arcgis-rest-request';
+import { request, ApiKeyManager, type ArcGISIdentityManager } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
 import { AttributionControl, type IAttributionControlOptions } from './AttributionControl';
 import type BasemapSession from './BasemapSession';
-import { checkItemId, type RestJSAuthenticationManager } from './Util';
+import { checkItemId, wrapAccessToken, type RestJSAuthenticationManager } from './Util';
 
 /**
  * Structure of a BasemapStyle object. Go to {@link https://developers.arcgis.com/rest/basemap-styles/styles-self-get/ } to learn more.
@@ -176,10 +176,6 @@ export class BasemapStyle {
    */
   token: string;
   /**
-   * An access token or ArcGIS REST JS authentication manager. Used for authentication.
-   */
-  authentication?: RestJSAuthenticationManager;
-  /**
    * A basemap session. Used for authentication.
    */
   session: BasemapSession | Promise<BasemapSession>;
@@ -202,7 +198,6 @@ export class BasemapStyle {
     if (!options || !options.style) throw new Error('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');
     // Access token validation
     if (options.session) this.session = options.session;
-    else if (options.authentication) this.authentication = options.authentication;
     else if (options.token) this.token = options.token;
     else throw new Error(
       'ArcGIS access token required. To learn more, go to https://developers.arcgis.com/documentation/security-and-authentication/get-started/.'
@@ -243,7 +238,6 @@ export class BasemapStyle {
 
   private get _token(): string {
     if (this.session) return (this.session as BasemapSession).token;
-    else if (this.authentication) return this.authentication.token;
     else if (this.token) return this.token;
   }
 
@@ -312,9 +306,12 @@ export class BasemapStyle {
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
+    const authentication = await wrapAccessToken(this._token);
+
     const style = await (request(styleUrl, {
-      authentication: this._token,
+      authentication: authentication,
       httpMethod: 'GET',
+      suppressWarnings: true,
       params: {
         ...this.preferences,
         echoToken: false,
@@ -483,9 +480,9 @@ export class BasemapStyle {
    */
   static async getSelf(options: { token?: string; baseUrl?: string }): Promise<BasemapSelfResponse> {
     const basemapServiceUrl = options?.baseUrl ? options.baseUrl : DEFAULT_BASE_URL;
-
+    const authentication = await wrapAccessToken(options?.token);
     return await request(`${basemapServiceUrl}/self`, {
-      authentication: options?.token,
+      authentication: authentication,
       httpMethod: 'GET',
     }) as BasemapSelfResponse;
   }
