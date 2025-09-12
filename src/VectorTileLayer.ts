@@ -51,7 +51,7 @@ export class VectorTileLayer extends HostedLayer {
     this._serviceInfoLoaded = false;
     this._itemInfoLoaded = false;
 
-    if (!options || !(options.itemId || options.url)) throw new Error('Vector tile layer must be constructed with either an \'itemId\' or \'url\'.');
+    if (!options || !(options.itemId || options.url)) throw new Error('Vector tile layer requires either an \'itemId\' or \'url\'.');
 
     if (options.authentication) this.authentication = options.authentication;
     else if (options.token) this.authentication = options.token;
@@ -59,11 +59,16 @@ export class VectorTileLayer extends HostedLayer {
     if (options.attribution) this._customAttribution = options.attribution;
 
     if (options.itemId && options.url)
-      console.warn('Both an item ID and service URL have been passed to the constructor. The item ID will be preferred, and the URL ignored.');
+      console.warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
 
-    if (options.itemId && checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
-    else if (options.url && checkServiceUrlType(options.url) == 'VectorTileService') this._inputType = 'VectorTileService';
-    else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or vector tile service URL.');
+    if (options.itemId) {
+      if (checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
+      else throw new Error('Argument `itemId` is not a valid item ID.');
+    }
+    else if (options.url) {
+      if (checkServiceUrlType(options.url) == 'VectorTileService') this._inputType = 'VectorTileService';
+      else throw new Error('Argument `url` is not a valid vector tile service URL.');
+    }
 
     if (this._inputType === 'ItemId') {
       this._itemInfo = {
