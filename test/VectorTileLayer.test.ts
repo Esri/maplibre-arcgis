@@ -17,17 +17,18 @@ describe('Vector tile layer tests', () => {
   });
 
   test('Throws if neither an item ID nor service URL are provided.', () => {
+    // Empty options
     expect(() => {
       const vtl = new VectorTileLayer({});
     }).toThrowError('Vector tile layer requires either an \'itemId\' or \'url\'.');
-
+    // No options
     expect(() => {
       const vtl = new VectorTileLayer();
     }).toThrowError('Vector tile layer requires either an \'itemId\' or \'url\'.');
   });
 
   describe('Works with authenticated layers', () => {
-    test('Accepts authentication as an access token string.', ({apiKey}) => {
+    test('Accepts authentication as a string via `token`.', ({apiKey}) => {
       const vtl = new VectorTileLayer({
         url: serviceUrlParcels,
         token: apiKey
@@ -35,7 +36,6 @@ describe('Vector tile layer tests', () => {
       expect(typeof vtl.authentication).toBe('string');
       expect(vtl.token).toBe(apiKey);
     });
-
     test('Accepts authentication as a REST JS object.', ({restJsAuthentication}) => {
       const vtl = new VectorTileLayer({
         url: serviceUrlParcels,
@@ -61,7 +61,6 @@ describe('Vector tile layer tests', () => {
         serviceUrl: serviceUrlParcels + '/'
       })
     });
-
     test('Throws if the URL is not the URL of a vector tile service.', () => {
       // Not a URL
       expect(() => {
@@ -69,7 +68,6 @@ describe('Vector tile layer tests', () => {
           url: itemIdUSA
         });
       }).toThrowError('Argument `url` is not a valid vector tile service URL.');
-
       // Not a vector tile service
       expect(() => {
         const vtl = new VectorTileLayer({
@@ -84,7 +82,7 @@ describe('Vector tile layer tests', () => {
     test('Fetches service metadata, including the service name and attribution.', () => {});
   });
 
-  describe('Loads data from an item ID', () => {
+  describe('Loads styles from an item ID', () => {
     test('Accepts an item ID and portal URL in the constructor, and the portal URL defaults to arcgis.com.', () => {
       const vtl = new VectorTileLayer({
         itemId: itemIdUSA
@@ -105,15 +103,13 @@ describe('Vector tile layer tests', () => {
         portalUrl: 'https://my-evil-portal.com/items'
       });
     });
-
     test('Throws if the item ID format is invalid', () => {
       expect(() => {
         const vtl = new VectorTileLayer({
           itemId: 'random junk'
         });
       }).toThrowError('Argument `itemId` is not a valid item ID.')
-    })
-
+    });
     test('Prefers an item ID over a service URL if both are provided.', () => {
       const warningSpy = vi.spyOn(console, 'warn');
       const vtl = new VectorTileLayer({
