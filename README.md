@@ -1,3 +1,4 @@
+![NPM Version](https://img.shields.io/npm/v/%40esri%2Fmaplibre-arcgis?style=flat-square&color=blue)
 [![apache 2.0 licensed][license-img]][license-url]
 
 [license-img]: https://img.shields.io/badge/license-Apache%202.0-orange.svg?style=flat-square
