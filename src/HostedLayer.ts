@@ -96,7 +96,9 @@ export abstract class HostedLayer {
   /**
    * An ArcGIS access token is required for accessing secure data layers. To get a token, go to the [Security and Authentication Guide](https://developers.arcgis.com/documentation/security-and-authentication/get-started/).
    */
-  authentication?: RestJSAuthenticationManager | string;
+  token: string;
+
+  protected _authentication?: RestJSAuthenticationManager;
 
   /**
    * Prevent public constructor from appearing in docs by making it protected.
@@ -105,11 +107,6 @@ export abstract class HostedLayer {
   protected constructor() {
     // intentionally empty
     if (new.target === HostedLayer) throw new Error('HostedLayer is an abstract class and cannot be instantiated directly.');
-  }
-
-  protected get token(): string {
-    if (!this.authentication) return undefined;
-    return typeof this.authentication === 'string' ? this.authentication : this.authentication.token;
   }
 
   /**

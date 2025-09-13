@@ -5,7 +5,7 @@ import { type IParams } from '@esri/arcgis-rest-request';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
 import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
-import { checkItemId, checkServiceUrlType, cleanUrl, warn } from './Util';
+import { checkItemId, checkServiceUrlType, cleanUrl, warn, wrapAccessToken } from './Util';
 
 /*
  *const geoJSONDefaultStyleMap = {
@@ -93,8 +93,7 @@ export class FeatureLayer extends HostedLayer {
 
     if (!options || !(options.itemId || options.url)) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
 
-    if (options?.authentication) this.authentication = options.authentication;
-    else if (options?.token) this.authentication = options.token;
+    if (options?.token) this.token = options.token;
 
     if (options?.attribution) this._customAttribution = options.attribution;
 
@@ -142,7 +141,7 @@ export class FeatureLayer extends HostedLayer {
       // Check if feature count exceeds limit
       const featureCount = (await queryFeatures({
         url: layerUrl,
-        authentication: this.token,
+        authentication: this._authentication,
         ...this.query,
         returnCountOnly: true,
       })) as IQueryResponse;
@@ -153,7 +152,7 @@ export class FeatureLayer extends HostedLayer {
       // Get all features
       const response = await queryAllFeatures({
         url: layerUrl,
-        authentication: this.token,
+        authentication: this._authentication,
         ...this.query,
         f: 'geojson',
       });
@@ -172,7 +171,7 @@ export class FeatureLayer extends HostedLayer {
 
   private async _loadLayer(layerUrl: string): Promise<void> {
     const layerInfo = await getLayer({
-      authentication: this.authentication,
+      authentication: this._authentication,
       url: layerUrl,
       httpMethod: 'GET',
     });
@@ -207,11 +206,14 @@ export class FeatureLayer extends HostedLayer {
     this._sources = {};
     this._layers = [];
 
+    // Wrap access token for use with REST JS
+    this._authentication = await wrapAccessToken(this.token);
+
     let dataSource = this._inputType;
     switch (dataSource) {
       case 'ItemId': {
         const itemResponse = await getItem(this._itemInfo.itemId, {
-          authentication: this.authentication,
+          authentication: this._authentication,
           portal: this._itemInfo.portalUrl,
         });
 
@@ -237,7 +239,7 @@ export class FeatureLayer extends HostedLayer {
       case 'FeatureService': {
         const serviceInfo = await getService({
           url: this._serviceInfo.serviceUrl,
-          authentication: this.authentication,
+          authentication: this._authentication,
         });
         // Add layers
         if (serviceInfo.layers.length > 10) {
