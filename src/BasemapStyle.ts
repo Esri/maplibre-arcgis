@@ -131,6 +131,10 @@ export interface IUpdateStyleOptions {
    */
   style?: string;
   /**
+   * A new ArcGIS access token. This will override the existing token.
+   */
+  token?: string;
+  /**
    * Set style preferences including language, worldview, and places.
    */
   preferences?: IBasemapPreferences;
@@ -283,7 +287,7 @@ export class BasemapStyle {
    */
   async updateStyle(options: IUpdateStyleOptions): Promise<StyleSpecification> {
     if (options.style) this.styleId = options.style;
-
+    if (options.token) this.token = options.token;
     if (options.preferences) {
       this._updatePreferences(options.preferences);
     }
