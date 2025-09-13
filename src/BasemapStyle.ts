@@ -1,4 +1,4 @@
-import { request, ApiKeyManager, type ArcGISIdentityManager } from '@esri/arcgis-rest-request';
+import { request } from '@esri/arcgis-rest-request';
 import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
 import { AttributionControl, type IAttributionControlOptions } from './AttributionControl';
