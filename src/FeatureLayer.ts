@@ -128,7 +128,7 @@ export class FeatureLayer extends HostedLayer {
   constructor(options: IFeatureLayerOptions) {
     super();
 
-    if (!options || !(options.itemId || options.url)) throw new Error('Feature layer must be constructed with either an \'itemId\' or \'url\'.');
+    if (!options || !(options.itemId || options.url)) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
 
     if (options?.authentication) this.authentication = options.authentication;
     else if (options?.token) this.authentication = options.token;
@@ -136,13 +136,16 @@ export class FeatureLayer extends HostedLayer {
     if (options?.attribution) this._customAttribution = options.attribution;
 
     if (options.itemId && options.url)
-      console.warn('Both an item ID and service URL have been passed to the constructor. The item ID will be preferred, and the URL ignored.');
+      warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
 
-    if (options.itemId && checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
-    else {
+    if (options.itemId) {
+      if (checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
+      else throw new Error('Argument `itemId` is not a valid item ID.');
+    }
+    else if (options.url) {
       const urlType = checkServiceUrlType(options.url);
       if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
-      else throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS item ID or feature service URL.');
+      else throw new Error('Argument `url` is not a valid feature service URL.');
     }
 
     // Set up
@@ -152,27 +155,15 @@ export class FeatureLayer extends HostedLayer {
         portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest',
       };
     }
-    else if (this._inputType === 'FeatureLayer') {
+    else if (this._inputType === 'FeatureLayer' || this._inputType === 'FeatureService') {
       this._serviceInfo = {
         serviceUrl: cleanUrl(options.url),
       };
     }
-    else if (this._inputType === 'FeatureService') {
-      warn('The provided service URL does not point to any specific feature layer. Layer \'/0\' will be loaded from the service automatically.');
-      this._serviceInfo = {
-        serviceUrl: `${cleanUrl(options.url)}0`,
-      };
-      this._inputType = 'FeatureLayer';
-    }
-    else {
-      throw new Error('Invalid options provided to constructor. Must provide a valid ArcGIS portal item ID or feature service URL.');
-    }
 
     if (options?.query) {
       if (this._inputType !== 'FeatureLayer')
-        throw new Error(
-          'Feature service queries are only supported with layer URLs, not item IDs. To use query parameters, call \'FeatureLayer.fromUrl\' with a service URL ending in \/0, \/1, etc.'
-        );
+        throw new Error('Feature service queries are only supported with layer URLs, not item IDs. To use query parameters, call \'FeatureLayer.fromUrl\' with a service URL ending in \/0, \/1, etc.');
 
       this.query = options.query;
     }
@@ -193,9 +184,7 @@ export class FeatureLayer extends HostedLayer {
         returnCountOnly: true,
       })) as IQueryResponse;
       if (featureCount.count > 2000) {
-        console.warn(
-          'You are loading a large feature layer ( >2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.'
-        );
+        warn('You are loading a large feature layer ( >2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.');
       }
 
       // Get all features
@@ -289,11 +278,11 @@ export class FeatureLayer extends HostedLayer {
         });
         // Add layers
         if (serviceInfo.layers.length > 10) {
-          console.warn('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
+          warn('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
         }
         for (let i = 0; i < serviceInfo.layers.length && i < 10; i++) {
           if (serviceInfo.layers[i]['subLayerIds']) {
-            console.warn('Feature layers with sublayers are not supported. This layer will not be added.');
+            warn('Feature layers with sublayers are not supported. This layer will not be added.');
             return;
           }
           await this._loadLayer(`${cleanUrl(this._serviceInfo.serviceUrl)}${i}/`);

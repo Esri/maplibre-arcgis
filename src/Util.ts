@@ -15,7 +15,6 @@ export const checkItemId = (itemId: string): 'ItemId' | null => {
 };
 export const checkServiceUrlType = (serviceUrl: string): SupportedServiceType | null => {
   const httpRegex = /^https?:\/\//;
-
   // const layerEndpointTest = "(?<layers>[0-9]*\/?)?$";
 
   if (httpRegex.test(serviceUrl)) {
