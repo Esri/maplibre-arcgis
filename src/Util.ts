@@ -94,6 +94,7 @@ export const warn = (...args: any[]) => {
 };
 
 export const checkAccessTokenType = (token: string): 'user' | 'app' | 'basemapSession' => {
+  if (!token || token.length === 0) return null;
   // API key case -- also catches app tokens w/ personal privileges
   const apiKeyPrefixes = ['AAPT', 'AAPK', 'AATK'];
   for (const prefix of apiKeyPrefixes) if (token.startsWith(prefix)) return 'app';
@@ -110,7 +111,7 @@ export const checkAccessTokenType = (token: string): 'user' | 'app' | 'basemapSe
   return 'app';
 };
 export const wrapAccessToken = async (token: string): Promise<ApiKeyManager | ArcGISIdentityManager> => {
-  if (!token) return null;
+  if (!token || token.length === 0) return null;
   const tokenType = checkAccessTokenType(token);
   // User tokens
   if (tokenType === 'user') return await ArcGISIdentityManager.fromToken({ token: token });
