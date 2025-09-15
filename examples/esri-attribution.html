@@ -1,3 +1,12 @@
+<!--
+
+To run this demo, you need to replace 'YOUR_ACCESS_TOKEN' with an access token from ArcGIS that has the correct privileges.
+
+To get started, sign up for a free ArcGIS Location Platform account or a free trial of ArcGIS Online and create developer credentials.
+
+https://developers.arcgis.com/documentation/security-and-authentication/get-started/
+
+-->
 <!DOCTYPE html>
 <html>
 
@@ -16,13 +25,13 @@
   <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
   <!-- MapLibre ArcGIS -->
   <script src="../dist/umd/maplibre-arcgis.min.js"></script>
-
 </head>
 
 <body>
   <div id="map"></div>
-  <script src="../debug/apikey.js"></script>
   <script>
+
+    const apiKey = 'YOUR_ACCESS_TOKEN';
 
     const styleUrl = maplibreArcGIS.BasemapStyle.url({
       style: 'arcgis/streets',

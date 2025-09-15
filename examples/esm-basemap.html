@@ -1,3 +1,12 @@
+<!--
+
+To run this demo, you need to replace 'YOUR_ACCESS_TOKEN' with an access token from ArcGIS that has the correct privileges.
+
+To get started, sign up for a free ArcGIS Location Platform account or a free trial of ArcGIS Online and create developer credentials.
+
+https://developers.arcgis.com/documentation/security-and-authentication/get-started/
+
+-->
 <!DOCTYPE html>
 <html>
 
@@ -20,8 +29,8 @@
       }
     }
   </script>
-  <script src="../debug/apikey.js"></script>
 </head>
+
 <body>
   <div id="map"></div>
 
@@ -35,6 +44,8 @@
       center: [-118.498, 34.014], // starting location [longitude, latitude]
       attributionControl: false
     });
+
+    const apiKey = 'YOUR_ACCESS_TOKEN';
 
     const arcgisBasemap = BasemapStyle.applyStyle(map, {
       style: 'arcgis/navigation',
