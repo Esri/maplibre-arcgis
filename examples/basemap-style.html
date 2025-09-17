@@ -1,3 +1,12 @@
+<!--
+
+To run this demo, you need to replace 'YOUR_ACCESS_TOKEN' with an access token from ArcGIS that has the correct privileges.
+
+To get started, sign up for a free ArcGIS Location Platform account or a free trial of ArcGIS Online and create developer credentials.
+
+https://developers.arcgis.com/documentation/security-and-authentication/get-started/
+
+-->
 <!DOCTYPE html>
 <html>
 
@@ -16,22 +25,22 @@
   <script src="../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
   <!-- Maplibre ArcGIS -->
   <script src="../dist/umd/maplibre-arcgis.min.js"></script>
-
 </head>
 
 <body>
   <div id="map"></div>
-  <script src="../debug/apikey.js"></script>
   <script>
 
-    // Also supports item IDs for custom basemap styles
-    // Try: '9d94a890b76a417cad8a748df4f97336'
     const map = new maplibregl.Map({
       container: "map", // the id of the div element
       zoom: 5, // starting zoom
       center: [138.2529, 36.2048], // starting location
     });
 
+    const apiKey = 'YOUR_ACCESS_TOKEN';
+
+    // Also supports item IDs for custom basemap styles
+    // Try: '9d94a890b76a417cad8a748df4f97336'
     const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
       style: 'arcgis/imagery',
       token: apiKey
