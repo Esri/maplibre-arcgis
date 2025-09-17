@@ -66,8 +66,17 @@ export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
  * Events emitted by the BasemapStyle class.
  */
 export type BasemapStyleEventMap = {
+  /**
+   * Fired when the basemap style is loaded.
+   */
   BasemapStyleLoad: BasemapStyle;
+  /**
+   * Fired when the basemap attribution is loaded.
+   */
   BasemapAttributionLoad: AttributionControl;
+  /**
+   * Fired when the basemap style errors.
+   */
   BasemapStyleError: Error;
 };
 
@@ -236,7 +245,7 @@ export class BasemapStyle {
    *   }
    * });
    *
-   * basemapStyle.applyToMap(map);
+   * basemapStyle.applyTo(map);
    *
    * basemapStyle.on('BasemapStyleLoad', (e) => {
    *   console.log('Basemap style loaded', e);
