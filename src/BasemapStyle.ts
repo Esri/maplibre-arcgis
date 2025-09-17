@@ -190,7 +190,7 @@ export interface IBasemapPreferences {
  *   center: [-118.805,34.027], // starting position [lng, lat]
  *   zoom: 13 // starting zoom
  * });
- *
+ * ```
  * // create a BasemapStyle
  * const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
  *    style: 'arcgis/imagery',
