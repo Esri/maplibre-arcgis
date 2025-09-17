@@ -96,10 +96,6 @@ export interface IBasemapStyleOptions {
    */
   token?: string;
   /**
-   * Accepts an ArcGIS REST JS authentication manager for authentication.
-   */
-  authentication?: RestJSAuthenticationManager;
-  /**
    * Accepts basemap sessions for authentication. The style will reload automatically on session token refresh.
    */
   session?: BasemapSession | Promise<BasemapSession>;

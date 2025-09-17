@@ -43,10 +43,6 @@ export interface IHostedLayerOptions {
    */
   token?: string;
   /**
-   * Authentication as a REST JS object or access token string.
-   */
-  authentication?: RestJSAuthenticationManager | string;
-  /**
    * The URL of the ArcGIS portal.
    */
   portalUrl?: string;
