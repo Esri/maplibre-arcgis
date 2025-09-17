@@ -58,7 +58,6 @@ const umdConfig = {
 const esmConfig = {
   ...baseConfig,
   format: 'esm',
-  //plugins: [globalExternals(globals)],
 }
 
 if (LIVE_RELOAD) {
