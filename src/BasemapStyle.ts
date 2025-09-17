@@ -196,6 +196,7 @@ export interface IBasemapPreferences {
  *    style: 'arcgis/imagery',
  *    token: apiKey
  *  });
+ * ```
  */
 export class BasemapStyle {
   /**
