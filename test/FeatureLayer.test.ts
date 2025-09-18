@@ -4,9 +4,14 @@ import { customTest as test } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { FeatureLayer } from '../src/FeatureLayer';
 
+// Santa Monica Trails data
 const layerUrlTrails = 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0';
-const serviceUrlTrails = 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer'
+const serviceUrlTrails = 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer';
+const itemIdTrails = '69e12682738e467eb509d8b54dc73cbd';
+
+// Other item IDs
 const itemIdBeetles = '44299709cce447ea99014ff1e3bf8505'
+const itemIdParcels = 'b5d71d19fd4b43fbb88abf07773ec0c7';
 
 describe('Feature layer unit tests', () => {
   beforeAll(() => {
