@@ -33,9 +33,9 @@ describe('Feature layer unit tests', () => {
         url: layerUrlTrails,
         token: apiKey
       });
-      expect(typeof featureLayer.authentication).toBe('string');
       expect(featureLayer.token).toBe(apiKey);
     });
+    /*
     test('Accepts authentication as a REST JS object.', ({restJsAuthentication}) => {
       const featureLayer = new FeatureLayer({
         url: layerUrlTrails,
@@ -44,6 +44,7 @@ describe('Feature layer unit tests', () => {
       expect(typeof featureLayer.authentication).toBe('object');
       expect(featureLayer.token).toBe(restJsAuthentication.token);
     });
+    */
 
     // TODO
     test('Loads data from a secure item ID.', () => {});

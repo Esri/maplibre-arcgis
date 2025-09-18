@@ -87,7 +87,6 @@ export const customTest = testBase.extend({
 
       // Navigate to the mock page
       await page.goto(`file://${process.cwd()}/test/mock/pages/${mockPageFile}`, {});
-
       // Return the page object to the test
       return page;
     }

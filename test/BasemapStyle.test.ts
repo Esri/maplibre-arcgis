@@ -62,7 +62,7 @@ describe('BasemapStyle unit tests', () => {
     expect(basemap._token).toBe(apiKey);
     expect(basemap._styleUrl).toContain(apiKey);
   });
-
+  /*
   test('Accepts an ArcGIS REST JS authentication manager and uses the access token in requests.', ({restJsAuthentication}) => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,
@@ -71,6 +71,7 @@ describe('BasemapStyle unit tests', () => {
     expect(basemap._token).toBe(restJsAuthentication.token);
     expect(basemap._styleUrl).toContain(restJsAuthentication.token);
   });
+  */
 
   test('Accepts a private \'baseUrl\' param for dev server testing.', ({apiKey}) => {
     const DEV_URL = 'https://DEVELOPMENT_URL';

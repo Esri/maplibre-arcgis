@@ -20,7 +20,7 @@ describe('Works on a real page', () => {
     // wait for the map load event to fire and evaluate the style object
     const { style } = await page.evaluate(async() => {
       return await new Promise(resolve => {
-        window.map.once("load", ()=> {
+        window.map.on("load", ()=> {
           resolve({
             style: window.map.getStyle()
           })
@@ -39,7 +39,7 @@ describe('Works on a real page', () => {
       });
     });
 
-    // we can also take screeshots if we want
+    // we can also take screenshots if we want
     // await page.screenshot({
     //   path: 'hn.png',
     //   fullPage: true
