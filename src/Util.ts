@@ -1,4 +1,4 @@
-import type { ApiKeyManager, ApplicationCredentialsManager, ArcGISIdentityManager } from '@esri/arcgis-rest-request';
+import { ApiKeyManager, ArcGISIdentityManager, type ApplicationCredentialsManager } from '@esri/arcgis-rest-request';
 
 /**
  * Custom type to represent authentication managers used in ArcGIS REST JS.
@@ -15,7 +15,6 @@ export const checkItemId = (itemId: string): 'ItemId' | null => {
 };
 export const checkServiceUrlType = (serviceUrl: string): SupportedServiceType | null => {
   const httpRegex = /^https?:\/\//;
-
   // const layerEndpointTest = "(?<layers>[0-9]*\/?)?$";
 
   if (httpRegex.test(serviceUrl)) {
@@ -92,6 +91,34 @@ export const warn = (...args: any[]) => {
   if (console && console.warn) {
     console.warn.apply(console, args);
   }
+};
+
+export const checkAccessTokenType = (token: string): 'user' | 'app' | 'basemapSession' => {
+  if (!token || token.length === 0) return null;
+  // API key case -- also catches app tokens w/ personal privileges
+  const apiKeyPrefixes = ['AAPT', 'AAPK', 'AATK'];
+  for (const prefix of apiKeyPrefixes) if (token.startsWith(prefix)) return 'app';
+
+  // Session token for basemaps
+  const sessionTokenPrefixes = ['AAST'];
+  for (const prefix of sessionTokenPrefixes) if (token.startsWith(prefix)) return 'basemapSession';
+
+  // OAuth 2.0 style token
+  if (token.length == 256) return 'user';
+  else if (token.length === 128) return 'app'; // treated identically to API key
+
+  // Token type not recognized; default to 'app'
+  return 'app';
+};
+export const wrapAccessToken = async (token: string): Promise<ApiKeyManager | ArcGISIdentityManager> => {
+  if (!token || token.length === 0) return null;
+  const tokenType = checkAccessTokenType(token);
+  // User tokens
+  if (tokenType === 'user') return await ArcGISIdentityManager.fromToken({ token: token });
+  // Session tokens
+  else if (tokenType === 'basemapSession') return ApiKeyManager.fromKey(token);
+  // API keys, app tokens
+  else return ApiKeyManager.fromKey(token);
 };
 /*
  * Copyright 2025 Esri
