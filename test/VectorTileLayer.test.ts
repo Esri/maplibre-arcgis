@@ -4,8 +4,14 @@ import { customTest as test } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { VectorTileLayer } from '../src/VectorTileLayer';
 
+// USA population layer
 const itemIdUSA = '31eb749371c441e0b3ac5db4f60ecba9';
+const serviceItemIdUSA = '7945dd44c5cd41329984d7ce6e641976';
+const serviceUrlUSA = 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/USA_States_Population_Vector_Tiles/VectorTileServer';
+
+// Santa Monica Mountains Parcels
 const serviceUrlParcels = 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_Mountains_Parcels_VTL/VectorTileServer';
+const serviceItemId = 'f0298e881b5b4743bbdf2c7d378acc84';
 
 describe('Vector tile layer tests', () => {
   beforeAll(() => {

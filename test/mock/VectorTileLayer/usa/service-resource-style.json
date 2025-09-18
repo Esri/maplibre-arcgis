@@ -1,0 +1,91 @@
+{
+  "version": 8,
+  "sprite": "../sprites/sprite",
+  "glyphs": "../fonts/{fontstack}/{range}.pbf",
+  "sources": {
+    "USA_States_Population_Vector_Tiles": {
+      "type": "vector",
+      "bounds": [-179.149, 18.9107, -66.9496, 71.3652],
+      "minzoom": 0,
+      "maxzoom": 23,
+      "scheme": "xyz",
+      "url": "../../"
+    }
+  },
+  "layers": [
+    {
+      "id": "USA_States_Population_polygons/39,538,223/1",
+      "type": "fill",
+      "source": "USA_States_Population_Vector_Tiles",
+      "source-layer": "USA_States_Population_polygons",
+      "filter": [
+        "==",
+        "_symbol",
+        2],
+      "layout": {
+
+      },
+      "paint": {
+        "fill-color": {
+          "property": "POPULATION",
+          "default": "#AAAAAA",
+          "stops": [
+            [576851, "#FFFCD4"
+            ],
+            [3909400, "#E7AE9D"
+            ],
+            [7241940, "#CE6065"
+            ],
+            [10574500, "#88314F"
+            ],
+            [13907000, "#420239"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "USA_States_Population_polygons/39,538,223/0",
+      "type": "line",
+      "source": "USA_States_Population_Vector_Tiles",
+      "source-layer": "USA_States_Population_polygons",
+      "filter": [
+        "==",
+        "_symbol",
+        2],
+      "layout": {
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(153,153,153,0.25)",
+        "line-width": {
+          "property": "size",
+          "default": 1.05067,
+          "stops": [
+            [0, 0],
+            [1, 1.33333]
+          ]
+        }
+      }
+    },
+    {
+      "id": "USA_States_Population_polygons/label/Label Class 1",
+      "type": "symbol",
+      "source": "USA_States_Population_Vector_Tiles",
+      "source-layer": "USA_States_Population_polygons/label",
+      "layout": {
+        "text-font": [
+          "Arial Regular"
+        ],
+        "text-size": 13.3333,
+        "text-field": "{_name}",
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "#262626",
+        "text-halo-color": "#F7F7F7",
+        "text-halo-width": 1.33333
+      }
+    }
+  ]
+}
