@@ -132,9 +132,9 @@ export class FeatureLayer extends HostedLayer {
   }
 
   private async _fetchAllFeatures(layerUrl: string, layerInfo: ILayerDefinition): Promise<GeoJSON.GeoJSON> {
-    if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('Feature service does not support GeoJSON format.');
-    if (!layerInfo.capabilities.includes('Query')) throw new Error('Feature service does not support queries.');
-    if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('Feature service does not support pagination in queries');
+    if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
+    if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support queries.');
+    if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
 
     let layerData: GeoJSON.GeoJSON;
     if (layerInfo.supportsExceedsLimitStatistics) {
@@ -146,7 +146,7 @@ export class FeatureLayer extends HostedLayer {
         returnCountOnly: true,
       })) as IQueryResponse;
       if (featureCount.count > 2000) {
-        warn('You are loading a large feature layer ( >2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.');
+        warn('You are loading a large feature layer (>2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.');
       }
 
       // Get all features
@@ -161,7 +161,7 @@ export class FeatureLayer extends HostedLayer {
     }
     else {
       throw new Error(
-        'Feature layers hosted in old versions of ArcGIS Enterprise are not currently supported in this plugin. Support will be added in a future release: https://github.com/Esri/maplibre-arcgis/issues/5'
+        'Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5'
       );
     }
     if (!layerData) throw new Error('Unable to load data.');
