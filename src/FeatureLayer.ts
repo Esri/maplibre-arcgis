@@ -202,14 +202,13 @@ export class FeatureLayer extends HostedLayer {
     this._layers = [];
 
     // Wrap access token for use with REST JS
-    this._authentication = await wrapAccessToken(this.token);
+    this._authentication = await wrapAccessToken(this.token, this._itemInfo?.portalUrl);
 
     let dataSource = this._inputType;
     switch (dataSource) {
       case 'ItemId': {
         const itemResponse = await getItem(this._itemInfo.itemId, {
           authentication: this._authentication,
-          portal: this._itemInfo.portalUrl,
         });
 
         if (!itemResponse.url) throw new Error('The provided ArcGIS portal item has no associated service URL.');
