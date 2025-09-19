@@ -6,7 +6,7 @@ import type BasemapSession from './BasemapSession';
 import { checkItemId, wrapAccessToken, type RestJSAuthenticationManager } from './Util';
 
 /**
- * Structure of a BasemapStyle object. Go to {@link https://developers.arcgis.com/rest/basemap-styles/styles-self-get/ } to learn more.
+ * Structure of a BasemapStyle object. Go to the [ArcGIS REST API](https://developers.arcgis.com/rest/basemap-styles/styles-self-get/) to learn more.
  */
 export type BasemapSelfResponse = {
   customStylesUrl: string;
@@ -37,7 +37,7 @@ export type CodeNamePair = {
   name: string;
 };
 export type PlacesOptions = 'all' | 'attributed' | 'none';
-export type StyleFamily = 'arcgis' | 'open' | 'osm';
+export type StyleFamily = 'arcgis' | 'open';
 export type StyleEnum = `${StyleFamily}/${string}`;
 
 export type BasemapStyleObject = {
@@ -66,8 +66,17 @@ export type MaplibreStyleOptions = StyleOptions & StyleSwapOptions;
  * Events emitted by the BasemapStyle class.
  */
 export type BasemapStyleEventMap = {
+  /**
+   * Fired when the basemap style is loaded.
+   */
   BasemapStyleLoad: BasemapStyle;
+  /**
+   * Fired when the basemap attribution is loaded.
+   */
   BasemapAttributionLoad: AttributionControl;
+  /**
+   * Fired when the basemap style errors.
+   */
   BasemapStyleError: Error;
 };
 
@@ -158,6 +167,33 @@ export interface IBasemapPreferences {
   places?: PlacesOptions;
 };
 
+/**
+ * The BasemapStyle class is used to load and apply ArcGIS basemap styles to a maplibre map.
+ *
+ * The `BasemapStyle` class provides:
+ * - Loading of basemap styles from the [ArcGIS Basemap Styles service](https://developers.arcgis.com/rest/basemap-styles/).
+ * - Support for ArcGIS access tokens and sessions for authentication.
+ * - Support for style preferences such as `language`, `places`, and `worldview`.
+ * - An attribution control that meets Esri's attribution requirements.
+ * - Events for style load, attribution load, and error handling.
+ *
+ * ```javascript
+ * import { Map } from 'maplibre-gl';
+ * import { BasemapStyle } from '@esri/maplibre-arcgis';
+ * // create a maplibre map
+ * const map = new Map({
+ *   container: 'map', // container id
+ *   center: [-118.805,34.027], // starting position [lng, lat]
+ *   zoom: 13 // starting zoom
+ * });
+ *
+ * // create a BasemapStyle
+ * const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
+ *    style: 'arcgis/imagery',
+ *    token: apiKey
+ *  });
+ * ```
+ */
 export class BasemapStyle {
   /**
    * The basemap style, formatted as MapLibre style specification JSON.
@@ -191,8 +227,37 @@ export class BasemapStyle {
   private readonly _emitter: Emitter<BasemapStyleEventMap> = mitt();
 
   /**
-   * Constructor for BasemapStyle.
+   * Creates an instance of BasemapStyle. Creating basemap styles using the constructor directly is discouraged. The recommended method is to use the static {@link BasemapStyle.applyStyle} method.
+   *
+   * ```javascript
+   * import { BasemapStyle } from '@esri/maplibre-arcgis';
+   *
+   * const basemapStyle = new BasemapStyle({
+   *   style: 'arcgis/streets',
+   *   token  : 'YOUR_ACCESS_TOKEN',
+   *   preferences: {
+   *     language: 'en',
+   *     worldview: 'unitedStatesOfAmerica',
+   *     places: 'attributed'
+   *   }
+   * });
+   *
+   * basemapStyle.applyTo(map);
+   *
+   * basemapStyle.on('BasemapStyleLoad', (e) => {
+   *   console.log('Basemap style loaded', e);
+   * });
+   *
+   * basemapStyle.on('BasemapAttributionLoad', (e) => {
+   *   console.log('Attribution control loaded', e);
+   * });
+   *
+   * basemapStyle.on('BasemapStyleError', (e) => {
+   *   console.error('Error loading basemap style', e);
+   * });
+   * ```
    * @param options - Configuration options for the basemap style.
+   *
    */
   constructor(options: IBasemapStyleOptions) {
     if (!options || !options.style) throw new Error('BasemapStyle must be created with a style name, such as \'arcgis/imagery\' or \'open/streets\'.');

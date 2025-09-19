@@ -44,7 +44,6 @@ export class AttributionControl extends maplibregl.AttributionControl {
 
   /**
    * Constructor for AttributionControl.
-   * @param options - Options for the attribution control.
    * ```javascript
    * const attributionControl = new AttributionControl({
    *   customAttribution: ['Custom Attribution 1', 'Custom Attribution 2'],
@@ -52,6 +51,7 @@ export class AttributionControl extends maplibregl.AttributionControl {
    *   compact: true,
    * });
    * ```
+   * @param options - Options for the attribution control.
    */
   constructor(options: IAttributionControlOptions = {}) {
     // Incompatible options - 'closed' overrides 'compact'

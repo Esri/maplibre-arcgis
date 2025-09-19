@@ -36,6 +36,7 @@ export type SessionResponse = {
   startTime: Date;
   expires: Date;
 };
+
 /**
  * The object returned by the `BasemapSessionRefreshed` event.
  */
