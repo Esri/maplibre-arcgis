@@ -49,6 +49,10 @@ export const customTest = testBase.extend({
     });
     await use(map);
   },
+  esriAttributionString: async ({}, use) => {
+    const esriAttributionString = 'Powered by \<a href=\"https:\/\/www.esri.com\/\"\>Esri\<\/a\>';
+    await use(esriAttributionString);
+  },
   // Unloaded basemap style
   basemap: async ({apiKey}, use) => {
     const basemap = new BasemapStyle({
