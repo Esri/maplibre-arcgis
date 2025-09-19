@@ -14,6 +14,11 @@ export let IS_MOCK = false;
 
 export function useMock() {
 
+  vi.mock('@esri/arcgis-rest-feature-service',{spy:true});
+  vi.mock('@esri/arcgis-rest-portal',{spy:true});
+  vi.mock('@esri/arcgis-rest-request',{spy:true});
+  vi.mock('@esri/arcgis-rest-basemap-sessions',{spy:true});
+
   vi.stubGlobal('ResizeObserver', class MockResizeObserver {
     observe = vi.fn();
   });
