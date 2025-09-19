@@ -123,12 +123,7 @@ export class FeatureLayer extends HostedLayer {
       };
     }
 
-    if (options?.query) {
-      if (this._inputType !== 'FeatureLayer')
-        throw new Error('Feature service queries are only supported with layer URLs, not item IDs. To use query parameters, call \'FeatureLayer.fromUrl\' with a service URL ending in \/0, \/1, etc.');
-
-      this.query = options.query;
-    }
+    if (options?.query) this.query = options.query;
   }
 
   private async _fetchAllFeatures(layerUrl: string, layerInfo: ILayerDefinition): Promise<GeoJSON.GeoJSON> {
@@ -242,6 +237,8 @@ export class FeatureLayer extends HostedLayer {
           authentication: this._authentication,
         });
         if (serviceInfo.copyrightText) this._serviceInfo.copyrightText = serviceInfo.copyrightText;
+
+        if (serviceInfo.layers.length > 1 && this.query) throw new Error('Unable to use `query` parameter: This feature service contains multiple feature layers.');
         // Add layers
         if (serviceInfo.layers.length > 10) {
           warn('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
