@@ -110,15 +110,20 @@ export const checkAccessTokenType = (token: string): 'user' | 'app' | 'basemapSe
   // Token type not recognized; default to 'app'
   return 'app';
 };
-export const wrapAccessToken = async (token: string): Promise<ApiKeyManager | ArcGISIdentityManager> => {
+export const wrapAccessToken = async (token: string, portalUrl?: string): Promise<ApiKeyManager | ArcGISIdentityManager> => {
   if (!token || token.length === 0) return null;
   const tokenType = checkAccessTokenType(token);
   // User tokens
-  if (tokenType === 'user') return await ArcGISIdentityManager.fromToken({ token: token });
-  // Session tokens
-  else if (tokenType === 'basemapSession') return ApiKeyManager.fromKey(token);
-  // API keys, app tokens
-  else return ApiKeyManager.fromKey(token);
+  if (tokenType === 'user') return await ArcGISIdentityManager.fromToken({
+    token: token,
+    portal: portalUrl ? portalUrl : 'https://www.arcgis.com/sharing/rest',
+  });
+  // API keys, app tokens, session tokens
+  else if (tokenType === 'app' || tokenType === 'basemapSession') return ApiKeyManager.fromKey({
+    key: token,
+    portal: portalUrl ? portalUrl : 'https://www.arcgis.com/sharing/rest',
+  });
+  else return null;
 };
 /*
  * Copyright 2025 Esri

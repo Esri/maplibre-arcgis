@@ -89,7 +89,7 @@ export class VectorTileLayer extends HostedLayer {
   async _loadStyle(): Promise<StyleSpecification> {
     let styleInfo: StyleSpecification | null = null;
 
-    this._authentication = await wrapAccessToken(this.token);
+    this._authentication = await wrapAccessToken(this.token, this._itemInfo?.portalUrl);
 
     let styleSource = this._inputType;
     switch (styleSource) {
@@ -119,7 +119,6 @@ export class VectorTileLayer extends HostedLayer {
   async _loadStyleFromItemId(): Promise<StyleSpecification | null> {
     const params = {
       authentication: this._authentication,
-      portal: this._itemInfo.portalUrl,
     };
     // Load style info
     let styleInfo: StyleSpecification | null = null;
@@ -131,20 +130,21 @@ export class VectorTileLayer extends HostedLayer {
         readAs: 'json',
       })) as StyleSpecification;
       styleInfo = rootStyle;
-      // Check for other style resources associated with the item
     }
     catch {
+      // No root style, check for other style resources associated with the item
       const itemResources = await getItemResources(this._itemInfo.itemId, {
         ...params,
       });
 
-      let styleFile: string | null = null;
+      let styleFile: string;
       if (itemResources.total > 0) {
-        itemResources.resources.forEach((entry) => {
+        for (const entry of itemResources.resources) {
           if (entry.resource.startsWith('styles')) {
             styleFile = entry.resource;
+            break;
           }
-        });
+        }
       }
       if (styleFile) {
         const customStyle = (await getItemResource(this._itemInfo.itemId, {
@@ -192,7 +192,6 @@ export class VectorTileLayer extends HostedLayer {
   async _loadItemInfo(): Promise<IItemInfo> {
     const itemResponse = await getItem(this._itemInfo.itemId, {
       authentication: this._authentication,
-      portal: this._itemInfo.portalUrl,
     });
 
     if (!itemResponse.url) throw new Error('Provided ArcGIS item ID has no associated data service.');
@@ -200,7 +199,6 @@ export class VectorTileLayer extends HostedLayer {
     if (!this._serviceInfoLoaded) {
       this._serviceInfo = {
         serviceUrl: cleanUrl(itemResponse.url),
-        // serviceItemPortalUrl: this._itemInfo.portalUrl
       };
     }
     this._itemInfo = {

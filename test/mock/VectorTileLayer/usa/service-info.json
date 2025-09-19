@@ -1,0 +1,197 @@
+{
+  "currentVersion" : 11.5,
+  "name" : "USA_States_Population_Vector_Tiles",
+  "capabilities" : "TilesOnly,Tilemap",
+  "type" : "indexedVector",
+  "serviceItemId" : "7945dd44c5cd41329984d7ce6e641976",
+  "publishJobId" : "52fd964c-adf0-4bcd-a850-260793ba4eb3",
+  "jobServiceId" : "b1aab1be-0a06-4333-a2e2-f0c488518c5f",
+  "ownerUserName" : "",
+  "serviceDescription" : "",
+  "description" : "",
+  "isEnabled" : true,
+  "id" : 3640,
+  "sourceServiceName" : "USA_States_Population",
+  "sourceServiceType" : "FeatureServer",
+  "tileContainerName" : "4a08bd14bf9749d8ab3cfb6fbce0ba17",
+  "creationDate" : 1745669472700,
+  "datasource" : "db",
+  "exportTilesAllowed" : false,
+  "maxExportTilesCount" : 100000,
+  "tileMap" : "tilemap",
+  "defaultStyles" : "resources/styles",
+  "copyrightText" : "Copyright text from service info.",
+  "tiles" : [
+    "tile/{z}/{y}/{x}.pbf"
+  ],
+  "exportTilesAllowed" : false,
+  "initialExtent" : {
+    "xmin" : -19942765.326050505,
+    "ymin" : 2144424.2793045617,
+    "xmax" : -7452796.2626863541,
+    "ymax" : 11528300.567757303,
+    "spatialReference" : {
+      "wkid" : 102100,
+      "latestWkid" : 3857
+    }
+  },
+  "fullExtent" : {
+    "xmin" : -19942765.326050505,
+    "ymin" : 2144424.2793045617,
+    "xmax" : -7452796.2626863541,
+    "ymax" : 11528300.567757303,
+    "spatialReference" : {
+      "wkid" : 102100,
+      "latestWkid" : 3857
+    }
+  },
+  "minScale" : 295828763.795777,
+  "maxScale" : 35.265536760789715,
+  "maxZoom" : 23,
+  "tileInfo" : {
+    "rows" : 512,
+    "cols" : 512,
+    "dpi" : 96,
+    "preciseDpi" : 96,
+    "format" : "indexedVector",
+    "origin" : {
+      "x" : -20037508.342787,
+      "y" : 20037508.342787
+    },
+    "spatialReference" : {
+      "wkid" : 102100,
+      "latestWkid" : 3857
+    },
+    "lods" : [{
+        "level" : 0,
+        "resolution" : 78271.516963999937,
+        "scale" : 295828763.795777
+      },
+      {
+        "level" : 1,
+        "resolution" : 39135.758482000092,
+        "scale" : 147914381.897889
+      },
+      {
+        "level" : 2,
+        "resolution" : 19567.879240999919,
+        "scale" : 73957190.948944
+      },
+      {
+        "level" : 3,
+        "resolution" : 9783.93962049996,
+        "scale" : 36978595.474472
+      },
+      {
+        "level" : 4,
+        "resolution" : 4891.96981024998,
+        "scale" : 18489297.737236
+      },
+      {
+        "level" : 5,
+        "resolution" : 2445.98490512499,
+        "scale" : 9244648.868618
+      },
+      {
+        "level" : 6,
+        "resolution" : 1222.9924525624949,
+        "scale" : 4622324.434309
+      },
+      {
+        "level" : 7,
+        "resolution" : 611.49622628137968,
+        "scale" : 2311162.217155
+      },
+      {
+        "level" : 8,
+        "resolution" : 305.74811314055756,
+        "scale" : 1155581.108577
+      },
+      {
+        "level" : 9,
+        "resolution" : 152.87405657041106,
+        "scale" : 577790.554289
+      },
+      {
+        "level" : 10,
+        "resolution" : 76.437028285073239,
+        "scale" : 288895.277144
+      },
+      {
+        "level" : 11,
+        "resolution" : 38.21851414253662,
+        "scale" : 144447.638572
+      },
+      {
+        "level" : 12,
+        "resolution" : 19.10925707126831,
+        "scale" : 72223.819286
+      },
+      {
+        "level" : 13,
+        "resolution" : 9.5546285356341549,
+        "scale" : 36111.909643
+      },
+      {
+        "level" : 14,
+        "resolution" : 4.77731426794937,
+        "scale" : 18055.954822
+      },
+      {
+        "level" : 15,
+        "resolution" : 2.3886571339746849,
+        "scale" : 9027.977411
+      },
+      {
+        "level" : 16,
+        "resolution" : 1.1943285668550503,
+        "scale" : 4513.988705
+      },
+      {
+        "level" : 17,
+        "resolution" : 0.59716428355981721,
+        "scale" : 2256.994353
+      },
+      {
+        "level" : 18,
+        "resolution" : 0.29858214164761665,
+        "scale" : 1128.497176
+      },
+      {
+        "level" : 19,
+        "resolution" : 0.14929107082380833,
+        "scale" : 564.248588
+      },
+      {
+        "level" : 20,
+        "resolution" : 0.074645535411904163,
+        "scale" : 282.124294
+      },
+      {
+        "level" : 21,
+        "resolution" : 0.037322767705952081,
+        "scale" : 141.062147
+      },
+      {
+        "level" : 22,
+        "resolution" : 0.018661383852976041,
+        "scale" : 70.5310735
+      },
+      {
+        "level" : 23,
+        "resolution" : 0.0093306919293428044,
+        "scale" : 35.265536760789715
+      }
+    ]
+  },
+  "resourceInfo" : {
+    "styleVersion" : 8,
+    "tileCompression" : "gzip",
+    "cacheInfo" : {
+      "storageInfo" : {
+        "packetSize" : 128,
+        "storageFormat" : "compactV2"
+      }
+    }
+  }
+}

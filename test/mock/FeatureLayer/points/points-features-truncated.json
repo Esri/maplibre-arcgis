@@ -1,0 +1,33 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-118.75152666, 34.11305718]
+      },
+      "properties": {
+        "OBJECTID": 7769,
+        "TRL_NAME": "Medea Creek Trail",
+        "PARK_NAME": "National Parks Service",
+        "TRL_ID": 20082,
+        "SEG_ID": 200820000,
+        "FEATURE": "TAPO",
+        "FEAT_CMNT": "Auto Generated and Verified",
+        "ELEV_FT": 831,
+        "CITY_JUR": "Unincorporated Los Angeles County",
+        "ZIP_CODE": 91301,
+        "SUP_DIST": "3rd District",
+        "X_STREET": "28825 Lake Vista Dr",
+        "PARKING": "SA",
+        "PHOTO": null,
+        "LAT": 34.11305718,
+        "LON": -118.75152666,
+        "FID": 1,
+        "GlobalID": "acb84cf6-3e6e-45ff-940d-602ef507d78a"
+      }
+    }
+  ]
+}
