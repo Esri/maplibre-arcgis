@@ -1,0 +1,26 @@
+{
+        "total": 3,
+        "start": 1,
+        "num": 3,
+        "nextStart": -1,
+        "resources": [
+          {
+            "resource": "styles/custom-style.json",
+            "created": 1748033360000,
+            "size": 2354,
+            "access": "inherit"
+          },
+          {
+            "resource": "info/root.json",
+            "created": 1745672236000,
+            "size": 46296,
+            "access": "inherit"
+          },
+          {
+            "resource": "sprites/sprite-1745672235233.json",
+            "created": 1745672235000,
+            "size": 2,
+            "access": "inherit"
+          }
+        ]
+      }

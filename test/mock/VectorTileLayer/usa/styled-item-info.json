@@ -17,7 +17,7 @@
     "Vector Tile Service",
     "Vector Tile Style Editor"
   ],
-  "description": null,
+  "description": "Item description.",
   "tags": [],
   "snippet": null,
   "thumbnail": "thumbnail/ago_downloaded.png",
@@ -34,7 +34,7 @@
   ],
   "categories": [],
   "spatialReference": null,
-  "accessInformation": null,
+  "accessInformation": "Access information from item.",
   "classification": null,
   "licenseInfo": null,
   "culture": "en-us",

@@ -20,6 +20,7 @@
   "maxExportTilesCount" : 100000,
   "tileMap" : "tilemap",
   "defaultStyles" : "resources/styles",
+  "copyrightText" : "Copyright text from service info.",
   "tiles" : [
     "tile/{z}/{y}/{x}.pbf"
   ],

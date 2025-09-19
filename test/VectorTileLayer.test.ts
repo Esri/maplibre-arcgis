@@ -1,8 +1,37 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { customTest as test } from './BaseTest'
+import { customTest } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { VectorTileLayer } from '../src/VectorTileLayer';
+
+import customResourcesRaw from './mock/VectorTileLayer/custom-style-resource.json'
+
+import usaServiceInfoRaw from './mock/VectorTileLayer/usa/service-info.json';
+import usaServiceItemInfoRaw from './mock/VectorTileLayer/usa/service-item-info.json';
+import usaServiceStyleRaw from './mock/VectorTileLayer/usa/service-resource-style.json';
+
+import usaItemInfoRaw from './mock/VectorTileLayer/usa/styled-item-info.json';
+import usaItemResourcesRaw from './mock/VectorTileLayer/usa/styled-item-resources.json';
+import usaItemStyleRaw from './mock/VectorTileLayer/usa/styled-item-resource-style.json';
+import { ApiKeyManager } from '@esri/arcgis-rest-request';
+
+const customResources = JSON.stringify(customResourcesRaw);
+
+const usaServiceInfo = JSON.stringify(usaServiceInfoRaw);
+const usaServiceStyle = JSON.stringify(usaServiceStyleRaw);
+const usaServiceItemInfo = JSON.stringify(usaServiceItemInfoRaw);
+
+const usaItemInfo = JSON.stringify(usaItemInfoRaw);
+const usaItemStyle = JSON.stringify(usaItemStyleRaw);
+const usaItemResources = JSON.stringify(usaItemResourcesRaw);
+
+const emptyResources = JSON.stringify({
+  "total": 0,
+  "start": 1,
+  "num": 0,
+  "nextStart": -1,
+  "resources": []
+});
 
 // USA population layer
 const itemIdUSA = '31eb749371c441e0b3ac5db4f60ecba9';
@@ -12,6 +41,18 @@ const serviceUrlUSA = 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/a
 // Santa Monica Mountains Parcels
 const serviceUrlParcels = 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_Mountains_Parcels_VTL/VectorTileServer';
 const serviceItemId = 'f0298e881b5b4743bbdf2c7d378acc84';
+
+const test = customTest.extend({
+  statesLayer: async ({}, use) => {
+    const statesLayer = new VectorTileLayer({
+      url: serviceUrlUSA
+    });
+    fetchMock.once(usaServiceInfo).once(usaServiceStyle);
+    await statesLayer.initialize();
+
+    await use(statesLayer);
+  }
+})
 
 describe('Vector tile layer tests', () => {
   beforeAll(() => {
@@ -41,21 +82,45 @@ describe('Vector tile layer tests', () => {
       });
       expect(vtl.token).toBe(apiKey);
     });
-    /*
-    test('Accepts authentication as a REST JS object.', ({restJsAuthentication}) => {
-      const vtl = new VectorTileLayer({
-        url: serviceUrlParcels,
-        authentication: restJsAuthentication
-      });
-      expect(typeof vtl.authentication).toBe('object');
-      expect(vtl.token).toBe(restJsAuthentication.token);
-    });
-    */
 
-    // TODO
-    test('Loads a style from a secure item ID.',()=>{});
-    test('Loads a style from a secure service URL', ()=>{});
-    test('Adds authentication to the style tile URLs, sprites, and glyphs.', () => {});
+    test('Passes authentication to all REST JS requests.', async({apiKey}) => {
+      const { getItem, getItemResource, getItemResources } = await import('@esri/arcgis-rest-portal');
+      const { request } = await import('@esri/arcgis-rest-request');
+
+      const authLayer = new VectorTileLayer({
+        itemId: itemIdUSA,
+        token: apiKey
+      });
+
+      fetchMock.once(usaServiceItemInfo).once({}).once(emptyResources).once(usaServiceInfo).once(usaServiceStyle);
+      await authLayer.initialize();
+
+      const apiKeyManager = ApiKeyManager.fromKey(apiKey);
+      expect(getItem).toHaveBeenCalledWith(itemIdUSA, expect.objectContaining({authentication:apiKeyManager}));
+      expect(getItemResource).toHaveBeenCalledWith(itemIdUSA, expect.objectContaining({authentication:apiKeyManager}));
+      expect(getItemResources).toHaveBeenCalledWith(itemIdUSA, expect.objectContaining({authentication:apiKeyManager}));
+
+      expect(request).toHaveBeenNthCalledWith(2,expect.stringContaining(serviceUrlUSA),expect.objectContaining({authentication:apiKeyManager}));
+    });
+
+
+    test('Adds authentication to the style tile URLs, sprites, and glyphs.', async ({apiKey}) => {
+      const authLayer = new VectorTileLayer({
+        url: serviceUrlUSA,
+        token: apiKey
+      });
+
+      fetchMock.once(usaServiceInfo).once(usaServiceStyle);
+      await authLayer.initialize();
+
+      const tokenQueryParam = `token=${apiKey}`;
+      expect(authLayer.style.sprite).toMatch(tokenQueryParam);
+      expect(authLayer.style.glyphs).toMatch(tokenQueryParam);
+
+      const usaSources = authLayer.style.sources['USA_States_Population_Vector_Tiles']
+      expect(usaSources.url).toMatch(tokenQueryParam);
+      usaSources.tiles.forEach(tile => {expect(tile).toMatch(tokenQueryParam)});
+    });
   });
 
   describe('Loads data from a service URL', () => {
@@ -83,10 +148,22 @@ describe('Vector tile layer tests', () => {
       }).toThrowError('Argument `url` is not a valid vector tile service URL.');
     });
 
-    // TODO
-    test('Fetches the style from a service URL\'s default resource.', () => {});
-    test('Fetches a style with a custom resource name.', () => {});
-    test('Fetches service metadata, including the service name and attribution.', () => {});
+    test('Fetches the style from the service URL.', async () => {
+      const layer = new VectorTileLayer({
+        url: serviceUrlUSA
+      });
+
+      fetchMock.once(usaServiceInfo).once(usaServiceStyle);
+      await layer.initialize();
+
+      expect(layer.style.layers).toEqual(usaServiceStyleRaw.layers);
+      expect(Object.keys(layer.style.sources)).toEqual(Object.keys(usaServiceStyleRaw.sources));
+    });
+    test('Fetches service info including the style location, tile format, and attribution.', ({statesLayer}) => {
+      expect(statesLayer._serviceInfo.copyrightText).toBe('Copyright text from service info.');
+      expect(statesLayer._serviceInfo.tiles).toEqual(["tile/{z}/{y}/{x}.pbf"]);
+      expect(statesLayer._serviceInfo.styleEndpoint).toBe("resources/styles/");
+    });
   });
 
   describe('Loads styles from an item ID', () => {
@@ -128,18 +205,59 @@ describe('Vector tile layer tests', () => {
       expect(vtl._serviceInfo).toBeUndefined();
     });
 
-    // TODO
-    test('Fetches the style of an item ID from the item resources.', () => {});
-    test('Prefers the correct style when multiple style resources are present.', () => {});
-    test('Falls back to the style of the service URL if no style resource is found on the item.', () => {});
-    test('Prefers the style of the item ID over the style of the service URL', () => {});
+    test('Fetches the style of an item ID from the item resources.', async () => {
+      const layer = new VectorTileLayer({
+        itemId: itemIdUSA
+      });
 
-    test('Fetches item metadata, including the layer name and attribution.', () => {});
+      fetchMock.once(usaItemInfo).once(usaItemStyle);
+      await layer.initialize();
+
+      expect(layer.style.layers).toEqual(usaItemStyleRaw.layers);
+      expect(Object.keys(layer.style.sources)).toEqual(Object.keys(usaItemStyleRaw.sources));
+    });
+    test('Loads style resources saved to the item that have a custom name.', async () => {
+      const layer = new VectorTileLayer({
+        itemId: itemIdUSA
+      });
+
+      fetchMock.once(usaItemInfo).once({}).once(customResources).once(usaItemStyle);
+      await layer.initialize();
+
+      expect(layer.style.layers).toEqual(usaItemStyleRaw.layers);
+      expect(Object.keys(layer.style.sources)).toEqual(Object.keys(usaItemStyleRaw.sources));
+    });
+
+    test('Falls back to the style of the service URL if no style resource is found on the item.', async () => {
+      const layer = new VectorTileLayer({
+        itemId: itemIdUSA
+      });
+
+      fetchMock.once(usaServiceItemInfo).once({}).once(emptyResources).once(usaServiceInfo).once(usaServiceStyle);
+      await layer.initialize();
+
+      expect(layer.style.layers).toEqual(usaServiceStyleRaw.layers);
+      expect(Object.keys(layer.style.sources)).toEqual(Object.keys(usaServiceStyleRaw.sources));
+    });
+
+
+    test('Fetches item metadata, including the layer name and attribution.', async () => {
+      const layer = new VectorTileLayer({
+        itemId: itemIdUSA
+      });
+      fetchMock.once(usaItemInfo).once(usaItemStyle);
+      await layer.initialize();
+
+      expect(layer._itemInfo.accessInformation).toBe("Access information from item.");
+      expect(layer._itemInfo.title).toBe("USA States Population Vector Tiles VTSE");
+      expect(layer._itemInfo.description).toBe("Item description.");
+    });
   });
 
-  // TODO
   describe('Formats a style properly for use with MapLibre.', () => {
-    test('Formats the source URL.', () => {});
+    test('Formats the source URL.', ({statesLayer}) => {
+
+    });
     test('Creates a \'tiles\' property with information from the service.', () => {});
     test('Formats the source sprites.', () => {});
     test('Formats the source glyphs.', () => {});
