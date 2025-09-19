@@ -230,7 +230,6 @@ describe('BasemapStyle unit tests', () => {
     });
 
     test('Applies the loaded style to the map with `applyTo`', async ({apiKey, loadedBasemap, map}) => {
-      fetchMock.mockResponse(JSON.stringify({}));
       loadedBasemap.applyTo(map);
 
       expect(loadedBasemap._map).toBe(map);

@@ -1,17 +1,51 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { customTest as test } from './BaseTest'
+import { customTest } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { FeatureLayer } from '../src/FeatureLayer';
+
+import trailsLayerInfoRaw from './mock/FeatureLayer/trails/trails-layer-info.json';
+import trailsServiceInfoRaw from './mock/FeatureLayer/trails/trails-service-info.json';
+import trailsItemInfoRaw from './mock/FeatureLayer/trails/trails-item-info.json';
+
+import trailsDataRaw from './mock/FeatureLayer/trails/trails-features.json';
+import trailsDataTruncatedRaw from './mock/FeatureLayer/trails/trails-features-truncated.json'
+import trailsQueryDataRaw from './mock/FeatureLayer/trails/trails-feature-query.json';
+import trailsDataCountOnlyRaw from './mock/FeatureLayer/trails/trails-feature-countOnly.json';
+
+import multiLayerServiceInfoRaw from './mock/FeatureLayer/multiLayer-service-info.json';
+
+const multiLayerServiceInfo = JSON.stringify(multiLayerServiceInfoRaw);
+const trailsLayerInfo = JSON.stringify(trailsLayerInfoRaw);
+const trailsServiceInfo = JSON.stringify(trailsServiceInfoRaw);
+const trailsItemInfo = JSON.stringify(trailsItemInfoRaw);
+const trailsData = JSON.stringify(trailsDataRaw);
+const trailsDataTruncated = JSON.stringify(trailsDataTruncatedRaw);
+const trailsQueryData = JSON.stringify(trailsQueryDataRaw);
+const trailsDataCountOnly = JSON.stringify(trailsDataCountOnlyRaw);
 
 // Santa Monica Trails data
 const layerUrlTrails = 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0';
 const serviceUrlTrails = 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer';
+const serviceUrlManyLayers = 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/ManyLayers/FeatureServer';
 const itemIdTrails = '69e12682738e467eb509d8b54dc73cbd';
 
 // Other item IDs
 const itemIdBeetles = '44299709cce447ea99014ff1e3bf8505'
 const itemIdParcels = 'b5d71d19fd4b43fbb88abf07773ec0c7';
+
+
+const test = customTest.extend({
+  trailsLayer: async ({}, use)=> {
+    const trailsLayer = new FeatureLayer({
+      url: layerUrlTrails
+    });
+    fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsData);
+    await trailsLayer.initialize();
+
+    await use(trailsLayer);
+  }
+})
 
 describe('Feature layer unit tests', () => {
   beforeAll(() => {
@@ -59,14 +93,15 @@ describe('Feature layer unit tests', () => {
 
   // TODO
   describe('Supports a `query` parameter.', () => {
-    test('Accepts a `query` parameter and uses the query when retrieving feature data.', () => {});
+    test('Accepts a `query` parameter and uses the query when retrieving feature data.', () => {
+    });
     test('Supports `query` with a service URL passed.', () => {});
     test('Supports `query` with an item ID passed.', () => {});
     test('Supports `query` with a feature service passed.', () => {});
   });
 
   describe('Loads feature data from a service URL', ()=>{
-    test('Accepts a service URL, cleans it, and recognizes if it\'s a single layer.', () => {
+    test('Accepts a feature URL, cleans it, and recognizes if it\'s a single layer or a service.', () => {
       // Service passed
       const featureLayer = new FeatureLayer({
         url: serviceUrlTrails
@@ -98,16 +133,132 @@ describe('Feature layer unit tests', () => {
       }).toThrowError('Argument `url` is not a valid feature service URL.');
     });
 
-    // TODO re-examine this behavior
-    test('Only loads the first layer if a feature service is passed, and logs a warning.', () => {
+    test('Loads data from a layer and stores it within a MapLibre source.', async () => {
+      const featureLayer = new FeatureLayer({
+        url: layerUrlTrails
+      });
+      fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsData);
+      await featureLayer.initialize();
 
+      // Source object exists
+      expect(Object.keys(featureLayer._sources).length).toBe(1);
+      // Source object contains data
+      expect(featureLayer._sources['Trails_0'].data).toMatchObject(trailsDataRaw);
     });
 
-    // TODO
-    test('Requests layer info including layer name, geometry type, copyright text, and more.', () => {});
-    test('Warns the user if they attempt to load layers with more than 2000 features.', () => {});
-    test('Throws if the layer does not support the `exceedsLimit` statistic.', () => {});
-    test('Queries all features in the layer using ArcGIS REST JS.', () => {});
+    test('If a feature service is passed, loads up to 10 layers from the service.', async () => {
+      // Service URL works as well
+      const featureService = new FeatureLayer({
+        url: serviceUrlTrails
+      });
+      fetchMock.once(trailsServiceInfo).once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsData);
+      await featureService.initialize();
+
+      expect(Object.keys(featureService._sources).length).toBe(1);
+      expect(featureService._sources['Trails_0'].data).toMatchObject(trailsDataRaw);
+    });
+    test('If the service contains more than 10 layers, only load the first 10 and log a warning', async () => {
+
+      const featureService = new FeatureLayer({
+        url: serviceUrlManyLayers
+      });
+      const warningSpy = vi.spyOn(console, 'warn');
+
+      // Mock all layer responses
+      fetchMock.once(multiLayerServiceInfo)
+      for (let i=0;i<10;i++) {
+        fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
+      }
+      await featureService.initialize();
+
+      expect(multiLayerServiceInfoRaw.layers.length).toBeGreaterThan(10);
+
+      // Warning and only load 10 layers
+      expect(warningSpy).toHaveBeenCalledWith('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
+      expect(Object.keys(featureService._sources).length).toBe(10);
+      expect(featureService._layers.length).toBe(10);
+    });
+
+    test('Sets the source name, layer name, and geometry type, based on layer info.', async ({trailsLayer}) => {
+      // Geometry type
+      expect(trailsLayer._layers[0].type).toBe('line');
+      // Name
+      expect(Object.keys(trailsLayer._sources)[0]).toBe('Trails_0');
+      expect(trailsLayer._layers[0].id).toBe('Trails_0-layer');
+    });
+    test('Warns the user if they attempt to load layers with more than 2000 features.', async () => {
+      const featureLayer = new FeatureLayer({
+        url: layerUrlTrails
+      });
+      const warningSpy = vi.spyOn(console,'warn');
+
+      fetchMock.once(trailsLayerInfo).once(JSON.stringify({
+        "count": 10000
+      })).once(trailsLayerInfo).once(trailsDataTruncated);
+
+      await featureLayer.initialize();
+      expect(warningSpy).toHaveBeenCalledWith('You are loading a large feature layer (>2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.')
+    });
+    test('Throws if the layer does not support the `exceedsLimit` statistic.', () => {
+      const layer = new FeatureLayer({
+        url: layerUrlTrails
+      });
+
+      fetchMock.once(JSON.stringify({
+        supportedQueryFormats: "JSON, geoJSON, PBF",
+        capabilities: "Query",
+        supportsExceedsLimitStatistics: false,
+        advancedQueryCapabilities: { supportsPagination: true }
+      }));
+      expect(async () => {
+        await layer.initialize();
+      }).rejects.toThrowError('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5')
+    });
+    test('Throws if the layer does not support GeoJSON responses.', () => {
+      const layer = new FeatureLayer({
+        url: layerUrlTrails
+      });
+
+      fetchMock.once(JSON.stringify({
+        supportedQueryFormats: "",
+        capabilities: "Query",
+        supportsExceedsLimitStatistics: true,
+        advancedQueryCapabilities: { supportsPagination: true }
+      }));
+      expect(async () => {
+        await layer.initialize();
+      }).rejects.toThrowError('This feature service does not support GeoJSON format.')
+    });
+    test('Throws if the layer does not support query operations.', () => {
+      const layer = new FeatureLayer({
+        url: layerUrlTrails
+      });
+
+      fetchMock.once(JSON.stringify({
+        supportedQueryFormats: "JSON, geoJSON, PBF",
+        capabilities: "",
+        supportsExceedsLimitStatistics: true,
+        advancedQueryCapabilities: { supportsPagination: true }
+      }));
+      expect(async () => {
+        await layer.initialize();
+      }).rejects.toThrowError('This feature service does not support queries.');
+    });
+    test('Throws if the layer does not support query pagination.', () => {
+      const layer = new FeatureLayer({
+        url: layerUrlTrails
+      });
+
+      fetchMock.once(JSON.stringify({
+        supportedQueryFormats: "JSON, geoJSON, PBF",
+        capabilities: "Query",
+        supportsExceedsLimitStatistics: true,
+        advancedQueryCapabilities: { supportsPagination: false }
+      }));
+      expect(async () => {
+        await layer.initialize();
+      }).rejects.toThrowError('This feature service does not support query pagination.');
+    });
   });
 
   // TODO
@@ -152,7 +303,6 @@ describe('Feature layer unit tests', () => {
     });
 
     //TODO
-    test('Accepts a `portalUrl` parameter for Enterprise items and loads the corresponding data correctly.', () => {});
     test('Gets item metadata including attribution, title, and description.', () => {});
     test('Saves the service URL from item info and loads data based on that.', () => {});
   });

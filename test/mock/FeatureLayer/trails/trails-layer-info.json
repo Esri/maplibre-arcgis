@@ -7,7 +7,7 @@
   "cacheMaxAge" : 30,
   "displayField" : "",
   "description" : "",
-  "copyrightText" : "",
+  "copyrightText" : "Copyright text from layer info.",
   "defaultVisibility" : true,
   "editingInfo" : {
     "lastEditDate" : 1687888027726,
