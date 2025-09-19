@@ -130,20 +130,21 @@ export class VectorTileLayer extends HostedLayer {
         readAs: 'json',
       })) as StyleSpecification;
       styleInfo = rootStyle;
-      // Check for other style resources associated with the item
     }
     catch {
+      // No root style, check for other style resources associated with the item
       const itemResources = await getItemResources(this._itemInfo.itemId, {
         ...params,
       });
 
-      let styleFile: string | null = null;
+      let styleFile: string;
       if (itemResources.total > 0) {
-        itemResources.resources.forEach((entry) => {
+        for (const entry of itemResources.resources) {
           if (entry.resource.startsWith('styles')) {
             styleFile = entry.resource;
+            break;
           }
-        });
+        }
       }
       if (styleFile) {
         const customStyle = (await getItemResource(this._itemInfo.itemId, {
