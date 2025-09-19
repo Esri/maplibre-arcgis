@@ -5,6 +5,7 @@
   "sources": {
     "USA_States_Population_Vector_Tiles": {
       "type": "vector",
+      "attribution": "Default service attribution.",
       "bounds": [-179.149, 18.9107, -66.9496, 71.3652],
       "minzoom": 0,
       "maxzoom": 23,
@@ -75,7 +76,8 @@
       "source-layer": "USA_States_Population_polygons/label",
       "layout": {
         "text-font": [
-          "Arial Regular"
+          "Arial Regular",
+          "Helvetica"
         ],
         "text-size": 13.3333,
         "text-field": "{_name}",

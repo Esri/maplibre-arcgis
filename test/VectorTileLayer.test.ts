@@ -256,37 +256,92 @@ describe('Vector tile layer tests', () => {
 
   describe('Formats a style properly for use with MapLibre.', () => {
     test('Formats the source URL.', ({statesLayer}) => {
-
+      expect(statesLayer.source.url).toBe(`${serviceUrlUSA}/`);
     });
-    test('Creates a \'tiles\' property with information from the service.', () => {});
-    test('Formats the source sprites.', () => {});
-    test('Formats the source glyphs.', () => {});
-    test('Fixes the `text-font` property of all layers if present.', () => {});
-
+    test('Creates a \'tiles\' property with information from the service.', ({statesLayer}) => {
+      expect(statesLayer.source.tiles).toEqual([`${serviceUrlUSA}/tile/{z}/{y}/{x}.pbf`])
+    });
+    test('Formats the source sprites.', ({statesLayer}) => {
+      expect(statesLayer.style.sprite).toBe(`${serviceUrlUSA}/resources/sprites/sprite`);
+    });
+    test('Formats the source glyphs.', ({statesLayer}) => {
+      expect(statesLayer.style.glyphs).toBe(`${serviceUrlUSA}/resources/fonts/%7Bfontstack%7D/%7Brange%7D.pbf`)
+    });
+    test('Fixes the `text-font` as an array on all layers if present.', ({statesLayer}) => {
+      statesLayer.layers.forEach(layer => {
+        if (layer.layout && layer.layout['text-font']) {
+          expect(typeof layer.layout['text-font']).toBe('object');
+        }
+      });
+    });
     test('Sets the `attribution` property of the source.', () => {});
 
-    test('Prefers user-provided custom attribution over all other attribution strings.', () => {});
-    test('Prefers attribution information of the item ID over the service URL.', () => {});
-    test('Prefers attribution from the service URL over the existing attribution from the style.', () => {});
+    test('Prefers user-provided custom attribution over all other attribution strings.', async () => {
+      const layer = new VectorTileLayer({
+        url: serviceUrlUSA,
+        attribution: 'User-provided attribution.'
+      });
+      fetchMock.once(usaServiceInfo).once(usaServiceStyle);
+      await layer.initialize();
 
+      expect(layer.source.attribution).toBe('User-provided attribution.');
+    });
+    test('Prefers attribution information of the item ID over the service URL.', async () => {
+      const layer = new VectorTileLayer({
+        itemId: serviceItemIdUSA
+      });
+      fetchMock.once(usaItemInfo).once({}).once(emptyResources).once(usaServiceInfo).once(usaServiceStyle);
+      await layer.initialize();
+
+      expect(layer.source.attribution).toBe("Access information from item.");
+      expect(layer.style.layers).toEqual(usaServiceStyleRaw.layers);
+    });
+    test('Prefers attribution from the service URL over the existing attribution from the style.', async () => {
+      const layer = new VectorTileLayer({
+        url: serviceUrlUSA
+      });
+
+      fetchMock.once(JSON.stringify({
+        ...usaServiceInfoRaw,
+        copyrightText:null
+      })).once(usaServiceStyle);
+      await layer.initialize();
+
+      expect(layer.source.attribution).toBe("Default service attribution.");
+    });
   });
 
+  test('Creates a layer from item ID with the `fromPortalItem` static method.', async () => {
+    fetchMock.once(usaItemInfo).once(usaItemStyle);
+    const layer = await VectorTileLayer.fromPortalItem(itemIdUSA);
+
+    expect(layer.layers).toEqual(usaItemStyleRaw.layers);
+    expect(Object.keys(layer.sources)).toEqual(Object.keys(usaItemStyleRaw.sources));
+  });
+  test('Creates a layer from service URL with the `fromUrl` static method.', async () => {
+    fetchMock.once(usaServiceInfo).once(usaServiceStyle);
+    const layer = await VectorTileLayer.fromUrl(serviceUrlUSA);
+
+    expect(layer.layers).toEqual(usaServiceStyleRaw.layers);
+    expect(Object.keys(layer.sources)).toEqual(Object.keys(usaServiceStyleRaw.sources));
+  });
 
   // TODO
-  test('Displays layer attribution on the map.', () => {});
-  test('Creates a layer from item ID with the `fromPortalItem` static method.', () => {});
-  test('Creates a layer from service URL with the `fromUrl` static method.', () => {});
-  test('Uninitialized layers created using the constructor cannot be added to the map.', ()=>{});
-  test('Loads style data on an uninitialized layer using the `initialize()` method.', () => {});
+  describe('Works on a mock page with a `Map`', () => {
+    test('Uninitialized layers created using the constructor cannot be added to the map.', ()=>{});
 
-  // TODO
-  describe('Methods inherited from HostedLayer work properly.', () => {
     test('`addSourcesTo` adds sources to the maplibre map.', () => {});
     test('`addLayersTo` adds layers to the maplibre map.', () => {});
     test('`addSourcesAndLayersTo` adds sources and layers to the maplibre map.', () => {});
+    test('Works with native maplibre `addSource` and `addLayer` methods.', () => {});
+
     test('Renders properly on a maplibre map.', () => {});
     test('Adds \'Powered by Esri\' to the map attribution when an add method is called.', () => {});
-    test('Works with native maplibre `addSource` and `addLayer` methods.', () => {});
+
+    test('Displays layer attribution on the map.', () => {});
+  });
+  // TODO
+  describe('Methods inherited from HostedLayer work properly.', () => {
 
     test('`layer`, `layers, `source`, `sources` are read-only properties containing style data.', () => {});
     test('`copyLayer` and `copySource` create deep copies of style data.', () => {});
