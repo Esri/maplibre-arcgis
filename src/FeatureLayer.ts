@@ -241,6 +241,7 @@ export class FeatureLayer extends HostedLayer {
           url: this._serviceInfo.serviceUrl,
           authentication: this._authentication,
         });
+        if (serviceInfo.copyrightText) this._serviceInfo.copyrightText = serviceInfo.copyrightText;
         // Add layers
         if (serviceInfo.layers.length > 10) {
           warn('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
@@ -263,13 +264,19 @@ export class FeatureLayer extends HostedLayer {
   }
 
   private _setupAttribution(layerInfo: ILayerDefinition): string {
+    // Source attribution priority is as follows:
+
+    // 1. User-provided attribution
     if (this._customAttribution) return this._customAttribution;
 
+    // 2. Access info from item
     if (this._itemInfo?.accessInformation) return this._itemInfo.accessInformation;
 
-    if (this._serviceInfo?.copyrightText) return this._serviceInfo.copyrightText;
-
+    // 3. Copyright text from layer
     if (layerInfo.copyrightText) return layerInfo.copyrightText;
+
+    // 4. Copyright text from service
+    if (this._serviceInfo?.copyrightText) return this._serviceInfo.copyrightText;
 
     return '';
   }
