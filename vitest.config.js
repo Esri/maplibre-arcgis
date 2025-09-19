@@ -17,10 +17,10 @@ export default defineConfig({
       './test/**/*.test.{ts,js}'
     ],
     coverage: {
+      enabled:false,
       provider: 'v8',
       exclude: ['node_modules/', 'dist/'],
-      all: true,
-      include: ['test'],
+      include: ['src/*.ts'],
       reporter: ['json','html'],
       reportsDirectory: './coverage'
     }
