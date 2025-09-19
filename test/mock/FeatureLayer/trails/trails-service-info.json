@@ -71,7 +71,7 @@
   "hasSharedTemplates" : true,
   "capabilities" : "Query",
   "description" : "",
-  "copyrightText" : "",
+  "copyrightText" : "Copyright text from service info.",
   "spatialReference" : {
     "wkid" : 102100,
     "latestWkid" : 3857
