@@ -274,7 +274,7 @@ export abstract class HostedLayer {
    * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
    */
   addSourcesAndLayersTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add sources and layers to map: Object has not finished loading.');
+    if (!this._ready) throw new Error('Cannot add sources and layers to map: Layer is not loaded.');
     this._map = map;
     Object.keys(this._sources).forEach((sourceId) => {
       map.addSource(sourceId, this._sources[sourceId]);
@@ -287,7 +287,7 @@ export abstract class HostedLayer {
   }
 
   addSourcesTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add sources to map: Object has not finished loading.');
+    if (!this._ready) throw new Error('Cannot add sources to map: Layer is not loaded.');
     this._map = map;
     Object.keys(this._sources).forEach((sourceId) => {
       map.addSource(sourceId, this._sources[sourceId]);
@@ -302,7 +302,7 @@ export abstract class HostedLayer {
    * @returns
    */
   addLayersTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add layers to map: Object has not finished loading.');
+    if (!this._ready) throw new Error('Cannot add layers to map: Layer is not loaded.');
     this._map = map;
     this._layers.forEach((layer) => {
       map.addLayer(layer);
