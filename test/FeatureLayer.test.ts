@@ -703,6 +703,6 @@ describe('Works on a mock page with a `Map`',() => {
     expect(AttributionControl).toHaveBeenCalled();
   });
   test('Does not add the Esri `AttributionControl` if Esri attribution is already present', () => {});
-  test('Renders properly on a maplibre map.', () => {}); // take screenshots
+  test('Renders properly on a maplibre map.', () => {}); //
   */
 });

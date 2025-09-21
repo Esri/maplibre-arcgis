@@ -2,11 +2,14 @@
 import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { BasemapStyle } from '../src/MaplibreArcGIS';
 import { customTest as test } from './BaseTest';
-import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
-import basemapStyleStreets from './mock/BasemapStyle/OpenStreets.json';
+import basemapStyleNavigationRaw from './mock/BasemapStyle/ArcGISNavigation.json';
+import basemapStyleStreetsRaw from './mock/BasemapStyle/OpenStreets.json';
 import { tokenError } from './mock/authentication/invalidTokenError';
 import { Map } from 'maplibre-gl';
 import { useMock, removeMock } from './setupUnit';
+
+const basemapStyleNavigation = JSON.stringify(basemapStyleNavigationRaw);
+const basemapStyleStreets = JSON.stringify(basemapStyleStreetsRaw);
 
 const arcgisStyle = 'arcgis/navigation';
 const imageryStyle = 'arcgis/imagery';
@@ -148,7 +151,7 @@ describe('BasemapStyle unit tests', () => {
       style:arcgisStyle,
       token:apiKey
     });
-    fetchMock.once(JSON.stringify(basemapStyleNavigation));
+    fetchMock.once(basemapStyleNavigation);
     basemap.loadStyle();
 
     const loadEventSpy = vi.fn(async () => {return new Promise(resolve => {
@@ -170,7 +173,7 @@ describe('BasemapStyle unit tests', () => {
 
   describe('Handles map attribution properly', () => {
     test('Adds \"Powered by Esri\" to the map attribution if not already present.', ({apiKey, map}) => {
-      fetchMock.once(JSON.stringify(basemapStyleNavigation)).mockResponse(JSON.stringify({}));
+      fetchMock.once(basemapStyleNavigation).mockResponse(JSON.stringify({}));
       const basemap = BasemapStyle.applyStyle(map,{
         style:'arcgis/navigation',
         token: apiKey
@@ -182,7 +185,7 @@ describe('BasemapStyle unit tests', () => {
     });
 
     test('Accepts custom attribution and applies it to the map.', ({apiKey, map}) => {
-      fetchMock.once(JSON.stringify(basemapStyleNavigation)).mockResponse(JSON.stringify({}));
+      fetchMock.once(basemapStyleNavigation).mockResponse(JSON.stringify({}));
       const basemap = BasemapStyle.applyStyle(map,{
         style:'arcgis/navigation',
         token: apiKey,
@@ -262,7 +265,7 @@ describe('BasemapStyle unit tests', () => {
     });
 
     test('`applyStyle` factory method creates and loads a basemap, then applies it to a map with applyTo.', async ({apiKey, map}) => {
-      fetchMock.once(JSON.stringify(basemapStyleNavigation)).mockResponse(JSON.stringify({}));
+      fetchMock.once(basemapStyleNavigation).mockResponse(JSON.stringify({}));
 
       const basemap = BasemapStyle.applyStyle(map, {
         style:'arcgis/navigation',
@@ -280,7 +283,7 @@ describe('BasemapStyle unit tests', () => {
       loadedBasemap.applyTo(map);
 
       setTimeout(async () => {
-        fetchMock.once(JSON.stringify(basemapStyleStreets));
+        fetchMock.once(basemapStyleStreets);
         loadedBasemap.updateStyle({
           style:'open/streets'
         });

@@ -25,14 +25,6 @@ export const customTest = testBase.extend({
   apiKey: async ({}, use) => {
     await use (process.env.PRODUCTION_KEY_ALP);
   },
-  // BasemapSession
-  basemapSession: async ({apiKey}, use) => {
-    const basemapSession = await BasemapSession.start({
-      styleFamily: 'arcgis',
-      token: apiKey
-    });
-    await use(basemapSession);
-  },
   // REST JS APIKeyManager
   restJsAuthentication: async ({apiKey}, use) => {
     const restJsAuthentication = ApiKeyManager.fromKey(apiKey);
