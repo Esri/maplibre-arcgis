@@ -123,18 +123,13 @@ export class FeatureLayer extends HostedLayer {
       };
     }
 
-    if (options?.query) {
-      if (this._inputType !== 'FeatureLayer')
-        throw new Error('Feature service queries are only supported with layer URLs, not item IDs. To use query parameters, call \'FeatureLayer.fromUrl\' with a service URL ending in \/0, \/1, etc.');
-
-      this.query = options.query;
-    }
+    if (options?.query) this.query = options.query;
   }
 
   private async _fetchAllFeatures(layerUrl: string, layerInfo: ILayerDefinition): Promise<GeoJSON.GeoJSON> {
-    if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('Feature service does not support GeoJSON format.');
-    if (!layerInfo.capabilities.includes('Query')) throw new Error('Feature service does not support queries.');
-    if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('Feature service does not support pagination in queries');
+    if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
+    if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support queries.');
+    if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
 
     let layerData: GeoJSON.GeoJSON;
     if (layerInfo.supportsExceedsLimitStatistics) {
@@ -146,7 +141,7 @@ export class FeatureLayer extends HostedLayer {
         returnCountOnly: true,
       })) as IQueryResponse;
       if (featureCount.count > 2000) {
-        warn('You are loading a large feature layer ( >2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.');
+        warn('You are loading a large feature layer (>2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.');
       }
 
       // Get all features
@@ -161,7 +156,7 @@ export class FeatureLayer extends HostedLayer {
     }
     else {
       throw new Error(
-        'Feature layers hosted in old versions of ArcGIS Enterprise are not currently supported in this plugin. Support will be added in a future release: https://github.com/Esri/maplibre-arcgis/issues/5'
+        'Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5'
       );
     }
     if (!layerData) throw new Error('Unable to load data.');
@@ -207,14 +202,13 @@ export class FeatureLayer extends HostedLayer {
     this._layers = [];
 
     // Wrap access token for use with REST JS
-    this._authentication = await wrapAccessToken(this.token);
+    this._authentication = await wrapAccessToken(this.token, this._itemInfo?.portalUrl);
 
     let dataSource = this._inputType;
     switch (dataSource) {
       case 'ItemId': {
         const itemResponse = await getItem(this._itemInfo.itemId, {
           authentication: this._authentication,
-          portal: this._itemInfo.portalUrl,
         });
 
         if (!itemResponse.url) throw new Error('The provided ArcGIS portal item has no associated service URL.');
@@ -241,6 +235,9 @@ export class FeatureLayer extends HostedLayer {
           url: this._serviceInfo.serviceUrl,
           authentication: this._authentication,
         });
+        if (serviceInfo.copyrightText) this._serviceInfo.copyrightText = serviceInfo.copyrightText;
+
+        if (serviceInfo.layers.length > 1 && this.query) throw new Error('Unable to use `query` parameter: This feature service contains multiple feature layers.');
         // Add layers
         if (serviceInfo.layers.length > 10) {
           warn('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
@@ -263,13 +260,19 @@ export class FeatureLayer extends HostedLayer {
   }
 
   private _setupAttribution(layerInfo: ILayerDefinition): string {
+    // Source attribution priority is as follows:
+
+    // 1. User-provided attribution
     if (this._customAttribution) return this._customAttribution;
 
+    // 2. Access info from item
     if (this._itemInfo?.accessInformation) return this._itemInfo.accessInformation;
 
-    if (this._serviceInfo?.copyrightText) return this._serviceInfo.copyrightText;
-
+    // 3. Copyright text from layer
     if (layerInfo.copyrightText) return layerInfo.copyrightText;
+
+    // 4. Copyright text from service
+    if (this._serviceInfo?.copyrightText) return this._serviceInfo.copyrightText;
 
     return '';
   }
