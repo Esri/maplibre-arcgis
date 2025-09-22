@@ -17,7 +17,7 @@ export default defineConfig({
       './test/**/*.test.{ts,js}'
     ],
     coverage: {
-      enabled:false,
+      enabled: false,
       provider: 'v8',
       exclude: ['node_modules/', 'dist/'],
       include: ['src/*.ts'],
