@@ -52,7 +52,7 @@ export interface IFeatureLayerOptions extends IHostedLayerOptions {
 
 /**
  * Parameters for feature layer query request.
- * @see https://developers.arcgis.com/rest/services-reference/enterprise/query-feature-service-layer/#request-parameters
+ * Go to the [REST API Documentation])https://developers.arcgis.com/rest/services-reference/enterprise/query-feature-service-layer/#request-parameters) for more information.
  */
 export interface IQueryOptions {
   gdbVersion?: string;
@@ -70,9 +70,33 @@ export interface IQueryOptions {
 export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
 
 /**
- * Class representing a feature layer for MapLibre GL JS.
- * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) as GeoJSON sources in a MapLibre map.
- * It supports both item IDs from ArcGIS Online and feature service URLs.
+ * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) in a MapLibre map.
+ *
+ * The `FeatureLayer` class provides:
+ * - Loading and displaying feature layers from item IDs or feature service URLs.
+ * - Querying of feature layer attributes.
+ * - Adding sources and layers to a MapLibre map.
+ *
+ * ```javascript
+ * import { FeatureLayer } from '@esri/maplibre-arcgis';
+ *
+ * // Load a point layer from the service URL
+ * const pointService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0";
+ * const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointService);
+ * trailheads.addSourcesAndLayersTo(map);
+ *
+ * // Load a polyline layer from the service URL and query
+ * const lineService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0"
+ * const trails = await maplibreArcGIS.FeatureLayer.fromUrl(lineService, {query: {
+ *    outFields: ['TRL_ID', 'ELEV_MIN', 'ELEV_MAX'],
+ *    where: 'ELEV_MIN > 200'
+ *  }});
+ * trails.addSourcesAndLayersTo(map);
+ *
+ * // Load a polygon layer from from portal item ID
+ * const parks = await maplibreArcGIS.FeatureLayer.fromPortalItem('f2ea5d874dad427294641d2d45097c0e');
+ * parks.addSourcesAndLayersTo(map);
+ * ```
  */
 export class FeatureLayer extends HostedLayer {
   declare protected _sources: { [_: string]: GeoJSONSourceSpecification };
@@ -83,10 +107,23 @@ export class FeatureLayer extends HostedLayer {
   query?: IQueryOptions;
 
   /**
-   * Constructor for FeatureLayer.
+   * Creates a new FeatureLayer instance. You must provide either an ArcGIS item ID or a feature service URL. If both are provided, the item ID will be used and the URL ignored. Query parameters are only supported when constructing with a feature layer URL.
+   *
+   *
+   * ```javascript
+   * import { FeatureLayer } from '@esri/maplibre-arcgis';
+   *
+   * const trails = new maplibreArcGIS.FeatureLayer({
+   *    url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0",
+   * });
+   * await trails.initialize();
+   * trails.addLayerandSourcesTo(map);
+   * ```
+   * > Creating layers using the constructor directly is not recommended. Use {@link FeatureLayer.fromUrl} and {@link FeatureLayer.fromPortalItem} instead.
+   *
    * @param options - Configuration options for the feature layer.
    *
-   * Creating layers using the constructor directly is not recommended. Use {@link FeatureLayer.fromUrl} and {@link FeatureLayer.fromPortalItem} instead.
+   *
    */
   constructor(options: IFeatureLayerOptions) {
     super();
@@ -283,6 +320,21 @@ export class FeatureLayer extends HostedLayer {
     return this;
   }
 
+  /**
+   * Creates a new FeatureLayer instance from a feature service URL.
+   * ```javascript
+   *
+   * // Load trailheads from service URL
+   * const pointService = "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trailheads/FeatureServer/0"
+   * const trailheads = await maplibreArcGIS.FeatureLayer.fromUrl(pointService);
+   * trailheads.addSourcesAndLayersTo(map);
+   *```
+   *
+   * @param serviceUrl - A valid ArcGIS feature service or feature layer URL.
+   * @param options - Configuration options for the feature layer. Query parameters are only supported when constructing with a feature layer URL.
+   *
+   * @returns
+   */
   static async fromUrl(serviceUrl: string, options: IFeatureLayerOptions): Promise<FeatureLayer> {
     const inputType = checkServiceUrlType(serviceUrl);
     if (!inputType || !(inputType === 'FeatureService' || inputType === 'FeatureLayer')) throw new Error('Must provide a valid feature layer URL.');
@@ -296,6 +348,18 @@ export class FeatureLayer extends HostedLayer {
     return geojsonLayer;
   }
 
+  /**
+   * Creates a new FeatureLayer instance from an ArcGIS Online or ArcGIS Enterprise item ID.
+   * @param itemId - A valid ArcGIS Online or ArcGIS Enterprise item ID for a hosted feature layer.
+   * @param options - Configuration options for the feature layer.
+   * @returns - A promise that resolves to a FeatureLayer instance.
+   * ```javascript
+   *
+   * // Load parks from from portal item ID
+   * const parks = await maplibreArcGIS.FeatureLayer.fromPortalItem('f2ea5d874dad427294641d2d45097c0e');
+   * parks.addSourcesAndLayersTo(map);
+   *```
+   */
   static async fromPortalItem(itemId: string, options: IFeatureLayerOptions): Promise<FeatureLayer> {
     if (checkItemId(itemId) !== 'ItemId') throw new Error('Must provide a valid item ID for an ArcGIS hosted feature layer.');
 

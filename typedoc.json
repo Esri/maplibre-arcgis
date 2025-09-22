@@ -23,5 +23,14 @@
   "hideGenerator": true,
   "validation": {
     "invalidLink": false
+  },
+  "externalSymbolLinkMappings":{
+    "maplibre-gl": {
+      "Map$1": "https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/",
+      "StyleOptions": "https://maplibre.org/maplibre-gl-js/docs/API/interfaces/StyleOptions/",
+      "StyleSpecification": "https://maplibre.org/maplibre-gl-js/docs/API/types/StyleSpecification/",
+      "StyleSwapOptions": "https://maplibre.org/maplibre-gl-js/docs/API/interfaces/StyleSwapOptions/",
+      "VectorTileSource": "https://maplibre.org/maplibre-gl-js/docs/API/interfaces/VectorTileSource/"
+    }
   }
 }
