@@ -283,7 +283,7 @@ export class FeatureLayer extends HostedLayer {
     return this;
   }
 
-  static async fromUrl(serviceUrl: string, options: IFeatureLayerOptions): Promise<FeatureLayer> {
+  static async fromUrl(serviceUrl: string, options?: IFeatureLayerOptions): Promise<FeatureLayer> {
     const inputType = checkServiceUrlType(serviceUrl);
     if (!inputType || !(inputType === 'FeatureService' || inputType === 'FeatureLayer')) throw new Error('Must provide a valid feature layer URL.');
 
@@ -296,7 +296,7 @@ export class FeatureLayer extends HostedLayer {
     return geojsonLayer;
   }
 
-  static async fromPortalItem(itemId: string, options: IFeatureLayerOptions): Promise<FeatureLayer> {
+  static async fromPortalItem(itemId: string, options?: IFeatureLayerOptions): Promise<FeatureLayer> {
     if (checkItemId(itemId) !== 'ItemId') throw new Error('Must provide a valid item ID for an ArcGIS hosted feature layer.');
 
     const geojsonLayer = new FeatureLayer({

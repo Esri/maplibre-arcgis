@@ -478,7 +478,7 @@ export class BasemapStyle {
    * @param options - Additional parameters including an ArcGIS access token
    * @returns The response returned by the Basemap Styles service.
    */
-  static async getSelf(options: { token?: string; baseUrl?: string }): Promise<BasemapSelfResponse> {
+  static async getSelf(options?: { token?: string; baseUrl?: string }): Promise<BasemapSelfResponse> {
     const basemapServiceUrl = options?.baseUrl ? options.baseUrl : DEFAULT_BASE_URL;
     const authentication = await wrapAccessToken(options?.token);
     return await request(`${basemapServiceUrl}/self`, {

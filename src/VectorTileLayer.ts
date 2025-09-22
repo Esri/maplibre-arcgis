@@ -317,7 +317,7 @@ export class VectorTileLayer extends HostedLayer {
     return this;
   }
 
-  static async fromPortalItem(itemId: string, options: IVectorTileLayerOptions): Promise<VectorTileLayer> {
+  static async fromPortalItem(itemId: string, options?: IVectorTileLayerOptions): Promise<VectorTileLayer> {
     if (checkItemId(itemId) !== 'ItemId') throw new Error('Input is not a valid ArcGIS item ID.');
 
     const vtl = new VectorTileLayer({
@@ -329,7 +329,7 @@ export class VectorTileLayer extends HostedLayer {
     return vtl;
   }
 
-  static async fromUrl(serviceUrl: string, options: IVectorTileLayerOptions): Promise<VectorTileLayer> {
+  static async fromUrl(serviceUrl: string, options?: IVectorTileLayerOptions): Promise<VectorTileLayer> {
     if (checkServiceUrlType(serviceUrl) !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.');
 
     const vtl = new VectorTileLayer({
