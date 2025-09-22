@@ -1,0 +1,116 @@
+{
+  "total": 18,
+  "start": 1,
+  "num": 18,
+  "nextStart": -1,
+  "resources": [
+    {
+      "resource": "info/root.json",
+      "created": 1745672236000,
+      "size": 46296,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1745672235233.json",
+      "created": 1745672235000,
+      "size": 2,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1745672235233.png",
+      "created": 1745672235000,
+      "size": 493,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1745672235233@2x.json",
+      "created": 1745672235000,
+      "size": 2,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1745672235233@2x.png",
+      "created": 1745672235000,
+      "size": 493,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748029767945.json",
+      "created": 1748029768000,
+      "size": 2,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748029767945.png",
+      "created": 1748029768000,
+      "size": 493,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748029767945@2x.json",
+      "created": 1748029768000,
+      "size": 2,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748029767945@2x.png",
+      "created": 1748029768000,
+      "size": 493,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748033358518.json",
+      "created": 1748033358000,
+      "size": 2,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748033358518.png",
+      "created": 1748033358000,
+      "size": 493,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748033358518@2x.json",
+      "created": 1748033358000,
+      "size": 2,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748033358518@2x.png",
+      "created": 1748033358000,
+      "size": 493,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748033360185.json",
+      "created": 1748033360000,
+      "size": 2,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748033360185.png",
+      "created": 1748033360000,
+      "size": 493,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748033360185@2x.json",
+      "created": 1748033360000,
+      "size": 2,
+      "access": "inherit"
+    },
+    {
+      "resource": "sprites/sprite-1748033360185@2x.png",
+      "created": 1748033360000,
+      "size": 493,
+      "access": "inherit"
+    },
+    {
+      "resource": "styles/root.json",
+      "created": 1748033360000,
+      "size": 2354,
+      "access": "inherit"
+    }
+  ]
+}

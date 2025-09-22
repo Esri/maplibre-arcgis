@@ -8,7 +8,7 @@ import stylistic from '@stylistic/eslint-plugin';
 
 export default tseslint.config([
   {
-    ignores: ["**/dist/**", "**/build/**"]
+    ignores: ["**/dist/**", "test/**"]
   },
   {
     files: ["**/*.ts"],
@@ -37,7 +37,6 @@ export default tseslint.config([
         projectService: true,
         tsconfigRootDir: import.meta.dirname
       },
-
     },
     linterOptions: {
       reportUnusedDisableDirectives: true,

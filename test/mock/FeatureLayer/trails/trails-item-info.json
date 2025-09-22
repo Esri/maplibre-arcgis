@@ -1,0 +1,70 @@
+{
+  "id": "69e12682738e467eb509d8b54dc73cbd",
+  "owner": "esri_devlabs",
+  "orgId": "GVgbJbqm8hXASVYi",
+  "created": 1488137251000,
+  "modified": 1698862464000,
+  "guid": null,
+  "name": null,
+  "title": "Trails",
+  "type": "Feature Service",
+  "typeKeywords": [
+    "ArcGIS Server",
+    "Data",
+    "Feature Access",
+    "Feature Service",
+    "Service",
+    "Singlelayer",
+    "Hosted Service"
+  ],
+  "description": "Item description.",
+  "tags": [
+    "LA Trails",
+    "ArcGIS DevLabs",
+    "Los Angeles",
+    "Trails"
+  ],
+  "snippet": "Trails in the Santa Monica Mountains.",
+  "thumbnail": "thumbnail/thumbnail1698862463889.png",
+  "documentation": null,
+  "extent": [
+    [
+      -119.01001213498574,
+      33.742249606920254
+    ],
+    [
+      -117.72434787004691,
+      34.5395855238448
+    ]
+  ],
+  "categories": [],
+  "spatialReference": null,
+  "accessInformation": "Access information from item info.",
+  "classification": null,
+  "licenseInfo": "<font color='#333333' style='background-color: rgb(255, 255, 255); font-family: &quot;Open Sans&quot;, Avenir, Arial;'>A broad collection of information layers and datasets made available by the City of Los Angeles as Open Data at <a href='http://geohub.lacity.org/' target='_blank'>http://geohub.lacity.org/<\/a>.<\/font><br /><span style='background-color: rgb(255, 255, 255); color: rgb(51, 51, 51);'><br />This dataset is maintained through the County of Los Angeles Location Management System. The Location Management System is used by the County of Los Angeles GIS Program to maintain a single, comprehensive geographic database of locations countywide.  For more information on the Location Management System, visit <\/span><a href='http://egis3.lacounty.gov/lms/' style='color: rgb(0, 120, 189); font-family: &quot;Lucida Grande&quot;, &quot;Segoe UI&quot;, Arial, sans-serif; box-sizing: border-box; text-decoration: none;' target='_blank'>http://egis3.lacounty.gov/lms/<\/a><span style='background-color: rgb(255, 255, 255); color: rgb(51, 51, 51); font-family: &quot;Lucida Grande&quot;, &quot;Segoe UI&quot;, Arial, sans-serif;'>.<\/span>",
+  "culture": "en-us",
+  "properties": null,
+  "advancedSettings": null,
+  "url": "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer",
+  "proxyFilter": null,
+  "access": "public",
+  "size": 1310720,
+  "subInfo": 0,
+  "appCategories": [],
+  "industries": [],
+  "languages": [],
+  "largeThumbnail": null,
+  "banner": null,
+  "screenshots": [],
+  "listed": false,
+  "commentsEnabled": true,
+  "numComments": 0,
+  "numRatings": 0,
+  "avgRating": 0,
+  "numViews": 48425,
+  "scoreCompleteness": 60,
+  "groupDesignations": null,
+  "apiToken1ExpirationDate": -1,
+  "apiToken2ExpirationDate": -1,
+  "lastViewed": 1758229200000
+}
