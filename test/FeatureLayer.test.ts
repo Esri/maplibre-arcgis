@@ -12,7 +12,7 @@ import trailsItemInfoRaw from './mock/FeatureLayer/trails/trails-item-info.json'
 import trailsDataRaw from './mock/FeatureLayer/trails/trails-features.json';
 import trailsDataTruncatedRaw from './mock/FeatureLayer/trails/trails-features-truncated.json'
 import trailsQueryDataRaw from './mock/FeatureLayer/trails/trails-feature-query.json';
-import trailsDataCountOnlyRaw from './mock/FeatureLayer/trails/trails-feature-countOnly.json';
+import trailsDataCountOnlyRaw from './mock/FeatureLayer/trails/trails-feature-exceedsLimit.json';
 
 import pointsLayerInfoRaw from './mock/FeatureLayer/points/points-layer-info.json';
 import pointsDataRaw from './mock/FeatureLayer/points/points-features-truncated.json';
@@ -27,6 +27,7 @@ const polygonsData = JSON.stringify(polygonsDataRaw);
 
 const pointsLayerInfo = JSON.stringify(pointsLayerInfoRaw);
 const pointsData = JSON.stringify(pointsDataRaw);
+
 
 const multiLayerServiceInfo = JSON.stringify(multiLayerServiceInfoRaw);
 const trailsLayerInfo = JSON.stringify(trailsLayerInfoRaw);
@@ -298,11 +299,12 @@ describe('Feature layer unit tests', () => {
       const warningSpy = vi.spyOn(console,'warn').mockImplementation((warningText) => {});
 
       fetchMock.once(trailsLayerInfo).once(JSON.stringify({
-        "count": 10000
+        features:[{attributes:{exceedsLimit:1}}]
       })).once(trailsLayerInfo).once(trailsDataTruncated);
 
-      await featureLayer.initialize();
-      expect(warningSpy).toHaveBeenCalledWith('You are loading a large feature layer (>2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.')
+      await expect(async () => {
+        await featureLayer.initialize();
+      }).rejects.toThrowError('The requested feature count exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript for now, or host your data as a vector tile layer.');
     });
     test('Throws if the layer does not support the `exceedsLimit` statistic.', async () => {
       const layer = new FeatureLayer({
@@ -445,15 +447,9 @@ describe('Feature layer unit tests', () => {
     });
     test('Creates a default layer style for each type of geojson source', async () => {
 
-      const countOnlyResponse = JSON.stringify({
-        count:500
+      const exceedsLimitResponse = JSON.stringify({
+        features:[{attributes:{exceedsLimit:0}}]
       });
-      // Points
-      fetchMock.once(pointsLayerInfo).once(countOnlyResponse).once(pointsLayerInfo).once(pointsData);
-      const points = new FeatureLayer({
-        url: layerUrlPoints
-      });
-      await points.initialize();
 
       // Lines
       fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
@@ -462,8 +458,15 @@ describe('Feature layer unit tests', () => {
       });
       await lines.initialize();
 
+      // Points
+      fetchMock.once(pointsLayerInfo).once(trailsDataCountOnly).once(pointsLayerInfo).once(pointsData);
+      const points = new FeatureLayer({
+        url: layerUrlPoints
+      });
+      await points.initialize();
+
       // Polygons
-      fetchMock.once(polygonsLayerInfo).once(countOnlyResponse).once(polygonsLayerInfo).once(polygonsData);
+      fetchMock.once(polygonsLayerInfo).once(trailsDataCountOnly).once(polygonsLayerInfo).once(polygonsData);
       const polygons = new FeatureLayer({
         url: layerUrlPolygons
       });
