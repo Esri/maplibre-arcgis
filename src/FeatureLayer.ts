@@ -1,7 +1,6 @@
 import type { GeometryType, IGeometry, ILayerDefinition, IQueryFeaturesResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
 import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
-import { type IParams } from '@esri/arcgis-rest-request';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
 import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
@@ -59,7 +58,6 @@ export interface IQueryOptions {
   geometryPrecision?: number;
   inSR?: string | ISpatialReference;
   outFields?: string[] | '*';
-  params?: IParams;
   spatialRel?: SpatialRelationship;
   sqlFormat?: 'none' | 'standard' | 'native';
   where?: string;
@@ -171,7 +169,7 @@ export class FeatureLayer extends HostedLayer {
       const exceedsLimitResponse = await (queryFeatures({
         url: layerUrl,
         authentication: this._authentication,
-        ...this.query,
+        ...structuredClone(this.query),
         outStatistics: [
           {
             statisticType: 'exceedslimit',
@@ -195,7 +193,7 @@ export class FeatureLayer extends HostedLayer {
         const response = await queryAllFeatures({
           url: layerUrl,
           authentication: this._authentication,
-          ...this.query,
+          ...structuredClone(this.query),
           f: 'geojson',
         });
 
