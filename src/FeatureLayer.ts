@@ -1,4 +1,4 @@
-import type { GeometryType, IGeometry, ILayerDefinition, IQueryResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
+import type { GeometryType, IGeometry, ILayerDefinition, IQueryFeaturesResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
 import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
 import { type IParams } from '@esri/arcgis-rest-request';
@@ -7,16 +7,14 @@ import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, warn, wrapAccessToken } from './Util';
 
-/*
- *const geoJSONDefaultStyleMap = {
- *    "Point":"circle",
- *    "MultiPoint":"circle",
- *    "LineString":"line",
- *    "MultiLineString":"line",
- *    "Polygon":"fill",
- *    "MultiPolygon":"fill"
- *}
- */
+// const geoJSONDefaultStyleMap = {
+//     "Point":"circle",
+//     "MultiPoint":"circle",
+//     "LineString":"line",
+//     "MultiLineString":"line",
+//     "Polygon":"fill",
+//     "MultiPolygon":"fill"
+// }
 
 const esriGeometryDefaultStyleMap: { [_: string]: 'circle' | 'line' | 'fill' } = {
   esriGeometryPoint: 'circle',
@@ -119,7 +117,7 @@ export class FeatureLayer extends HostedLayer {
    * await trails.initialize();
    * trails.addLayerandSourcesTo(map);
    * ```
-   * > Creating layers using the constructor directly is not recommended. Use {@link FeatureLayer.fromUrl} and {@link FeatureLayer.fromPortalItem} instead.
+   * \> Creating layers using the constructor directly is not recommended. Use {@link FeatureLayer.fromUrl} and {@link FeatureLayer.fromPortalItem} instead.
    *
    * @param options - Configuration options for the feature layer.
    *
@@ -170,26 +168,44 @@ export class FeatureLayer extends HostedLayer {
 
     let layerData: GeoJSON.GeoJSON;
     if (layerInfo.supportsExceedsLimitStatistics) {
-      // Check if feature count exceeds limit
-      const featureCount = (await queryFeatures({
+      const exceedsLimitResponse = await (queryFeatures({
         url: layerUrl,
         authentication: this._authentication,
         ...this.query,
-        returnCountOnly: true,
-      })) as IQueryResponse;
-      if (featureCount.count > 2000) {
-        warn('You are loading a large feature layer (>2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.');
+        outStatistics: [
+          {
+            statisticType: 'exceedslimit',
+            outStatisticFieldName: 'exceedslimit',
+            // @ts-expect-error these params aren't in REST JS
+            maxPointCount: 2000,
+            maxRecordCount: 2000,
+            maxVertexCount: 250000,
+          },
+        ],
+        returnGeometry: false,
+        params: {
+          cacheHint: true,
+        },
+        // outSR: 102100,
+        // spatialRel: 'esriSpatialRelIntersects',
+      })) as IQueryFeaturesResponse;
+
+      if (exceedsLimitResponse.features[0].attributes.exceedslimit === 0) {
+        // Get all features
+        const response = await queryAllFeatures({
+          url: layerUrl,
+          authentication: this._authentication,
+          ...this.query,
+          f: 'geojson',
+        });
+
+        layerData = response as unknown as GeoJSON.GeoJSON;
       }
-
-      // Get all features
-      const response = await queryAllFeatures({
-        url: layerUrl,
-        authentication: this._authentication,
-        ...this.query,
-        f: 'geojson',
-      });
-
-      layerData = response as unknown as GeoJSON.GeoJSON;
+      else {
+        // Limit exceeded
+        // TODO on-demand loading
+        throw new Error('The requested feature count exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript for now, or host your data as a vector tile layer.');
+      }
     }
     else {
       throw new Error(
@@ -266,7 +282,6 @@ export class FeatureLayer extends HostedLayer {
         dataSource = 'FeatureService';
         // falls through
       }
-      // This case is not currently in use
       case 'FeatureService': {
         const serviceInfo = await getService({
           url: this._serviceInfo.serviceUrl,
@@ -374,18 +389,16 @@ export class FeatureLayer extends HostedLayer {
 }
 
 export default FeatureLayer;
-/*
- * Copyright 2025 Esri
- *
- * Licensed under the Apache License Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2025 Esri
+//
+// Licensed under the Apache License Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.

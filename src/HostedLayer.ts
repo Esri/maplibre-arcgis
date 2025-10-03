@@ -72,10 +72,8 @@ export interface IItemInfo {
 export interface IDataServiceInfo {
   serviceUrl: string;
   copyrightText?: string; // Attribution information from service JSON
-  /*
-   * serviceItemId?: string; // This may differ from itemInfo.itemId if the itemId provided in constructor represents a style, group layer, etc
-   * serviceItemPortalUrl: string;
-   */
+  // serviceItemId?: string; // This may differ from itemInfo.itemId if the itemId provided in constructor represents a style, group layer, etc
+  // serviceItemPortalUrl: string;
 }
 
 const throwReadOnlyError = (propertyName: string) => {
@@ -318,18 +316,16 @@ export abstract class HostedLayer {
 }
 
 export default HostedLayer;
-/*
- * Copyright 2025 Esri
- *
- * Licensed under the Apache License Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2025 Esri
+//
+// Licensed under the Apache License Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
