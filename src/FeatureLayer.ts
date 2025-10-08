@@ -15,13 +15,41 @@ import { checkItemId, checkServiceUrlType, cleanUrl, warn, wrapAccessToken } fro
 //     "MultiPolygon":"fill"
 // }
 
-const esriGeometryDefaultStyleMap: { [_: string]: 'circle' | 'line' | 'fill' } = {
-  esriGeometryPoint: 'circle',
-  esriGeometryMultipoint: 'circle',
-  esriGeometryPolyline: 'line',
-  esriGeometryPolygon: 'fill',
-  esriGeometryEnvelope: 'fill',
-  esriGeometryMultiPatch: 'fill',
+type GeometryLimits = { maxRecordCount: number } & ({ maxPointCount: number } | { maxVertexCount: number });
+
+const esriGeometryInfo: { [_: string]: { limit: GeometryLimits; type: 'circle' | 'line' | 'fill' } } = {
+  esriGeometryPoint: {
+    type: 'circle',
+    limit: {
+      maxPointCount: 200000,
+      maxRecordCount: 200000,
+    },
+  },
+  esriGeometryMultipoint: {
+    type: 'circle',
+    limit: {
+      maxPointCount: 80000, // ?
+      maxRecordCount: 80000,
+    } },
+  esriGeometryPolyline: {
+    type: 'line',
+    limit: {
+      maxVertexCount: 250000,
+      maxRecordCount: 8000,
+    } },
+  esriGeometryPolygon: {
+    type: 'fill',
+    limit: {
+      maxVertexCount: 250000,
+      maxRecordCount: 8000,
+    } },
+  esriGeometryEnvelope: {
+    type: 'fill',
+    limit: {
+      maxVertexCount: 250000,
+      maxRecordCount: 8000,
+    },
+  },
 };
 
 const defaultLayerPaintMap = {
@@ -163,21 +191,22 @@ export class FeatureLayer extends HostedLayer {
     if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
     if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support queries.');
     if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
+    if (!layerInfo.geometryType || !Object.keys(esriGeometryInfo).includes(layerInfo.geometryType)) throw new Error('This feature service contains an unsupported geometry type.');
 
     let layerData: GeoJSON.GeoJSON;
     if (layerInfo.supportsExceedsLimitStatistics) {
+      const queryLimit = esriGeometryInfo[layerInfo.geometryType].limit;
+
       const exceedsLimitResponse = await (queryFeatures({
         url: layerUrl,
         authentication: this._authentication,
         ...structuredClone(this.query),
         outStatistics: [
           {
+            onStatisticField: null, // This is required by REST JS but not used
             statisticType: 'exceedslimit',
             outStatisticFieldName: 'exceedslimit',
-            // @ts-expect-error these params aren't in REST JS
-            maxPointCount: 2000,
-            maxRecordCount: 2000,
-            maxVertexCount: 250000,
+            ...queryLimit,
           },
         ],
         returnGeometry: false,
@@ -236,7 +265,7 @@ export class FeatureLayer extends HostedLayer {
       data: layerData,
     };
 
-    const layerType = esriGeometryDefaultStyleMap[layerInfo.geometryType];
+    const layerType = esriGeometryInfo[layerInfo.geometryType].type;
     const defaultLayer = {
       source: sourceId,
       id: `${sourceId}-layer`,

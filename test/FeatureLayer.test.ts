@@ -315,6 +315,7 @@ describe('Feature layer unit tests', () => {
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         supportsExceedsLimitStatistics: false,
+        geometryType: 'esriGeometryPoint',
         advancedQueryCapabilities: { supportsPagination: true }
       }));
       await expect(async () => {
@@ -329,6 +330,7 @@ describe('Feature layer unit tests', () => {
       fetchMock.once(JSON.stringify({
         supportedQueryFormats: "",
         capabilities: "Query",
+        geometryType: 'esriGeometryPoint',
         supportsExceedsLimitStatistics: true,
         advancedQueryCapabilities: { supportsPagination: true }
       }));
@@ -336,6 +338,33 @@ describe('Feature layer unit tests', () => {
         await layer.initialize();
       }).rejects.toThrowError('This feature service does not support GeoJSON format.')
     });
+    test('Throws if the layer contains an unsupported geometry type.', async () => {
+      const layer = new FeatureLayer({
+        url: layerUrlTrails
+      });
+
+      fetchMock.once(JSON.stringify({
+        supportedQueryFormats: "JSON, geoJSON, PBF",
+        capabilities: "Query",
+        geometryType: 'notEsriGeometry',
+        supportsExceedsLimitStatistics: true,
+        advancedQueryCapabilities: { supportsPagination: true }
+      }));
+      await expect(async () => {
+        await layer.initialize();
+      }).rejects.toThrowError('This feature service contains an unsupported geometry type.');
+
+
+      fetchMock.once(JSON.stringify({
+        supportedQueryFormats: "JSON, geoJSON, PBF",
+        capabilities: "Query",
+        supportsExceedsLimitStatistics: true,
+        advancedQueryCapabilities: { supportsPagination: true }
+      }));
+      await expect(async () => {
+        await layer.initialize();
+      }).rejects.toThrowError('This feature service contains an unsupported geometry type.');
+    })
     test('Throws if the layer does not support query operations.', async () => {
       const layer = new FeatureLayer({
         url: layerUrlTrails
@@ -344,6 +373,7 @@ describe('Feature layer unit tests', () => {
       fetchMock.once(JSON.stringify({
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "",
+        geometryType: 'esriGeometryPoint',
         supportsExceedsLimitStatistics: true,
         advancedQueryCapabilities: { supportsPagination: true }
       }));
@@ -359,6 +389,7 @@ describe('Feature layer unit tests', () => {
       fetchMock.once(JSON.stringify({
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
+        geometryType: 'esriGeometryPoint',
         supportsExceedsLimitStatistics: true,
         advancedQueryCapabilities: { supportsPagination: false }
       }));
