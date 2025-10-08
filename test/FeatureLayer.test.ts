@@ -12,7 +12,7 @@ import trailsItemInfoRaw from './mock/FeatureLayer/trails/trails-item-info.json'
 import trailsDataRaw from './mock/FeatureLayer/trails/trails-features.json';
 import trailsDataTruncatedRaw from './mock/FeatureLayer/trails/trails-features-truncated.json'
 import trailsQueryDataRaw from './mock/FeatureLayer/trails/trails-feature-query.json';
-import trailsDataCountOnlyRaw from './mock/FeatureLayer/trails/trails-feature-countOnly.json';
+import trailsDataCountOnlyRaw from './mock/FeatureLayer/trails/trails-feature-exceedsLimit.json';
 
 import pointsLayerInfoRaw from './mock/FeatureLayer/points/points-layer-info.json';
 import pointsDataRaw from './mock/FeatureLayer/points/points-features-truncated.json';
@@ -27,6 +27,7 @@ const polygonsData = JSON.stringify(polygonsDataRaw);
 
 const pointsLayerInfo = JSON.stringify(pointsLayerInfoRaw);
 const pointsData = JSON.stringify(pointsDataRaw);
+
 
 const multiLayerServiceInfo = JSON.stringify(multiLayerServiceInfoRaw);
 const trailsLayerInfo = JSON.stringify(trailsLayerInfoRaw);
@@ -137,7 +138,7 @@ describe('Feature layer unit tests', () => {
         query: trailQuery
       });
 
-      expect(layer.query).toBe(trailQuery);
+      expect(layer.query).toEqual(trailQuery);
       fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
       await layer.initialize();
 
@@ -157,7 +158,7 @@ describe('Feature layer unit tests', () => {
         query: trailQuery
       });
 
-      expect(layer.query).toBe(trailQuery);
+      expect(layer.query).toEqual(trailQuery);
       fetchMock.once(trailsServiceInfo).once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
       await layer.initialize();
 
@@ -190,7 +191,7 @@ describe('Feature layer unit tests', () => {
         query: trailQuery
       });
 
-      expect(layer.query).toBe(trailQuery);
+      expect(layer.query).toEqual(trailQuery);
       fetchMock.once(trailsItemInfo).once(trailsServiceInfo).once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
       await layer.initialize();
 
@@ -209,6 +210,20 @@ describe('Feature layer unit tests', () => {
         fetchMock.once(trailsItemInfo).once(multiLayerServiceInfo);
         await multiService.initialize();
       }).rejects.toThrowError('Unable to use `query` parameter: This feature service contains multiple feature layers.');
+    });
+    test('Accepts an `ignoreLimits` parameter and warns the user about best practices when using it.', async () => {
+
+      const warningSpy = vi.spyOn(console, 'warn').mockImplementation((warningText) => {});
+
+      const layer = new FeatureLayer({
+        url: layerUrlTrails,
+        query: {
+          ignoreLimits: true
+        }
+      })
+      fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
+      await layer.initialize();
+      expect(warningSpy).toHaveBeenCalledWith(`Feature count limits are being ignored from ${layerUrlTrails}/. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
     });
   });
 
@@ -298,11 +313,12 @@ describe('Feature layer unit tests', () => {
       const warningSpy = vi.spyOn(console,'warn').mockImplementation((warningText) => {});
 
       fetchMock.once(trailsLayerInfo).once(JSON.stringify({
-        "count": 10000
+        features:[{attributes:{exceedsLimit:1}}]
       })).once(trailsLayerInfo).once(trailsDataTruncated);
 
-      await featureLayer.initialize();
-      expect(warningSpy).toHaveBeenCalledWith('You are loading a large feature layer (>2000 features) as GeoJSON. This may take some time; consider hosting your data as a vector tile layer instead.')
+      await expect(async () => {
+        await featureLayer.initialize();
+      }).rejects.toThrowError(`The requested feature count from ${layerUrlTrails}/ exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
     });
     test('Throws if the layer does not support the `exceedsLimit` statistic.', async () => {
       const layer = new FeatureLayer({
@@ -313,11 +329,12 @@ describe('Feature layer unit tests', () => {
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         supportsExceedsLimitStatistics: false,
+        geometryType: 'esriGeometryPoint',
         advancedQueryCapabilities: { supportsPagination: true }
       }));
       await expect(async () => {
         await layer.initialize();
-      }).rejects.toThrowError('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5')
+      }).rejects.toThrowError('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5');
     });
     test('Throws if the layer does not support GeoJSON responses.', async () => {
       const layer = new FeatureLayer({
@@ -327,6 +344,7 @@ describe('Feature layer unit tests', () => {
       fetchMock.once(JSON.stringify({
         supportedQueryFormats: "",
         capabilities: "Query",
+        geometryType: 'esriGeometryPoint',
         supportsExceedsLimitStatistics: true,
         advancedQueryCapabilities: { supportsPagination: true }
       }));
@@ -334,6 +352,33 @@ describe('Feature layer unit tests', () => {
         await layer.initialize();
       }).rejects.toThrowError('This feature service does not support GeoJSON format.')
     });
+    test('Throws if the layer contains an unsupported geometry type.', async () => {
+      const layer = new FeatureLayer({
+        url: layerUrlTrails
+      });
+
+      fetchMock.once(JSON.stringify({
+        supportedQueryFormats: "JSON, geoJSON, PBF",
+        capabilities: "Query",
+        geometryType: 'notEsriGeometry',
+        supportsExceedsLimitStatistics: true,
+        advancedQueryCapabilities: { supportsPagination: true }
+      }));
+      await expect(async () => {
+        await layer.initialize();
+      }).rejects.toThrowError('This feature service contains an unsupported geometry type.');
+
+
+      fetchMock.once(JSON.stringify({
+        supportedQueryFormats: "JSON, geoJSON, PBF",
+        capabilities: "Query",
+        supportsExceedsLimitStatistics: true,
+        advancedQueryCapabilities: { supportsPagination: true }
+      }));
+      await expect(async () => {
+        await layer.initialize();
+      }).rejects.toThrowError('This feature service contains an unsupported geometry type.');
+    })
     test('Throws if the layer does not support query operations.', async () => {
       const layer = new FeatureLayer({
         url: layerUrlTrails
@@ -342,6 +387,7 @@ describe('Feature layer unit tests', () => {
       fetchMock.once(JSON.stringify({
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "",
+        geometryType: 'esriGeometryPoint',
         supportsExceedsLimitStatistics: true,
         advancedQueryCapabilities: { supportsPagination: true }
       }));
@@ -357,6 +403,7 @@ describe('Feature layer unit tests', () => {
       fetchMock.once(JSON.stringify({
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
+        geometryType: 'esriGeometryPoint',
         supportsExceedsLimitStatistics: true,
         advancedQueryCapabilities: { supportsPagination: false }
       }));
@@ -445,15 +492,9 @@ describe('Feature layer unit tests', () => {
     });
     test('Creates a default layer style for each type of geojson source', async () => {
 
-      const countOnlyResponse = JSON.stringify({
-        count:500
+      const exceedsLimitResponse = JSON.stringify({
+        features:[{attributes:{exceedsLimit:0}}]
       });
-      // Points
-      fetchMock.once(pointsLayerInfo).once(countOnlyResponse).once(pointsLayerInfo).once(pointsData);
-      const points = new FeatureLayer({
-        url: layerUrlPoints
-      });
-      await points.initialize();
 
       // Lines
       fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
@@ -462,8 +503,15 @@ describe('Feature layer unit tests', () => {
       });
       await lines.initialize();
 
+      // Points
+      fetchMock.once(pointsLayerInfo).once(trailsDataCountOnly).once(pointsLayerInfo).once(pointsData);
+      const points = new FeatureLayer({
+        url: layerUrlPoints
+      });
+      await points.initialize();
+
       // Polygons
-      fetchMock.once(polygonsLayerInfo).once(countOnlyResponse).once(polygonsLayerInfo).once(polygonsData);
+      fetchMock.once(polygonsLayerInfo).once(trailsDataCountOnly).once(polygonsLayerInfo).once(polygonsData);
       const polygons = new FeatureLayer({
         url: layerUrlPolygons
       });
