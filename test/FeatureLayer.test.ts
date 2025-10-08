@@ -138,7 +138,7 @@ describe('Feature layer unit tests', () => {
         query: trailQuery
       });
 
-      expect(layer.query).toBe(trailQuery);
+      expect(layer.query).toEqual(trailQuery);
       fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
       await layer.initialize();
 
@@ -158,7 +158,7 @@ describe('Feature layer unit tests', () => {
         query: trailQuery
       });
 
-      expect(layer.query).toBe(trailQuery);
+      expect(layer.query).toEqual(trailQuery);
       fetchMock.once(trailsServiceInfo).once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
       await layer.initialize();
 
@@ -191,7 +191,7 @@ describe('Feature layer unit tests', () => {
         query: trailQuery
       });
 
-      expect(layer.query).toBe(trailQuery);
+      expect(layer.query).toEqual(trailQuery);
       fetchMock.once(trailsItemInfo).once(trailsServiceInfo).once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
       await layer.initialize();
 
@@ -210,6 +210,20 @@ describe('Feature layer unit tests', () => {
         fetchMock.once(trailsItemInfo).once(multiLayerServiceInfo);
         await multiService.initialize();
       }).rejects.toThrowError('Unable to use `query` parameter: This feature service contains multiple feature layers.');
+    });
+    test('Accepts an `ignoreLimits` parameter and warns the user about best practices when using it.', async () => {
+
+      const warningSpy = vi.spyOn(console, 'warn').mockImplementation((warningText) => {});
+
+      const layer = new FeatureLayer({
+        url: layerUrlTrails,
+        query: {
+          ignoreLimits: true
+        }
+      })
+      fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
+      await layer.initialize();
+      expect(warningSpy).toHaveBeenCalledWith(`Feature count limits are being ignored from ${layerUrlTrails}/. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
     });
   });
 
@@ -304,7 +318,7 @@ describe('Feature layer unit tests', () => {
 
       await expect(async () => {
         await featureLayer.initialize();
-      }).rejects.toThrowError('The requested feature count exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript for now, or host your data as a vector tile layer.');
+      }).rejects.toThrowError(`The requested feature count from ${layerUrlTrails}/ exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
     });
     test('Throws if the layer does not support the `exceedsLimit` statistic.', async () => {
       const layer = new FeatureLayer({
@@ -320,7 +334,7 @@ describe('Feature layer unit tests', () => {
       }));
       await expect(async () => {
         await layer.initialize();
-      }).rejects.toThrowError('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5')
+      }).rejects.toThrowError('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5');
     });
     test('Throws if the layer does not support GeoJSON responses.', async () => {
       const layer = new FeatureLayer({

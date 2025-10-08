@@ -89,6 +89,7 @@ export interface IQueryOptions {
   spatialRel?: SpatialRelationship;
   sqlFormat?: 'none' | 'standard' | 'native';
   where?: string;
+  ignoreLimits?: boolean;
 }
 
 export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
@@ -184,7 +185,11 @@ export class FeatureLayer extends HostedLayer {
       };
     }
 
-    if (options?.query) this.query = options.query;
+    if (options?.query) {
+      this.query = {
+        ...options.query,
+      };
+    }
   }
 
   private async _fetchAllFeatures(layerUrl: string, layerInfo: ILayerDefinition): Promise<GeoJSON.GeoJSON> {
@@ -197,10 +202,23 @@ export class FeatureLayer extends HostedLayer {
     if (layerInfo.supportsExceedsLimitStatistics) {
       const queryLimit = esriGeometryInfo[layerInfo.geometryType].limit;
 
+      let queryParams: IQueryOptions, ignoreFeatureLimit: boolean;
+      if (this.query) {
+        if (this.query.ignoreLimits) {
+          const { ignoreLimits, ...params } = this.query;
+          ignoreFeatureLimit = ignoreLimits;
+          queryParams = params;
+        }
+        else {
+          queryParams = this.query;
+          ignoreFeatureLimit = false;
+        }
+      }
+
       const exceedsLimitResponse = await (queryFeatures({
         url: layerUrl,
         authentication: this._authentication,
-        ...structuredClone(this.query),
+        ...structuredClone(queryParams),
         outStatistics: [
           {
             onStatisticField: null, // This is required by REST JS but not used
@@ -217,12 +235,13 @@ export class FeatureLayer extends HostedLayer {
         // spatialRel: 'esriSpatialRelIntersects',
       })) as IQueryFeaturesResponse;
 
-      if (exceedsLimitResponse.features[0].attributes.exceedslimit === 0) {
+      if (exceedsLimitResponse.features[0].attributes.exceedslimit === 0 || ignoreFeatureLimit) {
+        if (ignoreFeatureLimit) warn(`Feature count limits are being ignored from ${layerUrl}. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
         // Get all features
         const response = await queryAllFeatures({
           url: layerUrl,
           authentication: this._authentication,
-          ...structuredClone(this.query),
+          ...structuredClone(queryParams),
           f: 'geojson',
         });
 
@@ -231,7 +250,7 @@ export class FeatureLayer extends HostedLayer {
       else {
         // Limit exceeded
         // TODO on-demand loading
-        throw new Error('The requested feature count exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript for now, or host your data as a vector tile layer.');
+        throw new Error(`The requested feature count from ${layerUrl} exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
       }
     }
     else {
