@@ -185,11 +185,7 @@ export class FeatureLayer extends HostedLayer {
       };
     }
 
-    if (options?.query) {
-      this.query = {
-        ...options.query,
-      };
-    }
+    if (options?.query) this.query = options.query;
   }
 
   private async _fetchAllFeatures(layerUrl: string, layerInfo: ILayerDefinition): Promise<GeoJSON.GeoJSON> {
