@@ -109,7 +109,7 @@ export default tseslint.config([
         },
         "multilineDetection": "brackets"
       }],
-      "@stylistic/multiline-comment-style": ['error', 'starred-block'],
+      "@stylistic/multiline-comment-style": ['error', 'separate-lines'],
     }
   },
   {
