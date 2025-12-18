@@ -1,6 +1,6 @@
 {
   "name": "@esri/maplibre-arcgis",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Wrapper for integrating ArcGIS data sources with MapLibre GL JS",
   "keywords": [
     "maplibre",
@@ -41,7 +41,7 @@
   ],
   "type": "module",
   "peerDependencies": {
-    "maplibre-gl": ">=5.0.0"
+    "maplibre-gl": ">=5.11.0"
   },
   "dependencies": {
     "@esri/arcgis-rest-basemap-sessions": "^1.1.0",
