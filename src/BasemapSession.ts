@@ -133,6 +133,10 @@ export class BasemapSession {
     return this._session.token;
   }
 
+  get parentToken(): string {
+    return this._parentToken;
+  }
+
   /**
    * Gets the sessions {@link StyleFamily} value.
    */

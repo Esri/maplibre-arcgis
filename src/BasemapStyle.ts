@@ -1,5 +1,5 @@
-import { request } from '@esri/arcgis-rest-request';
-import type { Map, RasterTileSource, Source, Style, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
+import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
+import type { Map, RasterTileSource, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
 import { AttributionControl, type IAttributionControlOptions } from './AttributionControl';
 import type BasemapSession from './BasemapSession';
@@ -371,7 +371,12 @@ export class BasemapStyle {
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
-    const authentication = await wrapAccessToken(this._token);
+    let authentication: RestJSAuthenticationManager;
+    if (this._isItemId && this.session) {
+      // With session tokens, initial request for custom styles must use the parent token;
+      authentication = ApiKeyManager.fromKey((this.session as BasemapSession).parentToken);
+    }
+    else authentication = await wrapAccessToken(this._token);
 
     const style = await (request(styleUrl, {
       authentication: authentication,
@@ -402,13 +407,17 @@ export class BasemapStyle {
 
     if (style.sprite) {
       // Handle sprite
+      let spriteToken: string;
+      if (this._isItemId && this.session) spriteToken = (this.session as BasemapSession).parentToken;
+      else spriteToken = this._token;
+
       if (Array.isArray(style.sprite)) {
         style.sprite.forEach((sprite, id, spriteArray) => {
-          spriteArray[id].url = `${sprite.url}?token=${this._token}`;
+          spriteArray[id].url = `${sprite.url}?token=${spriteToken}`;
         });
       }
       else {
-        style.sprite = `${style.sprite}?token=${this._token}`;
+        style.sprite = `${style.sprite}?token=${spriteToken}`;
       }
     }
 
