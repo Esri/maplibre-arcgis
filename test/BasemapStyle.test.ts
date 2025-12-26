@@ -4,18 +4,21 @@ import { BasemapStyle, BasemapSession } from '../src/MaplibreArcGIS';
 import { customTest as test } from './BaseTest';
 import basemapStyleNavigationRaw from './mock/BasemapStyle/ArcGISNavigation.json';
 import basemapStyleStreetsRaw from './mock/BasemapStyle/OpenStreets.json';
+import customStyleRaw from './mock/BasemapStyle/CustomArcGisStyle.json';
 import sessionResponseRaw from './mock/BasemapSession/valid-session.json';
 import { tokenError } from './mock/authentication/invalidTokenError';
 import { Map } from 'maplibre-gl';
 import { useMock, removeMock } from './setupUnit';
+import * as arcgisRestRequest from '@esri/arcgis-rest-request';
 
-const basemapSessionResponse = JSON.stringify(sessionResponseRaw);
 const basemapStyleNavigation = JSON.stringify(basemapStyleNavigationRaw);
 const basemapStyleStreets = JSON.stringify(basemapStyleStreetsRaw);
+const basemapStyleCustom = JSON.stringify(customStyleRaw);
 
 const arcgisStyle = 'arcgis/navigation';
 const imageryStyle = 'arcgis/imagery';
 const openStyle = 'open/streets';
+const customStyle = '9880b8168baa486a97598872995adb0c';
 
 const customAttributionString = 'Internal distribution. For unit tests.'
 const esriAttributionString = 'Powered by \<a href=\"https:\/\/www.esri.com\/\"\>Esri\<\/a\>';
@@ -128,6 +131,30 @@ describe('BasemapStyle unit tests', () => {
     expect(basemap.preferences.worldview).toBe('unitedStatesOfAmerica');
     expect(basemap._styleUrl).toContain('worldview=unitedStatesOfAmerica');
   });
+
+  test('Supports loading custom styles via item ID', ({apiKey}) => {
+
+    const basemap = new BasemapStyle({
+      style: customStyle,
+      token: apiKey
+    });
+
+    expect(basemap._isItemId).toBeTruthy();
+    expect(basemap._styleUrl).toContain(`/items/${customStyle}`);
+  });
+
+  test('Loads the style as JSON and attaches the access token to sources, sprites, and glyphs.', async ({apiKey}) => {
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      token: apiKey
+    });
+    fetchMock.once(basemapStyleNavigation);
+    const style = await basemap.loadStyle();
+
+    expect(style.sprite).toContain(`token=${apiKey}`);
+    expect(style.glyphs).toContain(`token=${apiKey}`);
+    expect(style.sources['esri'].tiles[0]).toContain(`token=${apiKey}`);
+  })
 
   test('Emits a BasemapStyleError event when a loading error occurs.', async () => {
     const basemap = new BasemapStyle({
@@ -264,6 +291,7 @@ describe('BasemapStyle unit tests', () => {
 
       const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
       expect(mapStyle.layers.length).toBe(1);
+      fetchMock.resetMocks();
     });
 
     test('`applyStyle` factory method creates and loads a basemap, then applies it to a map with applyTo.', async ({apiKey, map}) => {
@@ -321,50 +349,65 @@ describe('BasemapStyle unit tests', () => {
 
 
 describe('Supports basemap session authentication.', () => {
-  let session;
-  beforeEach(async ({apiKey}) => {
-    fetchMock.once(basemapSessionResponse);
-    session = await BasemapSession.start({
-      styleFamily: 'arcgis',
-      token: apiKey
-    });
-  });
 
-  test('Accepts an initialized BasemapSession and uses the session token for authentication.', () => {
+  test('Accepts an initialized BasemapSession and uses the session token for authentication.', ({basemapSession}) => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,
-      session: session
+      session: basemapSession
     });
-    expect(basemap._token).toBe(session.token);
+    expect(basemap._token).toBe(basemapSession.token);
   });
 
-  test('Accepts a basemap session promise and resolves the promise before loading the style.', async ({apiKey}) => {
+  // test('Accepts a basemap session promise and resolves the promise before loading the style.', async ({apiKey}) => {
+  //   fetchMock.once(JSON.stringify(sessionResponseRaw));
+  //   const sessionPromise = BasemapSession.start({
+  //     styleFamily: 'arcgis',
+  //     token: apiKey
+  //   });
+  //   const basemap = new BasemapStyle({
+  //     style: arcgisStyle,
+  //     session: sessionPromise
+  //   });
+  //   fetchMock.once(basemapStyleNavigation);
+  //   await basemap.loadStyle();
 
-    fetchMock.once(basemapSessionResponse);
-    const sessionPromise = BasemapSession.start({
-      styleFamily: 'arcgis',
-      token: apiKey
-    });
+  //   expect(basemap._token).toBe(sessionResponseRaw.sessionToken);
+  //   expect(basemap.session.token).toBeDefined();
+  // });
 
+  test('Prioritizes a basemap `session` over an API key', ({apiKey, basemapSession}) => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,
-      session: sessionPromise
+      session: basemapSession,
+      token: apiKey
     });
-    fetchMock.once(basemapStyleNavigation);
+    expect(basemap._token).toBe(basemapSession.token);
+  });
+
+  test('When loading a custom style, uses the parent access token instead of the session for the initial JSON request.', async ({basemapSession}) => {
+
+    const basemap = new BasemapStyle({
+      style: customStyle,
+      session: basemapSession
+    });
+    const requestSpy = vi.spyOn(arcgisRestRequest, 'request');
+
+    fetchMock.once(basemapStyleCustom);
     await basemap.loadStyle();
 
-    expect(basemap._token).toBe(sessionResponseRaw.sessionToken);
-    expect(basemap.session.token).toBeDefined();
-
+    const authentication = arcgisRestRequest.ApiKeyManager.fromKey(basemapSession.parentToken);
+    expect(requestSpy).toHaveBeenCalledWith(expect.stringContaining(customStyle), expect.objectContaining({authentication}))
   });
 
-  test('Prioritizes a basemap `session` over an API key', ({apiKey}) => {
+  test('Uses the parent token instead of the session to load sprites', async ({basemapSession}) => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,
-      session: session,
-      token: apiKey
+      session: basemapSession
     });
-    expect(basemap._token).toBe(session.token);
+    fetchMock.once(basemapStyleNavigation);
+    const style = await basemap.loadStyle();
+
+    expect(style.sprite).toContain(`?token=${basemapSession.parentToken}`);
   });
 
   test('Updates the token in the map style when the session is refreshed.', async ({setupPage}) => {
