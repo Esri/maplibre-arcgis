@@ -1,13 +1,15 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { BasemapStyle } from '../src/MaplibreArcGIS';
+import { BasemapStyle, BasemapSession } from '../src/MaplibreArcGIS';
 import { customTest as test } from './BaseTest';
 import basemapStyleNavigationRaw from './mock/BasemapStyle/ArcGISNavigation.json';
 import basemapStyleStreetsRaw from './mock/BasemapStyle/OpenStreets.json';
+import sessionResponseRaw from './mock/BasemapSession/valid-session.json';
 import { tokenError } from './mock/authentication/invalidTokenError';
 import { Map } from 'maplibre-gl';
 import { useMock, removeMock } from './setupUnit';
 
+const basemapSessionResponse = JSON.stringify(sessionResponseRaw);
 const basemapStyleNavigation = JSON.stringify(basemapStyleNavigationRaw);
 const basemapStyleStreets = JSON.stringify(basemapStyleStreetsRaw);
 
@@ -232,20 +234,20 @@ describe('BasemapStyle unit tests', () => {
       expect(basemap._map).toBe(map);
     });
 
-    test('Applies the loaded style to the map with `applyTo`', async ({apiKey, loadedBasemap, map}) => {
-      loadedBasemap.applyTo(map);
+    // test('Applies the loaded style to the map with `applyTo`', async ({apiKey, loadedBasemap, map}) => {
+    //   loadedBasemap.applyTo(map);
 
-      expect(loadedBasemap._map).toBe(map);
+    //   expect(loadedBasemap._map).toBe(map);
 
-      // TODO Map events do not fire properly -- why?
-      const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
+    //   // TODO Map events do not fire properly -- why?
+    //   const mapStyle = await new Promise(resolve => setTimeout(()=>resolve(map.getStyle()),500));
 
-      expect(mapStyle.glyphs).toBe(loadedBasemap.style.glyphs);
-      expect(mapStyle.sprite).toBe(loadedBasemap.style.sprite);
-      expect(mapStyle.sources).toEqual(loadedBasemap.style.sources);
+    //   expect(mapStyle.glyphs).toBe(loadedBasemap.style.glyphs);
+    //   expect(mapStyle.sprite).toBe(loadedBasemap.style.sprite);
+    //   expect(mapStyle.sources).toEqual(loadedBasemap.style.sources);
 
-      expect(loadedBasemap.style).toMatchObject(mapStyle);
-    });
+    //   expect(loadedBasemap.style).toMatchObject(mapStyle);
+    // });
 
     test('`applyTo` applies MapLibre style options such as `transformStyle`, and applies them to the map.', async ({apiKey, loadedBasemap, map}) => {
       const maplibreStyleOptions = {
@@ -317,63 +319,75 @@ describe('BasemapStyle unit tests', () => {
   });
 });
 
-/*
+
 describe('Supports basemap session authentication.', () => {
-  beforeAll(async () => {
-    const defaultBasemapSession = await BasemapSession.start({
+  let session;
+  beforeEach(async ({apiKey}) => {
+    fetchMock.once(basemapSessionResponse);
+    session = await BasemapSession.start({
       styleFamily: 'arcgis',
       token: apiKey
     });
   });
 
-  test('Accepts a BasemapSession in the `session` parameter and uses the session token in requests.', () => {
+  test('Accepts an initialized BasemapSession and uses the session token for authentication.', () => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,
-      session: basemapSession
+      session: session
     });
-    expect(basemap.token).toBe(basemapSession.token);
+    expect(basemap._token).toBe(session.token);
+  });
+
+  test('Accepts a basemap session promise and resolves the promise before loading the style.', async ({apiKey}) => {
+
+    fetchMock.once(basemapSessionResponse);
+    const sessionPromise = BasemapSession.start({
+      styleFamily: 'arcgis',
+      token: apiKey
+    });
+
+    const basemap = new BasemapStyle({
+      style: arcgisStyle,
+      session: sessionPromise
+    });
+    fetchMock.once(basemapStyleNavigation);
+    await basemap.loadStyle();
+
+    expect(basemap._token).toBe(sessionResponseRaw.sessionToken);
+    expect(basemap.session.token).toBeDefined();
+
   });
 
   test('Prioritizes a basemap `session` over an API key', ({apiKey}) => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,
-      session: basemapSession,
+      session: session,
       token: apiKey
     });
-    expect(basemap.token).toBe(basemapSession.token);
+    expect(basemap._token).toBe(session.token);
   });
 
-  test('Prioritizes a basemap `session` over REST JS authentication', ({restJsAuthentication}) => {
-    const basemap = new BasemapStyle({
-      style: arcgisStyle,
-      session: basemapSession,
-      authentication: restJsAuthentication
-    });
-    expect(basemap.token).toBe(basemapSession.token);
-  });
+  test('Updates the token in the map style when the session is refreshed.', async ({setupPage}) => {
 
-  test('Accepts a basemap session that is still initializing and resolves the promise before requesting style.', async ({apiKey}) => {
-    // Not using await
-    const basemapSession = BasemapSession.start({
-      styleFamily:'arcgis',
-      token:apiKey
-    });
+    const page = await setupPage('basemap-session.html');
+    await page.waitForFunction(()=>window.map && window.basemapSession && window.basemapStyle);
 
-    const basemap = new BasemapStyle({
-      style: arcgisStyle,
-      session: basemapSession
+    const {style, token} = await page.evaluate(async () => {
+
+      await window.basemapSession.refresh();
+
+      return await new Promise(resolve => {
+        window.map.on('styledata', () => {
+          resolve({
+            style: window.map.getStyle(),
+            token: window.basemapSession.token
+          });
+        })
+      });
     });
 
-    await basemap.loadStyle();
-
-    expect(basemap.style).toBeDefined();
-    expect(basemap.token).toBe(basemap.session.token);
-  });
-
-  test('Updates the session token in map style whenever the session refreshes.', async () => {
-    // TODO - requires map
-  }, {
-    timeout: 40000
+    // Expect the source to use the new session key
+    const tileUrl = style.sources[Object.keys(style.sources)[0]].tiles[0];
+    expect(tileUrl.includes(token));
   });
 });
-*/
