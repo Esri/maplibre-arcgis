@@ -408,7 +408,7 @@ export class BasemapStyle {
     if (style.sprite) {
       // Handle sprite
       let spriteToken: string;
-      if (this._isItemId && this.session) spriteToken = (this.session as BasemapSession).parentToken;
+      if (this.session) spriteToken = (this.session as BasemapSession).parentToken;
       else spriteToken = this._token;
 
       if (Array.isArray(style.sprite)) {
