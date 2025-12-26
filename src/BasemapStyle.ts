@@ -1,9 +1,9 @@
-import { request } from '@esri/arcgis-rest-request';
-import type { Map, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
+import { ApiKeyManager, request } from '@esri/arcgis-rest-request';
+import type { Map, RasterTileSource, StyleOptions, StyleSpecification, StyleSwapOptions, VectorTileSource } from 'maplibre-gl';
 import mitt, { type Emitter } from 'mitt';
 import { AttributionControl, type IAttributionControlOptions } from './AttributionControl';
 import type BasemapSession from './BasemapSession';
-import { checkItemId, wrapAccessToken, type RestJSAuthenticationManager } from './Util';
+import { checkItemId, warn, wrapAccessToken, type RestJSAuthenticationManager } from './Util';
 
 /**
  * Structure of a BasemapStyle object. Go to the [ArcGIS REST API](https://developers.arcgis.com/rest/basemap-styles/styles-self-get/) to learn more.
@@ -108,7 +108,7 @@ export interface IBasemapStyleOptions {
    */
   attributionControl?: IAttributionControlOptions;
   /**
-   * @internal For setting the service url to QA, devext, etc.
+   * @internal For setting the service url to QA, dev environment, etc.
    */
   baseUrl?: string;
 };
@@ -335,7 +335,7 @@ export class BasemapStyle {
         const oldToken = sessionData.previous.token;
         const newToken = sessionData.current.token;
 
-        this._updateTiles(oldToken, newToken, map); // update the map with the new token
+        this._updateToken(oldToken, newToken, map); // update the map with the new token
       });
     }
 
@@ -371,7 +371,12 @@ export class BasemapStyle {
     // Request style JSON
     const styleUrl = this._isItemId ? `${this._baseUrl}/items/${this.styleId}` : `${this._baseUrl}/${this.styleId}`;
 
-    const authentication = await wrapAccessToken(this._token);
+    let authentication: RestJSAuthenticationManager;
+    if (this._isItemId && this.session) {
+      // With session tokens, initial request for custom styles must use the parent token;
+      authentication = ApiKeyManager.fromKey((this.session as BasemapSession).parentToken);
+    }
+    else authentication = await wrapAccessToken(this._token);
 
     const style = await (request(styleUrl, {
       authentication: authentication,
@@ -387,7 +392,7 @@ export class BasemapStyle {
       });
     if (!style) return;
     // Handle glyphs
-    if (style.glyphs) style.glyphs = `${style.glyphs}?f=json&token=${this.token}`;
+    if (style.glyphs) style.glyphs = `${style.glyphs}?f=json&token=${this._token}`;
 
     // Handle sources
     Object.keys(style.sources).forEach((sourceId) => {
@@ -395,20 +400,24 @@ export class BasemapStyle {
 
       if (source.type === 'raster' || source.type === 'vector' || source.type === 'raster-dem') {
         if (source.tiles.length > 0) {
-          for (let i = 0; i < source.tiles.length; i++) source.tiles[i] = `${source.tiles[i]}?f=json&token=${this.token}`;
+          for (let i = 0; i < source.tiles.length; i++) source.tiles[i] = `${source.tiles[i]}?f=json&token=${this._token}`;
         }
       }
     });
 
     if (style.sprite) {
       // Handle sprite
+      let spriteToken: string;
+      if (this.session) spriteToken = (this.session as BasemapSession).parentToken;
+      else spriteToken = this._token;
+
       if (Array.isArray(style.sprite)) {
         style.sprite.forEach((sprite, id, spriteArray) => {
-          spriteArray[id].url = `${sprite.url}?token=${this._token}`;
+          spriteArray[id].url = `${sprite.url}?token=${spriteToken}`;
         });
       }
       else {
-        style.sprite = `${style.sprite}?token=${this._token}`;
+        style.sprite = `${style.sprite}?token=${spriteToken}`;
       }
     }
 
@@ -431,7 +440,7 @@ export class BasemapStyle {
     if (!preferences) return;
 
     if (this._isItemId) {
-      console.warn('Preferences such as \'language\', \'places\', and \'worldview\' are not supported with custom basemaps IDs. These parameters will be ignored.');
+      warn('Preferences such as \'language\', \'places\', and \'worldview\' are not supported with custom basemaps IDs. These parameters will be ignored.');
       return;
     }
 
@@ -442,42 +451,44 @@ export class BasemapStyle {
     if (preferences.worldview) this.preferences.worldview = preferences.worldview;
   }
 
-  private _updateTiles(fromToken: string, toToken: string, map: Map): void {
+  private _updateToken(fromToken: string, toToken: string, map: Map): void {
     if (!map) throw new Error('Unable to update map tiles with new session token: Session does not have access to the map.');
     this._map = map;
-
+    const newStyle: StyleSpecification = this._map.style.stylesheet;
     // replace token in the styles tiles with the new session token
-    for (const sourceCaches of Object.keys(this._map.style.sourceCaches)) {
-      const source: VectorTileSource = this._map.getSource(sourceCaches);
+    for (const tileManagerId of Object.keys(this._map.style.tileManagers)) {
+      const source: VectorTileSource | RasterTileSource = this._map.getSource(tileManagerId);
       // skip if we can't find the source or the source doesn't have tiles
       if (!source || !source.tiles) {
-        return;
+        continue;
       }
 
       // Skip if the source doesn't have tiles that include the old token
       if (!source.tiles.some(tileUrl => tileUrl.includes(fromToken))) {
-        return;
+        continue;
       }
 
       const newTiles = source.tiles.map((tile) => {
         return tile.includes(fromToken) ? tile.replace(fromToken, toToken) : tile;
       });
 
-      source.setTiles(newTiles);
+      (newStyle.sources[tileManagerId] as VectorTileSource | RasterTileSource).tiles = newTiles;
     }
 
     // replace the token in the glyph url, ensuring fonts continue loading
     const glyphs = this._map.getGlyphs();
     if (glyphs.includes(fromToken)) {
-      this._map.setGlyphs(glyphs.replace(fromToken, toToken));
+      newStyle.glyphs = glyphs.replace(fromToken, toToken);
     }
 
     const sprites = this._map.getSprite();
     for (const sprite of sprites) {
       if (sprite.url.includes(fromToken)) {
-        this._map.setSprite(sprite.url.replace(fromToken, toToken));
+        newStyle.sprite = sprite.url.replace(fromToken, toToken);
       }
     }
+
+    this._map.setStyle(newStyle);
   }
 
   private _styleLoadHandler = (e: BasemapStyle): void => {

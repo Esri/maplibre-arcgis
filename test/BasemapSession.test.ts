@@ -11,14 +11,6 @@ const sessionResponse = JSON.stringify(sessionResponseRaw);
 const expiredSessionResponse = JSON.stringify(expiredSessionResponseRaw);
 
 const test = customTest.extend({
-  basemapSession: async ({apiKey}, use) => {
-    fetchMock.once(sessionResponse);
-    const session = await BasemapSession.start({
-      token:apiKey,
-      styleFamily:'arcgis'
-    });
-    await use(session)
-  },
   sessionResponse: async ({apiKey}, use) => {
     function generateSessionResponse (duration) {
       const mockShortSession = {

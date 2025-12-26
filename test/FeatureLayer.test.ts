@@ -732,7 +732,7 @@ describe('Works on a mock page with a `Map`',() => {
 
   // TODO fix this test
   /*
-  test.only('Creates an Esri `AttributionControl when added to the map.', async ({setupPage, esriAttributionString}) => {
+  test('Creates an Esri `AttributionControl when added to the map.', async ({setupPage, esriAttributionString}) => {
     const page = await setupPage('feature-layer.html');
     await page.waitForFunction(()=> window.map && window.featureLayer);
 

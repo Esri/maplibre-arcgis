@@ -7,6 +7,7 @@ import { ApiKeyManager } from '@esri/arcgis-rest-request';
 import { Map } from 'maplibre-gl';
 import {MOCK_API_KEY} from './mock/authentication/basemapApiKey.js';
 import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
+import sessionResponseRaw from './mock/BasemapSession/valid-session.json';
 
 let browser;
 async function setupBrowser() {
@@ -24,6 +25,15 @@ export const customTest = testBase.extend({
   // API key
   apiKey: async ({}, use) => {
     await use (process.env.PRODUCTION_KEY_ALP);
+  },
+
+  basemapSession: async ({apiKey}, use) => {
+    fetchMock.once(JSON.stringify(sessionResponseRaw));
+    const session = await BasemapSession.start({
+      token:apiKey,
+      styleFamily:'arcgis'
+    });
+    await use(session)
   },
   // REST JS APIKeyManager
   restJsAuthentication: async ({apiKey}, use) => {
