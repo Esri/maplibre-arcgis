@@ -1,6 +1,6 @@
 {
   "name": "@esri/maplibre-arcgis",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Wrapper for integrating ArcGIS data sources with MapLibre GL JS",
   "keywords": [
     "maplibre",
