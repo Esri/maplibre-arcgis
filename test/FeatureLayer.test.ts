@@ -295,7 +295,12 @@ describe('Feature layer unit tests', () => {
       // Mock all layer responses
       fetchMock.once(multiLayerServiceInfo)
       for (let i=0;i<10;i++) {
-        fetchMock.once(trailsLayerInfo).once(trailsDataCountOnly).once(trailsLayerInfo).once(trailsDataTruncated);
+        const layerInfo = JSON.stringify({
+          ...trailsLayerInfoRaw,
+          name: `Trails_${i}`,
+          id: i
+        });
+        fetchMock.once(layerInfo).once(trailsDataCountOnly).once(layerInfo).once(trailsDataTruncated);
       }
       await featureService.initialize();
 
@@ -393,7 +398,7 @@ describe('Feature layer unit tests', () => {
       }));
       await expect(async () => {
         await layer.initialize();
-      }).rejects.toThrowError('This feature service does not support queries.');
+      }).rejects.toThrowError('This feature service does not support query operations.');
     });
     test('Throws if the layer does not support query pagination.', async () => {
       const layer = new FeatureLayer({

@@ -171,6 +171,7 @@ export class FeatureLayer extends HostedLayer {
       if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
       else throw new Error('Argument `url` is not a valid feature service URL.');
     }
+    if (options?.query) this.query = options.query;
 
     // Set up
     if (this._inputType == 'ItemId') {
@@ -183,101 +184,92 @@ export class FeatureLayer extends HostedLayer {
       this._serviceInfo = {
         serviceUrl: cleanUrl(options.url),
       };
-    }
-
-    if (options?.query) this.query = options.query;
+    };
   }
 
-  private async _fetchAllFeatures(layerUrl: string, layerInfo: ILayerDefinition): Promise<GeoJSON.GeoJSON> {
-    if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
-    if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support queries.');
-    if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
-    if (!layerInfo.geometryType || !Object.keys(esriGeometryInfo).includes(layerInfo.geometryType)) throw new Error('This feature service contains an unsupported geometry type.');
-
-    let layerData: GeoJSON.GeoJSON;
-    if (layerInfo.supportsExceedsLimitStatistics) {
-      const queryLimit = esriGeometryInfo[layerInfo.geometryType].limit;
-
-      let queryParams: IQueryOptions, ignoreFeatureLimit: boolean;
-      if (this.query) {
-        if (this.query.ignoreLimits) {
-          const { ignoreLimits, ...params } = this.query;
-          ignoreFeatureLimit = ignoreLimits;
-          queryParams = params;
-        }
-        else {
-          queryParams = this.query;
-          ignoreFeatureLimit = false;
-        }
-      }
-
-      const exceedsLimitResponse = await (queryFeatures({
-        url: layerUrl,
-        authentication: this._authentication,
-        ...structuredClone(queryParams),
-        outStatistics: [
-          {
-            onStatisticField: null, // This is required by REST JS but not used
-            statisticType: 'exceedslimit',
-            outStatisticFieldName: 'exceedslimit',
-            ...queryLimit,
-          },
-        ],
-        returnGeometry: false,
-        params: {
-          cacheHint: true,
-        },
-        // outSR: 102100,
-        // spatialRel: 'esriSpatialRelIntersects',
-      })) as IQueryFeaturesResponse;
-
-      if (exceedsLimitResponse.features[0].attributes.exceedslimit === 0 || ignoreFeatureLimit) {
-        if (ignoreFeatureLimit) warn(`Feature count limits are being ignored from ${layerUrl}. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
-        // Get all features
-        const response = await queryAllFeatures({
-          url: layerUrl,
-          authentication: this._authentication,
-          ...structuredClone(queryParams),
-          f: 'geojson',
-        });
-
-        layerData = response as unknown as GeoJSON.GeoJSON;
+  private async _fetchFeatures(serviceUrl: string, limitQuery: GeometryLimits): Promise<GeoJSON.GeoJSON> {
+    // fetch data
+    let layerData: GeoJSON.GeoJSON, queryParams: IQueryOptions, ignoreFeatureLimit: boolean;
+    if (this.query) {
+      if (this.query.ignoreLimits) {
+        const { ignoreLimits, ...params } = this.query;
+        ignoreFeatureLimit = ignoreLimits;
+        queryParams = params;
       }
       else {
-        // Limit exceeded
-        // TODO on-demand loading
-        throw new Error(`The requested feature count from ${layerUrl} exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
+        queryParams = this.query;
+        ignoreFeatureLimit = false;
       }
     }
+
+    // Check if the desired query exceeds a hardcoded feature limit
+    const exceedsLimitResponse = await (queryFeatures({
+      url: serviceUrl,
+      authentication: this._authentication,
+      ...structuredClone(queryParams),
+      outStatistics: [
+        {
+          onStatisticField: null, // This is required by REST JS but not used
+          statisticType: 'exceedslimit',
+          outStatisticFieldName: 'exceedslimit',
+          ...limitQuery,
+        },
+      ],
+      returnGeometry: false,
+      params: {
+        cacheHint: true,
+      },
+      // outSR: 102100,
+      // spatialRel: 'esriSpatialRelIntersects',
+    })) as IQueryFeaturesResponse;
+
+    if (exceedsLimitResponse.features[0].attributes.exceedslimit === 0 || ignoreFeatureLimit) {
+      if (ignoreFeatureLimit) warn(`Feature count limits are being ignored from ${serviceUrl}. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
+      // Get all features
+      const response = await queryAllFeatures({
+        url: serviceUrl,
+        authentication: this._authentication,
+        ...structuredClone(queryParams),
+        f: 'geojson',
+      });
+
+      layerData = response as unknown as GeoJSON.GeoJSON;
+    }
     else {
-      throw new Error(
-        'Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5'
-      );
+      // Limit exceeded
+      // TODO on-demand loading
+      throw new Error(`The requested feature count from ${serviceUrl} exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
     }
     if (!layerData) throw new Error('Unable to load data.');
 
     return layerData;
   }
 
-  private async _loadLayer(layerUrl: string): Promise<void> {
-    const layerInfo = await getLayer({
+  private async _initializeLayer(layerUrl: string): Promise<void> {
+    // get layer properties and validate it's possible
+    const layerInfo: ILayerDefinition = await getLayer({
       authentication: this._authentication,
       url: layerUrl,
       httpMethod: 'GET',
     });
 
-    const layerData = await this._fetchAllFeatures(layerUrl, layerInfo);
+    if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
+    if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support query operations.');
+    if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
+    if (!layerInfo.supportsExceedsLimitStatistics) throw new Error('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5');
+    if (!layerInfo.geometryType || !Object.keys(esriGeometryInfo).includes(layerInfo.geometryType)) throw new Error('This feature service contains an unsupported geometry type.');
 
-    // Create maplibre source and layer for data
+    const sourceData = await this._fetchFeatures(layerUrl, esriGeometryInfo[layerInfo.geometryType].limit);
+
+    // Create maplibre source and layer for the feature layer
     let sourceId = layerInfo.name;
     if (sourceId in this._sources) {
-      // ensure source ID is unique
-      sourceId += layerUrl[layerUrl.length - 2]; // URL always ends in 0/, 1/, etc
+      sourceId += `/${layerInfo.id}`;
     }
     this._sources[sourceId] = {
       type: 'geojson',
       attribution: this._setupAttribution(layerInfo),
-      data: layerData,
+      data: sourceData,
     };
 
     const layerType = esriGeometryInfo[layerInfo.geometryType].type;
@@ -292,7 +284,21 @@ export class FeatureLayer extends HostedLayer {
     return;
   }
 
-  private async _loadData(): Promise<void> {
+  private _setupAttribution(layerInfo: ILayerDefinition): string {
+    // Source attribution priority is as follows:
+    // 1. User-provided attribution
+    if (this._customAttribution) return this._customAttribution;
+    // 2. Access info from item
+    if (this._itemInfo?.accessInformation) return this._itemInfo.accessInformation;
+    // 3. Copyright text from layer
+    if (layerInfo.copyrightText) return layerInfo.copyrightText;
+    // 4. Copyright text from service
+    if (this._serviceInfo?.copyrightText) return this._serviceInfo.copyrightText;
+    // 5. Empty attribution
+    return '';
+  }
+
+  async initialize(): Promise<FeatureLayer> {
     this._sources = {};
     this._layers = [];
 
@@ -341,38 +347,17 @@ export class FeatureLayer extends HostedLayer {
             warn('Feature layers with sublayers are not supported. This layer will not be added.');
             return;
           }
-          await this._loadLayer(`${cleanUrl(this._serviceInfo.serviceUrl)}${i}/`);
+          await this._initializeLayer(`${cleanUrl(this._serviceInfo.serviceUrl)}${i}/`);
         }
         break;
       }
       case 'FeatureLayer': {
         // Add single layer
-        await this._loadLayer(this._serviceInfo.serviceUrl); // TODO test on a layer with tables
+        await this._initializeLayer(this._serviceInfo.serviceUrl); // TODO test on a layer with tables
         break;
       }
     }
-  }
 
-  private _setupAttribution(layerInfo: ILayerDefinition): string {
-    // Source attribution priority is as follows:
-
-    // 1. User-provided attribution
-    if (this._customAttribution) return this._customAttribution;
-
-    // 2. Access info from item
-    if (this._itemInfo?.accessInformation) return this._itemInfo.accessInformation;
-
-    // 3. Copyright text from layer
-    if (layerInfo.copyrightText) return layerInfo.copyrightText;
-
-    // 4. Copyright text from service
-    if (this._serviceInfo?.copyrightText) return this._serviceInfo.copyrightText;
-
-    return '';
-  }
-
-  async initialize(): Promise<FeatureLayer> {
-    await this._loadData();
     this._ready = true;
     return this;
   }
