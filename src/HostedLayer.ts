@@ -274,6 +274,7 @@ export abstract class HostedLayer {
   addSourcesAndLayersTo(map: Map): HostedLayer {
     if (!this._ready) throw new Error('Cannot add sources and layers to map: Layer is not loaded.');
     this._map = map;
+
     Object.keys(this._sources).forEach((sourceId) => {
       map.addSource(sourceId, this._sources[sourceId]);
     });

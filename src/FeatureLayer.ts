@@ -1,4 +1,4 @@
-import type { GeometryType, IGeometry, ILayerDefinition, IQueryFeaturesResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
+import type { GeometryType, IGeometry, ILayerDefinition, IQueryAllFeaturesOptions, IQueryFeaturesResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
 import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
@@ -16,7 +16,7 @@ import { FeatureLayerSourceManager } from './featurelayer_source';
 //     "MultiPolygon":"fill"
 // }
 
-type GeometryLimits = { maxRecordCount: number } & ({ maxPointCount: number } | { maxVertexCount: number });
+export type GeometryLimits = { maxRecordCount: number } & ({ maxPointCount: number } | { maxVertexCount: number });
 
 export const esriGeometryInfo: { [_: string]: { limit: GeometryLimits; type: 'circle' | 'line' | 'fill' } } = {
   esriGeometryPoint: {
@@ -189,64 +189,7 @@ export class FeatureLayer extends HostedLayer {
     };
   }
 
-  private async _fetchFeatures(serviceUrl: string, limitQuery: GeometryLimits): Promise<GeoJSON.GeoJSON> {
-    // fetch data
-    let layerData: GeoJSON.GeoJSON, queryParams: IQueryOptions, ignoreFeatureLimit: boolean;
-    if (this.query) {
-      if (this.query.ignoreLimits) {
-        const { ignoreLimits, ...params } = this.query;
-        ignoreFeatureLimit = ignoreLimits;
-        queryParams = params;
-      }
-      else {
-        queryParams = this.query;
-        ignoreFeatureLimit = false;
-      }
-    }
-
-    // Check if the desired query exceeds a hardcoded feature limit
-    const exceedsLimitResponse = await (queryFeatures({
-      url: serviceUrl,
-      authentication: this._authentication,
-      ...structuredClone(queryParams),
-      outStatistics: [
-        {
-          onStatisticField: null, // This is required by REST JS but not used
-          statisticType: 'exceedslimit',
-          outStatisticFieldName: 'exceedslimit',
-          ...limitQuery,
-        },
-      ],
-      returnGeometry: false,
-      params: {
-        cacheHint: true,
-      },
-      // outSR: 102100,
-      // spatialRel: 'esriSpatialRelIntersects',
-    })) as IQueryFeaturesResponse;
-
-    if (exceedsLimitResponse.features[0].attributes.exceedslimit === 0 || ignoreFeatureLimit) {
-      if (ignoreFeatureLimit) warn(`Feature count limits are being ignored from ${serviceUrl}. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
-      // Get all features
-      const response = await queryAllFeatures({
-        url: serviceUrl,
-        authentication: this._authentication,
-        ...structuredClone(queryParams),
-        f: 'geojson',
-      });
-
-      layerData = response as unknown as GeoJSON.GeoJSON;
-    }
-    else {
-      // Limit exceeded
-      // TODO on-demand loading
-      throw new Error(`The requested feature count from ${serviceUrl} exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
-    }
-    if (!layerData) throw new Error('Unable to load data.');
-
-    return layerData;
-  }
-
+  // Initializes an individual layer of the feature service with a source, source manager, and style layer
   private async _initializeLayer(layerUrl: string): Promise<void> {
     // get layer properties and validate it's possible
     const layerInfo: ILayerDefinition = await getLayer({
@@ -273,15 +216,17 @@ export class FeatureLayer extends HostedLayer {
       attribution: this._setupAttribution(layerInfo),
       data: getBlankFc(),
     };
-
+    // Create source manager to handle data loading
     this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, {
-      map: this._map,
+      url: layerUrl,
       queryOptions: this.query,
       geojsonOptions: {},
-      url: layerUrl,
+      map: this._map,
+      layerDefinition: layerInfo,
       token: this.token,
     });
 
+    // Create default style layer for rendering
     const layerType = esriGeometryInfo[layerInfo.geometryType].type;
     const defaultLayer = {
       source: sourceId,
