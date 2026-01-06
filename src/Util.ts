@@ -125,18 +125,6 @@ export const wrapAccessToken = async (token: string, portalUrl?: string): Promis
   });
   else return null;
 };
-
-/**
- * Sets the protocol of a URL string
- * @param url - a string representing a URL
- * @param protocol - the protocol, including a colon
- * @returns the URL string with a new protocol (instead of https:)
- */
-export const setProtocol = (urlString: string, protocol: string): string => {
-  const url = new URL(urlString);
-  const newUrl = url.href.replace(url.protocol, protocol);
-  return newUrl;
-};
 // Copyright 2025 Esri
 //
 // Licensed under the Apache License Version 2.0 (the "License");
