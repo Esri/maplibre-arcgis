@@ -4,8 +4,9 @@ import { getItem } from '@esri/arcgis-rest-portal';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
 import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
-import { checkItemId, checkServiceUrlType, cleanUrl, warn, wrapAccessToken } from './Util';
-
+import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
+import type { Map } from 'maplibre-gl';
+import { FeatureLayerSourceManager } from './featurelayer_source';
 // const geoJSONDefaultStyleMap = {
 //     "Point":"circle",
 //     "MultiPoint":"circle",
@@ -17,7 +18,7 @@ import { checkItemId, checkServiceUrlType, cleanUrl, warn, wrapAccessToken } fro
 
 type GeometryLimits = { maxRecordCount: number } & ({ maxPointCount: number } | { maxVertexCount: number });
 
-const esriGeometryInfo: { [_: string]: { limit: GeometryLimits; type: 'circle' | 'line' | 'fill' } } = {
+export const esriGeometryInfo: { [_: string]: { limit: GeometryLimits; type: 'circle' | 'line' | 'fill' } } = {
   esriGeometryPoint: {
     type: 'circle',
     limit: {
@@ -125,8 +126,9 @@ export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
  */
 export class FeatureLayer extends HostedLayer {
   declare protected _sources: { [_: string]: GeoJSONSourceSpecification };
-  declare protected _layers: LayerSpecification[];
+  private _featureLayerSourceManagers: { [_: string]: FeatureLayerSourceManager };
 
+  declare protected _layers: LayerSpecification[];
   private _inputType: SupportedInputTypes;
 
   query?: IQueryOptions;
@@ -259,7 +261,7 @@ export class FeatureLayer extends HostedLayer {
     if (!layerInfo.supportsExceedsLimitStatistics) throw new Error('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5');
     if (!layerInfo.geometryType || !Object.keys(esriGeometryInfo).includes(layerInfo.geometryType)) throw new Error('This feature service contains an unsupported geometry type.');
 
-    const sourceData = await this._fetchFeatures(layerUrl, esriGeometryInfo[layerInfo.geometryType].limit);
+    // const sourceData = await this._fetchFeatures(layerUrl, esriGeometryInfo[layerInfo.geometryType].limit);
 
     // Create maplibre source and layer for the feature layer
     let sourceId = layerInfo.name;
@@ -269,8 +271,16 @@ export class FeatureLayer extends HostedLayer {
     this._sources[sourceId] = {
       type: 'geojson',
       attribution: this._setupAttribution(layerInfo),
-      data: sourceData,
+      data: getBlankFc(),
     };
+
+    this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, {
+      map: this._map,
+      queryOptions: this.query,
+      geojsonOptions: {},
+      url: layerUrl,
+      token: this.token,
+    });
 
     const layerType = esriGeometryInfo[layerInfo.geometryType].type;
     const defaultLayer = {
@@ -300,6 +310,7 @@ export class FeatureLayer extends HostedLayer {
 
   async initialize(): Promise<FeatureLayer> {
     this._sources = {};
+    this._featureLayerSourceManagers = {};
     this._layers = [];
 
     // Wrap access token for use with REST JS
@@ -360,6 +371,11 @@ export class FeatureLayer extends HostedLayer {
 
     this._ready = true;
     return this;
+  }
+
+  protected _onAdd(map: Map) {
+    super._onAdd(map);
+    Object.values(this._featureLayerSourceManagers).forEach(sourceManager => sourceManager.onAdd(map));
   }
 
   /**

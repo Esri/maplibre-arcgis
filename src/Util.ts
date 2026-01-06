@@ -125,6 +125,13 @@ export const wrapAccessToken = async (token: string, portalUrl?: string): Promis
   });
   else return null;
 };
+
+export const getBlankFc = (): GeoJSON.FeatureCollection => {
+  return {
+    type: 'FeatureCollection',
+    features: [],
+  };
+};
 // Copyright 2025 Esri
 //
 // Licensed under the Apache License Version 2.0 (the "License");
