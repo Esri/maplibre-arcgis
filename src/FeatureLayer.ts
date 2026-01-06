@@ -1,11 +1,10 @@
 import type { GeometryType, IGeometry, ILayerDefinition, IQueryFeaturesResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
 import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
-import { decodeQueryString, encodeQueryString } from '@esri/arcgis-rest-request';
-import type { GeoJSONSourceSpecification, GetResourceResponse, LayerSpecification, RequestParameters } from 'maplibre-gl';
+import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
 import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
-import { checkItemId, checkServiceUrlType, cleanUrl, setProtocol, warn, wrapAccessToken } from './Util';
+import { checkItemId, checkServiceUrlType, cleanUrl, warn, wrapAccessToken } from './Util';
 
 // const geoJSONDefaultStyleMap = {
 //     "Point":"circle",
@@ -17,8 +16,6 @@ import { checkItemId, checkServiceUrlType, cleanUrl, setProtocol, warn, wrapAcce
 // }
 
 type GeometryLimits = { maxRecordCount: number } & ({ maxPointCount: number } | { maxVertexCount: number });
-
-export const FEATURE_SERVICE_PROTOCOL = 'esrifeatureservice';
 
 const esriGeometryInfo: { [_: string]: { limit: GeometryLimits; type: 'circle' | 'line' | 'fill' } } = {
   esriGeometryPoint: {
@@ -96,11 +93,6 @@ export interface IQueryOptions {
 }
 
 export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
-
-type RestFeatureQueryParams = {
-  limit: string;
-  token?: string;
-} & IQueryOptions;
 
 /**
  * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) in a MapLibre map.
@@ -195,6 +187,64 @@ export class FeatureLayer extends HostedLayer {
     };
   }
 
+  private async _fetchFeatures(serviceUrl: string, limitQuery: GeometryLimits): Promise<GeoJSON.GeoJSON> {
+    // fetch data
+    let layerData: GeoJSON.GeoJSON, queryParams: IQueryOptions, ignoreFeatureLimit: boolean;
+    if (this.query) {
+      if (this.query.ignoreLimits) {
+        const { ignoreLimits, ...params } = this.query;
+        ignoreFeatureLimit = ignoreLimits;
+        queryParams = params;
+      }
+      else {
+        queryParams = this.query;
+        ignoreFeatureLimit = false;
+      }
+    }
+
+    // Check if the desired query exceeds a hardcoded feature limit
+    const exceedsLimitResponse = await (queryFeatures({
+      url: serviceUrl,
+      authentication: this._authentication,
+      ...structuredClone(queryParams),
+      outStatistics: [
+        {
+          onStatisticField: null, // This is required by REST JS but not used
+          statisticType: 'exceedslimit',
+          outStatisticFieldName: 'exceedslimit',
+          ...limitQuery,
+        },
+      ],
+      returnGeometry: false,
+      params: {
+        cacheHint: true,
+      },
+      // outSR: 102100,
+      // spatialRel: 'esriSpatialRelIntersects',
+    })) as IQueryFeaturesResponse;
+
+    if (exceedsLimitResponse.features[0].attributes.exceedslimit === 0 || ignoreFeatureLimit) {
+      if (ignoreFeatureLimit) warn(`Feature count limits are being ignored from ${serviceUrl}. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
+      // Get all features
+      const response = await queryAllFeatures({
+        url: serviceUrl,
+        authentication: this._authentication,
+        ...structuredClone(queryParams),
+        f: 'geojson',
+      });
+
+      layerData = response as unknown as GeoJSON.GeoJSON;
+    }
+    else {
+      // Limit exceeded
+      // TODO on-demand loading
+      throw new Error(`The requested feature count from ${serviceUrl} exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
+    }
+    if (!layerData) throw new Error('Unable to load data.');
+
+    return layerData;
+  }
+
   private async _initializeLayer(layerUrl: string): Promise<void> {
     // get layer properties and validate it's possible
     const layerInfo: ILayerDefinition = await getLayer({
@@ -209,30 +259,19 @@ export class FeatureLayer extends HostedLayer {
     if (!layerInfo.supportsExceedsLimitStatistics) throw new Error('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5');
     if (!layerInfo.geometryType || !Object.keys(esriGeometryInfo).includes(layerInfo.geometryType)) throw new Error('This feature service contains an unsupported geometry type.');
 
-    // Prepare custom source URL
-    const sourceUrl = setProtocol(layerUrl, `${FEATURE_SERVICE_PROTOCOL}:`);
-
-    const featureLimits = esriGeometryInfo[layerInfo.geometryType].limit;
-    const queryParams: RestFeatureQueryParams = {
-      limit: JSON.stringify(featureLimits),
-      ...(this.token && { token: this.token }),
-      ...(this.query ? this.query : { where: '1=1' }),
-    };
-    const queryString = encodeQueryString(queryParams);
-    const encodedUrl = `${sourceUrl}?${queryString}`;
+    const sourceData = await this._fetchFeatures(layerUrl, esriGeometryInfo[layerInfo.geometryType].limit);
 
     // Create maplibre source and layer for the feature layer
     let sourceId = layerInfo.name;
     if (sourceId in this._sources) {
-      sourceId += `/${layerInfo.id}`; // Handle layers with duplicate names
+      sourceId += `/${layerInfo.id}`;
     }
     this._sources[sourceId] = {
       type: 'geojson',
       attribution: this._setupAttribution(layerInfo),
-      data: encodedUrl,
+      data: sourceData,
     };
 
-    // Default layer style
     const layerType = esriGeometryInfo[layerInfo.geometryType].type;
     const defaultLayer = {
       source: sourceId,
@@ -314,7 +353,7 @@ export class FeatureLayer extends HostedLayer {
       }
       case 'FeatureLayer': {
         // Add single layer
-        await this._initializeLayer(cleanUrl(this._serviceInfo.serviceUrl)); // TODO test on a layer with tables
+        await this._initializeLayer(this._serviceInfo.serviceUrl); // TODO test on a layer with tables
         break;
       }
     }
@@ -374,62 +413,6 @@ export class FeatureLayer extends HostedLayer {
     await geojsonLayer.initialize();
     return geojsonLayer;
   }
-}
-
-export async function fetchFeatures(params: RequestParameters, abortController: AbortController): Promise<GetResourceResponse<GeoJSON.GeoJSON>> {
-  // fetch data
-  let layerData: GeoJSON.GeoJSON;
-
-  const queryString = new URL(params.url).search;
-
-  const actualUrl = new URL(setProtocol(params.url, 'https:'));
-  const baseUrl = actualUrl.origin + actualUrl.pathname;
-
-  const urlQueryParams = decodeQueryString(queryString) as unknown as RestFeatureQueryParams;
-  const { token, limit, ignoreLimits, ...otherParams } = urlQueryParams;
-  const featureLimits = JSON.parse(limit) as GeometryLimits;
-
-  const restJsParams = {
-    url: baseUrl,
-    ...(token && { authentication: await wrapAccessToken(token) }),
-    ...otherParams,
-  };
-
-  const ignoreFeatureLimit = (ignoreLimits !== undefined) ? Boolean(ignoreLimits) : false;
-  // Check if the desired query exceeds a hardcoded feature limit
-  const exceedsLimitResponse = await (queryFeatures({
-    ...restJsParams,
-    outStatistics: [
-      {
-        onStatisticField: null, // This is required by REST JS but not used
-        statisticType: 'exceedslimit',
-        outStatisticFieldName: 'exceedslimit',
-        ...featureLimits,
-      },
-    ],
-    returnGeometry: false,
-    params: {
-      cacheHint: true,
-    },
-  })) as IQueryFeaturesResponse;
-
-  if (exceedsLimitResponse.features[0].attributes.exceedslimit === 0 || ignoreFeatureLimit) {
-    if (ignoreFeatureLimit) warn(`Feature count limits are being ignored from ${baseUrl}. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
-    // Get all features
-    const response = await queryAllFeatures({
-      ...restJsParams,
-      f: 'geojson',
-    });
-
-    layerData = response as unknown as GeoJSON.GeoJSON;
-  }
-  else {
-    // Limit exceeded
-    throw new Error(`The requested feature count from ${baseUrl} exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
-  }
-  if (!layerData) throw new Error('Unable to load data.');
-
-  return { data: layerData };
 }
 
 export default FeatureLayer;
