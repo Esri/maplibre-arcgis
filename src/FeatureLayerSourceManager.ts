@@ -1,78 +1,81 @@
-import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap } from 'maplibre-gl';
+import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap, LngLatBounds } from 'maplibre-gl';
 import { type GeometryLimits, type IQueryOptions, esriGeometryInfo } from './FeatureLayer';
 import { getLayer, type IQueryFeaturesOptions, queryFeatures, type ILayerDefinition, type IQueryAllFeaturesOptions, queryAllFeatures, type IQueryFeaturesResponse } from '@esri/arcgis-rest-feature-service';
 import { getBlankFc, type RestJSAuthenticationManager, warn, wrapAccessToken } from './Util';
 import { bboxToTile, getChildren, tileToQuadkey, tileToBBOX, type Tile } from '@mapbox/tilebelt';
+import { type IGeometry, request, type ApiKeyManager, type ArcGISIdentityManager } from '@esri/arcgis-rest-request';
+import { type BBox } from 'geojson';
 
-const enum EsriMessageType {
-  loadEsriData = 'LED',
+// TODO these might belong elsewhere
+interface IEnvelope extends IGeometry {
+  xmin: number;
+  ymin: number;
+  xmax: number;
+  ymax: number;
+  zmin?: number;
+  zmax?: number;
+  mmin?: number;
+  mmax?: number;
+  idmin?: number;
+  idmax?: number;
+};
+type GeometryProjectionResponse = {
+  geometries: IGeometry[];
 };
 
+// Types for relevant classes
 type FeatureLayerSourceManagerOptions = {
   url: string;
   queryOptions: IQueryOptions;
-  geojsonOptions: unknown;
-  map: MaplibreMap;
   layerDefinition?: ILayerDefinition;
-  token?: string;
+  authentication?: RestJSAuthenticationManager;
+  useStaticZoomLevel?: boolean;
 };
 
 type FeatureIdIndexMap = Map<string | number, boolean>;
 type TileIndexMap = Map<string, boolean>;
 
 export class FeatureLayerSourceManager {
-  type: 'featurelayer';
-
-  map: MaplibreMap;
-  sourceId: string;
+  geojsonSourceId: string;
   url: string;
+  map: MaplibreMap;
+
   token?: string;
-  geojsonOptions: unknown;
   queryOptions: IQueryOptions;
   layerDefinition: ILayerDefinition;
   maplibreSource: GeoJSONSource;
 
   private _authentication?: RestJSAuthenticationManager;
 
-  private _onDemandOptions: { simplifyFactor: number; geometryPrecision: number };
+  private _onDemandParams: {
+    simplifyFactor: number;
+    geometryPrecision: number;
+    minZoom: number;
+  };
+
+  private _useStaticZoomLevel: boolean;
+  private _maxExtent: BBox;
   private _tileIndices: Map<number, TileIndexMap>;
   private _featureIndices: Map<number, FeatureIdIndexMap>;
   private _featureCollections: Map<number, GeoJSON.FeatureCollection>;
   private _boundEvent: (ev?: MapLibreEvent) => void;
 
   constructor(id: string, options: FeatureLayerSourceManagerOptions) {
-    // super(id, options, dispatcher, eventParent);
+    if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
+    this.geojsonSourceId = id;
 
-    this.type = 'featurelayer';
+    const { url, queryOptions, layerDefinition, authentication, useStaticZoomLevel } = options;
 
-    this.sourceId = id;
-
-    const { queryOptions, geojsonOptions, url, token, layerDefinition, ...rest } = options;
-
-    if (url) this.url = url;
-    else throw new Error('Feature layer source requires a URL.');
+    if (!url) throw new Error('Source manager requires the URL of a feature service layer.');
+    this.url = url;
 
     this.queryOptions = {
       ...queryOptions,
     };
-    if (geojsonOptions) this.geojsonOptions = geojsonOptions;
-    if (token) this.token = token;
+    if (authentication) this._authentication = authentication;
     if (layerDefinition) this.layerDefinition = layerDefinition;
-    // TODO fallback projection endpoint;
-    // TODO service metadata
 
-    // this.actor.registerMessageHandler(EsriMessageType.loadEsriData, (mapId: string, params) => {
-    //   return;
-    // });
-
-    this._onDemandOptions = {
-      simplifyFactor: 0.3,
-      geometryPrecision: 6, // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
-    };
-
-    this._tileIndices = new Map();
-    this._featureIndices = new Map();
-    this._featureCollections = new Map();
+    this._useStaticZoomLevel = useStaticZoomLevel ? useStaticZoomLevel : false;
   }
 
   onAdd(map: MaplibreMap) {
@@ -81,8 +84,6 @@ export class FeatureLayerSourceManager {
   }
 
   async load() {
-    if (this.token) this._authentication = await wrapAccessToken(this.token);
-
     await this._getLayerDefinition();
     try {
       // Try snapshot mode first
@@ -91,12 +92,93 @@ export class FeatureLayerSourceManager {
       console.log('SNAPSHOT MODE SUCCEEDED:', featureCollection);
       this._updateSourceData(featureCollection);
     }
-    catch (e) {
+    catch (err) {
       // Use on-demand loading as fallback
       console.log('USING ON-DEMAND LOADING');
-      this.enableRequests();
+      this._tileIndices = new Map();
+      this._featureIndices = new Map();
+      this._featureCollections = new Map();
+
+      this._onDemandParams = {
+        simplifyFactor: 0.3,
+        geometryPrecision: 6, // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
+        minZoom: this._useStaticZoomLevel ? 7 : 2,
+      };
+      // Use service bounds
+      this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
+      if (this.layerDefinition.extent) await this._useServiceBounds();
+      console.log('Found feature service extent:', this._maxExtent);
+
+      this._enableOnDemandLoading();
       this._clearAndRefreshTiles();
     }
+  }
+
+  private async _useServiceBounds(): Promise<void> {
+    const serviceExtent = this.layerDefinition.extent;
+    if (serviceExtent.spatialReference?.wkid === 4326) {
+      this._maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
+    }
+    else {
+      await this._projectServiceBounds();
+    }
+  }
+
+  private async _projectServiceBounds(): Promise<void> {
+    const projectionEndpoint = `${this.url.split('rest/services')[0]}rest/services/Geometry/GeometryServer/project`;
+    const fallbackProjectionEndpoint = 'https://tasks.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer/project';
+
+    // Re-project layer extent to 4326
+    const requestOptions = {
+      ...(this._authentication && { authentication: this._authentication }),
+      f: 'json',
+      params: {
+        geometries: JSON.stringify({
+          geometryType: 'esriGeometryEnvelope',
+          geometries: [this.layerDefinition.extent],
+        }),
+        inSR: this.layerDefinition.extent.spatialReference.wkid,
+        outSR: 4326,
+      },
+    };
+    let response: GeometryProjectionResponse;
+    try {
+      response = await request(projectionEndpoint, requestOptions) as GeometryProjectionResponse;
+    }
+    catch (err) {
+      response = await request(fallbackProjectionEndpoint, requestOptions) as GeometryProjectionResponse;
+    };
+    const extent = response.geometries[0] as IEnvelope;
+    this._maxExtent = [extent.xmin, extent.ymin, extent.xmax, extent.ymax];
+    return;
+  }
+
+  /**
+   * Check if a feature service request will exceed a hardcoded geometry limit
+   * @param params - Parameters of the desired request.
+   * @param geometryLimit - The geometry limit for the specific type of feature (point, line, or polygon)
+   * @returns True if the layer exceeds the limit, and false otherwise.
+   */
+  private async _checkIfExceedsLimit(params: IQueryAllFeaturesOptions, geometryLimit: GeometryLimits): Promise<boolean> {
+    // fetch data
+    const exceedsLimitParams: IQueryAllFeaturesOptions = {
+      ...params,
+      outStatistics: [
+        {
+          onStatisticField: null, // This is required by REST JS but not used
+          statisticType: 'exceedslimit',
+          outStatisticFieldName: 'exceedslimit',
+          ...geometryLimit,
+        },
+      ],
+      returnGeometry: false,
+      params: {
+        cacheHint: true,
+      },
+    };
+    // Check if the desired query exceeds a hardcoded feature limit
+    const exceedsLimitResponse = await (queryFeatures(exceedsLimitParams)) as IQueryFeaturesResponse;
+    return exceedsLimitResponse.features[0].attributes.exceedslimit === 1;
   }
 
   /**
@@ -135,35 +217,7 @@ export class FeatureLayerSourceManager {
     return layerData;
   }
 
-  /**
-   * Check if a feature service request will exceed a hardcoded geometry limit
-   * @param params - Parameters of the desired request.
-   * @param geometryLimit - The geometry limit for the specific type of feature (point, line, or polygon)
-   * @returns True if the layer exceeds the limit, and false otherwise.
-   */
-  private async _checkIfExceedsLimit(params: IQueryAllFeaturesOptions, geometryLimit: GeometryLimits): Promise<boolean> {
-    // fetch data
-    const exceedsLimitParams: IQueryAllFeaturesOptions = {
-      ...params,
-      outStatistics: [
-        {
-          onStatisticField: null, // This is required by REST JS but not used
-          statisticType: 'exceedslimit',
-          outStatisticFieldName: 'exceedslimit',
-          ...geometryLimit,
-        },
-      ],
-      returnGeometry: false,
-      params: {
-        cacheHint: true,
-      },
-    };
-    // Check if the desired query exceeds a hardcoded feature limit
-    const exceedsLimitResponse = await (queryFeatures(exceedsLimitParams)) as IQueryFeaturesResponse;
-    return exceedsLimitResponse.features[0].attributes.exceedslimit === 1;
-  }
-
-  enableRequests() {
+  _enableOnDemandLoading() {
     this._boundEvent = this._loadFeaturesOnDemand.bind(this) as () => void;
     this.map.on('moveend', this._boundEvent);
   }
@@ -202,23 +256,28 @@ export class FeatureLayerSourceManager {
     return fc;
   }
 
-  _doesTileOverlapBounds(tile: Tile, bounds: [number, number][]) {
-    const tileBounds = tileToBBOX(tile);
-    if (tileBounds[2] < bounds[0][0]) return false;
-    if (tileBounds[0] > bounds[1][0]) return false;
-    if (tileBounds[3] < bounds[0][1]) return false;
-    if (tileBounds[1] > bounds[1][1]) return false;
+  _doesTileOverlapBounds(tile: Tile | BBox, bounds: [number, number][]) {
+    const tileBBox = tile.length === 4 ? tile as BBox : tileToBBOX(tile as Tile);
+    if (tileBBox[2] < bounds[0][0]) return false;
+    if (tileBBox[0] > bounds[1][0]) return false;
+    if (tileBBox[3] < bounds[0][1]) return false;
+    if (tileBBox[1] > bounds[1][1]) return false;
     return true;
   }
 
   async _loadFeaturesOnDemand() {
     const zoom = this.map.getZoom();
-    // TODO Esri service options min zoom 160
+    if (zoom < this._onDemandParams.minZoom) return;
 
     const bounds = this.map.getBounds().toArray();
+    console.log('Bounds of map:', bounds);
     const primaryTile = bboxToTile([bounds[0][0], bounds[0][1], bounds[1][0], bounds[1][1]]);
 
-    // TODO esri use service bounds 166
+    if (this._maxExtent[0] !== -Infinity && !this._doesTileOverlapBounds(this._maxExtent, bounds)) {
+      // Features are off screen, return
+      return;
+    };
+
     const zoomLevel = 2 * Math.floor(zoom / 2);
     const zoomLevelIndex = this._createOrGetTileIndex(zoomLevel);
     const featureIdIndex = this._createOrGetFeatureIdIndex(zoomLevel);
@@ -259,7 +318,7 @@ export class FeatureLayerSourceManager {
       return;
     }
     const mapWidth = Math.abs(bounds[1][0] - bounds[0][0]);
-    const tolerance = (mapWidth / this.map.getCanvas().width) * this._onDemandOptions.simplifyFactor;
+    const tolerance = (mapWidth / this.map.getCanvas().width) * this._onDemandParams.simplifyFactor;
     await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
     this._updateSourceData(featureCollection);
   }
@@ -325,7 +384,7 @@ export class FeatureLayerSourceManager {
   }
 
   _updateSourceData(fc: GeoJSON.FeatureCollection) {
-    const source: GeoJSONSource = this.map.getSource(this.sourceId);
+    const source: GeoJSONSource = this.map.getSource(this.geojsonSourceId);
     if (source) source.updateData({ add: fc.features });
   }
 
