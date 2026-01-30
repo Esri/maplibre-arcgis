@@ -6,7 +6,7 @@ import { bboxToTile, getChildren, tileToQuadkey, tileToBBOX, type Tile } from '@
 
 const enum EsriMessageType {
   loadEsriData = 'LED',
-}
+};
 
 type FeatureLayerSourceManagerOptions = {
   url: string;
@@ -67,7 +67,7 @@ export class FeatureLayerSourceManager {
 
     this._onDemandOptions = {
       simplifyFactor: 0.3,
-      geometryPrecision: 8,
+      geometryPrecision: 6, // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
     };
 
     this._tileIndices = new Map();
@@ -297,29 +297,31 @@ export class FeatureLayerSourceManager {
       xmax: tileBounds[2],
       ymax: tileBounds[3],
     };
-
-    const queryParams: IQueryFeaturesOptions = {
+    // TODO what if this tile has an amount of features that exceeds the geometryLimit?
+    const queryParams: IQueryAllFeaturesOptions = {
       url: this.url,
-      where: '1=1', // TODO
-      spatialRel: 'esriSpatialRelIntersects',
-      geometryType: 'esriGeometryEnvelope',
-      geometry: extent, // TODO intersect with input extent
+      ...(this._authentication && { authentication: this._authentication }),
+      f: 'geojson',
+      resultType: 'tile',
       inSR: '4326',
       outSR: '4326',
       returnZ: false,
       returnM: false,
+
+      where: '1=1', // TODO pass query
+      spatialRel: 'esriSpatialRelIntersects',
+      geometryType: 'esriGeometryEnvelope',
+      geometry: extent, // TODO intersect geometry with input spatial query?
+
       geometryPrecision: this.queryOptions.geometryPrecision,
       quantizationParameters: {
         extent,
         tolerance,
         mode: 'view',
       },
-      resultType: 'tile',
-      f: 'geojson',
-      ...(this._authentication && { authentication: this._authentication }),
     };
 
-    return await queryFeatures(queryParams) as GeoJSON.FeatureCollection;
+    return await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
   }
 
   _updateSourceData(fc: GeoJSON.FeatureCollection) {

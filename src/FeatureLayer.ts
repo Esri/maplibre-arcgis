@@ -1,12 +1,12 @@
-import type { GeometryType, IGeometry, ILayerDefinition, IQueryAllFeaturesOptions, IQueryFeaturesResponse, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
-import { getLayer, getService, queryAllFeatures, queryFeatures } from '@esri/arcgis-rest-feature-service';
+import type { GeometryType, IGeometry, ILayerDefinition, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
+import { getLayer, getService } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
 import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
 import type { Map } from 'maplibre-gl';
-import { FeatureLayerSourceManager } from './featurelayer_source';
+import { FeatureLayerSourceManager } from './FeatureLayerSourceManager';
 // const geoJSONDefaultStyleMap = {
 //     "Point":"circle",
 //     "MultiPoint":"circle",
