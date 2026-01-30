@@ -93,7 +93,7 @@ export const warn = (...args: any[]) => {
   }
 };
 
-export const checkAccessTokenType = (token: string): 'user' | 'app' | 'basemapSession' => {
+export const checkAccessTokenType = (token: string): 'user' | 'app' | 'basemapSession' | null => {
   if (!token || token.length === 0) return null;
   // API key case -- also catches app tokens w/ personal privileges
   const apiKeyPrefixes = ['AAPT', 'AAPK', 'AATK'];

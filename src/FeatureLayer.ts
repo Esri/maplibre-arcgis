@@ -220,10 +220,8 @@ export class FeatureLayer extends HostedLayer {
     this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, {
       url: layerUrl,
       queryOptions: this.query,
-      geojsonOptions: {},
-      map: this._map,
       layerDefinition: layerInfo,
-      token: this.token,
+      authentication: this._authentication,
     });
 
     // Create default style layer for rendering
