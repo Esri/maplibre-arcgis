@@ -3,7 +3,7 @@ import { type GeometryLimits, type IQueryOptions, esriGeometryInfo } from './Fea
 import { getLayer, type IQueryFeaturesOptions, queryFeatures, type ILayerDefinition, type IQueryAllFeaturesOptions, queryAllFeatures, type IQueryFeaturesResponse } from '@esri/arcgis-rest-feature-service';
 import { getBlankFc, type RestJSAuthenticationManager, warn, wrapAccessToken } from './Util';
 import { bboxToTile, getChildren, tileToQuadkey, tileToBBOX, type Tile } from '@mapbox/tilebelt';
-import { type IGeometry, request, type ApiKeyManager, type ArcGISIdentityManager } from '@esri/arcgis-rest-request';
+import { type IGeometry, request, type ApiKeyManager, type ArcGISIdentityManager, type IExtent } from '@esri/arcgis-rest-request';
 import { type BBox } from 'geojson';
 
 // TODO these might belong elsewhere
@@ -120,11 +120,12 @@ export class FeatureLayerSourceManager {
       this._maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
     }
     else {
-      await this._projectServiceBounds();
+      const projectedExtent = await this._projectServiceBounds();
+      this._maxExtent = [projectedExtent.xmin, projectedExtent.ymin, projectedExtent.xmax, projectedExtent.ymax];
     }
   }
 
-  private async _projectServiceBounds(): Promise<void> {
+  private async _projectServiceBounds(): Promise<IExtent> {
     const projectionEndpoint = `${this.url.split('rest/services')[0]}rest/services/Geometry/GeometryServer/project`;
     const fallbackProjectionEndpoint = 'https://tasks.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer/project';
 
@@ -148,9 +149,7 @@ export class FeatureLayerSourceManager {
     catch (err) {
       response = await request(fallbackProjectionEndpoint, requestOptions) as GeometryProjectionResponse;
     };
-    const extent = response.geometries[0] as IEnvelope;
-    this._maxExtent = [extent.xmin, extent.ymin, extent.xmax, extent.ymax];
-    return;
+    return response.geometries[0] as IExtent;
   }
 
   /**
@@ -269,20 +268,18 @@ export class FeatureLayerSourceManager {
     const zoom = this.map.getZoom();
     if (zoom < this._onDemandParams.minZoom) return;
 
-    const bounds = this.map.getBounds().toArray();
-    console.log('Bounds of map:', bounds);
-    const primaryTile = bboxToTile([bounds[0][0], bounds[0][1], bounds[1][0], bounds[1][1]]);
+    const mapBounds = this.map.getBounds().toArray();
+    const primaryTile = bboxToTile([mapBounds[0][0], mapBounds[0][1], mapBounds[1][0], mapBounds[1][1]]);
 
-    if (this._maxExtent[0] !== -Infinity && !this._doesTileOverlapBounds(this._maxExtent, bounds)) {
-      // Features are off screen, return
+    if (this._maxExtent[0] !== -Infinity && !this._doesTileOverlapBounds(this._maxExtent, mapBounds)) {
+      // Don't load features whose extent is completely off screen
       return;
-    };
+    }
 
-    const zoomLevel = 2 * Math.floor(zoom / 2);
+    const zoomLevel = this._useStaticZoomLevel ? this._onDemandParams.minZoom : 2 * Math.floor(zoom / 2);
     const zoomLevelIndex = this._createOrGetTileIndex(zoomLevel);
     const featureIdIndex = this._createOrGetFeatureIdIndex(zoomLevel);
     const featureCollection = this._createOrGetFeatureCollection(zoomLevel);
-    console.log('zoom level', zoomLevel, 'internal state', { zoomLevelIndex, featureIdIndex, featureCollection });
 
     // Find tiles to request
     const tilesToRequest: Tile[] = [];
@@ -296,7 +293,7 @@ export class FeatureLayerSourceManager {
         minZoomOfCandidates = candidateTiles[0][2];
       }
       for (let i = 0; i < candidateTiles.length; i++) {
-        if (this._doesTileOverlapBounds(candidateTiles[i], bounds)) tilesToRequest.push(candidateTiles[i]);
+        if (this._doesTileOverlapBounds(candidateTiles[i], mapBounds)) tilesToRequest.push(candidateTiles[i]);
       }
     }
     else tilesToRequest.push(primaryTile);
@@ -310,16 +307,16 @@ export class FeatureLayerSourceManager {
       }
       else zoomLevelIndex.set(quadKey, true);
     }
-
     // Load tiles
-    console.log('tiles to request:', tilesToRequest);
     if (tilesToRequest.length === 0) {
       this._updateSourceData(featureCollection);
       return;
     }
-    const mapWidth = Math.abs(bounds[1][0] - bounds[0][0]);
-    const tolerance = (mapWidth / this.map.getCanvas().width) * this._onDemandParams.simplifyFactor;
+    // New tiles need to be requested
+    const mapWidth = Math.abs(mapBounds[1][0] - mapBounds[0][0]);
+    const tolerance = (mapWidth / this.map.getCanvas().width) * this._onDemandParams.simplifyFactor; // TODO vary based on zoom level
     await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
+
     this._updateSourceData(featureCollection);
   }
 
@@ -346,7 +343,7 @@ export class FeatureLayerSourceManager {
 
   async _getTile(tile: Tile, tolerance: number): Promise<GeoJSON.FeatureCollection> {
     const tileBounds = tileToBBOX(tile);
-    const extent = {
+    const tileExtent: IExtent = {
       spatialReference: {
         latestWkid: 4326,
         wkid: 4326,
@@ -368,16 +365,17 @@ export class FeatureLayerSourceManager {
       returnM: false,
 
       where: '1=1', // TODO pass query
+      outFields: '*', // TODO
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
-      geometry: extent, // TODO intersect geometry with input spatial query?
+      geometry: tileExtent, // TODO intersect geometry with input spatial query?
 
       geometryPrecision: this.queryOptions.geometryPrecision,
-      quantizationParameters: {
-        extent,
+      quantizationParameters: JSON.stringify({
+        tileExtent,
         tolerance,
         mode: 'view',
-      },
+      }),
     };
 
     return await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
@@ -385,7 +383,7 @@ export class FeatureLayerSourceManager {
 
   _updateSourceData(fc: GeoJSON.FeatureCollection) {
     const source: GeoJSONSource = this.map.getSource(this.geojsonSourceId);
-    if (source) source.updateData({ add: fc.features });
+    if (source) source.setData(fc);
   }
 
   async _getLayerDefinition(): Promise<ILayerDefinition> {
