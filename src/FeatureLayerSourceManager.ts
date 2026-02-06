@@ -1,9 +1,9 @@
-import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap, LngLatBounds } from 'maplibre-gl';
+import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap } from 'maplibre-gl';
 import { type GeometryLimits, type IQueryOptions, esriGeometryInfo } from './FeatureLayer';
-import { getLayer, type IQueryFeaturesOptions, queryFeatures, type ILayerDefinition, type IQueryAllFeaturesOptions, queryAllFeatures, type IQueryFeaturesResponse } from '@esri/arcgis-rest-feature-service';
-import { getBlankFc, type RestJSAuthenticationManager, warn, wrapAccessToken } from './Util';
+import { getLayer, queryFeatures, type ILayerDefinition, type IQueryAllFeaturesOptions, queryAllFeatures, type IQueryFeaturesResponse } from '@esri/arcgis-rest-feature-service';
+import { getBlankFc, type RestJSAuthenticationManager, warn } from './Util';
 import { bboxToTile, getChildren, tileToQuadkey, tileToBBOX, type Tile } from '@mapbox/tilebelt';
-import { type IGeometry, request, type ApiKeyManager, type ArcGISIdentityManager, type IExtent } from '@esri/arcgis-rest-request';
+import { type IGeometry, request, type IExtent } from '@esri/arcgis-rest-request';
 import { type BBox } from 'geojson';
 
 // TODO these might belong elsewhere
@@ -69,9 +69,7 @@ export class FeatureLayerSourceManager {
     if (!url) throw new Error('Source manager requires the URL of a feature layer.');
     this.url = url;
 
-    const { ignoreLimits, ...query } = queryOptions;
-    this.queryOptions = query;
-
+    if (queryOptions) this.queryOptions = queryOptions;
     if (authentication) this._authentication = authentication;
     if (layerDefinition) this.layerDefinition = layerDefinition;
 
@@ -89,12 +87,12 @@ export class FeatureLayerSourceManager {
       // Try snapshot mode first
       const queryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
       const featureCollection = await this._loadFeatureSnapshot(queryLimit);
-      console.log('SNAPSHOT MODE SUCCEEDED:', featureCollection);
+      console.log('Snapshot mode succeeded for', this.url);
       this._updateSourceData(featureCollection);
     }
     catch (err) {
       // Use on-demand loading as fallback
-      console.log('USING ON-DEMAND LOADING');
+      console.log('Using on-demand loading for', this.url);
       this._tileIndices = new Map();
       this._featureIndices = new Map();
       this._featureCollections = new Map();
@@ -109,7 +107,6 @@ export class FeatureLayerSourceManager {
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
       if (this.layerDefinition.extent) await this._useServiceBounds();
-      console.log('Found feature service extent:', this._maxExtent);
 
       this._enableOnDemandLoading();
       this._clearAndRefreshTiles();
@@ -357,7 +354,7 @@ export class FeatureLayerSourceManager {
       xmax: tileBounds[2],
       ymax: tileBounds[3],
     };
-    // TODO what if this tile has an amount of features that exceeds the max record count?
+    // TODO edge test case: Single tile has more than the maxVertexCount of features?
     const queryParams: IQueryAllFeaturesOptions = {
       url: this.url,
       ...(this._authentication && { authentication: this._authentication }),

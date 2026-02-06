@@ -42,7 +42,6 @@ export default tseslint.config([
       reportUnusedDisableDirectives: true,
     },
     rules: {
-      "no-unused-vars": "warn",
       "no-undef": "warn",
       'no-dupe-class-members': 'off',
       'no-useless-constructor': 'off',
@@ -66,7 +65,6 @@ export default tseslint.config([
         object: 'Object',
         property: 'assign',
       }],
-      'no-unused-vars': 'off',
       'no-warning-comments': 'error',
       'prefer-arrow-callback': 'error',
       'prefer-const': ['error', {
@@ -92,6 +90,7 @@ export default tseslint.config([
       }],
       '@typescript-eslint/no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
+        caughtErrors: 'none',
       }],
       '@typescript-eslint/no-useless-constructor': ['error'],
       '@typescript-eslint/no-redeclare': ['error'],

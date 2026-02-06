@@ -90,7 +90,6 @@ export interface IQueryOptions {
   spatialRel?: SpatialRelationship;
   sqlFormat?: 'none' | 'standard' | 'native';
   where?: string;
-  ignoreLimits?: boolean; // TODO
 }
 
 export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
