@@ -47,10 +47,11 @@ export class FeatureLayerSourceManager {
 
   private _authentication?: RestJSAuthenticationManager;
 
-  private _onDemandParams: {
-    simplifyFactor: number;
+  private _onDemandSettings: {
+    maxTolerance: number;
     geometryPrecision: number;
     minZoom: number;
+    maxZoom: number;
   };
 
   private _useStaticZoomLevel: boolean;
@@ -66,7 +67,7 @@ export class FeatureLayerSourceManager {
 
     const { url, queryOptions, layerDefinition, authentication, useStaticZoomLevel } = options;
 
-    if (!url) throw new Error('Source manager requires the URL of a feature service layer.');
+    if (!url) throw new Error('Source manager requires the URL of a feature layer.');
     this.url = url;
 
     this.queryOptions = {
@@ -99,10 +100,11 @@ export class FeatureLayerSourceManager {
       this._featureIndices = new Map();
       this._featureCollections = new Map();
 
-      this._onDemandParams = {
-        simplifyFactor: 0.3,
+      this._onDemandSettings = {
+        maxTolerance: 156543, // meters per pixel at zoom level 0: https://wiki.openstreetmap.org/wiki/Zoom_levels
         geometryPrecision: 6, // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
-        minZoom: this._useStaticZoomLevel ? 7 : 2,
+        minZoom: this._useStaticZoomLevel ? 7 : 2, // TODO set dynamically
+        maxZoom: 22, // TODO
       };
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
@@ -266,17 +268,18 @@ export class FeatureLayerSourceManager {
 
   async _loadFeaturesOnDemand() {
     const zoom = this.map.getZoom();
-    if (zoom < this._onDemandParams.minZoom) return;
+    if (zoom < this._onDemandSettings.minZoom) return; // TODO set minZoom dynamically based on minScale of layer data
 
     const mapBounds = this.map.getBounds().toArray();
     const primaryTile = bboxToTile([mapBounds[0][0], mapBounds[0][1], mapBounds[1][0], mapBounds[1][1]]);
 
+    console.log('Load attempt.', this._maxExtent, mapBounds);
     if (this._maxExtent[0] !== -Infinity && !this._doesTileOverlapBounds(this._maxExtent, mapBounds)) {
       // Don't load features whose extent is completely off screen
       return;
     }
 
-    const zoomLevel = this._useStaticZoomLevel ? this._onDemandParams.minZoom : 2 * Math.floor(zoom / 2);
+    const zoomLevel = this._useStaticZoomLevel ? this._onDemandSettings.minZoom : Math.round(zoom);
     const zoomLevelIndex = this._createOrGetTileIndex(zoomLevel);
     const featureIdIndex = this._createOrGetFeatureIdIndex(zoomLevel);
     const featureCollection = this._createOrGetFeatureCollection(zoomLevel);
@@ -313,8 +316,7 @@ export class FeatureLayerSourceManager {
       return;
     }
     // New tiles need to be requested
-    const mapWidth = Math.abs(mapBounds[1][0] - mapBounds[0][0]);
-    const tolerance = (mapWidth / this.map.getCanvas().width) * this._onDemandParams.simplifyFactor; // TODO vary based on zoom level
+    const tolerance = (this._onDemandSettings.maxTolerance / (2 ** zoomLevel));
     await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
 
     this._updateSourceData(featureCollection);
@@ -353,7 +355,7 @@ export class FeatureLayerSourceManager {
       xmax: tileBounds[2],
       ymax: tileBounds[3],
     };
-    // TODO what if this tile has an amount of features that exceeds the geometryLimit?
+    // TODO what if this tile has an amount of features that exceeds the max record count?
     const queryParams: IQueryAllFeaturesOptions = {
       url: this.url,
       ...(this._authentication && { authentication: this._authentication }),
@@ -370,11 +372,11 @@ export class FeatureLayerSourceManager {
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent, // TODO intersect geometry with input spatial query?
 
-      geometryPrecision: this.queryOptions.geometryPrecision,
+      geometryPrecision: this._onDemandSettings.geometryPrecision,
       quantizationParameters: JSON.stringify({
-        tileExtent,
-        tolerance,
+        extent: tileExtent,
         mode: 'view',
+        tolerance: tolerance,
       }),
     };
 
