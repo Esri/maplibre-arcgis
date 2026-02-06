@@ -41,7 +41,7 @@ export class FeatureLayerSourceManager {
   map: MaplibreMap;
 
   token?: string;
-  queryOptions: IQueryOptions;
+  queryOptions: Omit<IQueryOptions, 'ignoreLimits'>;
   layerDefinition: ILayerDefinition;
   maplibreSource: GeoJSONSource;
 
@@ -49,7 +49,6 @@ export class FeatureLayerSourceManager {
 
   private _onDemandSettings: {
     maxTolerance: number;
-    geometryPrecision: number;
     minZoom: number;
     maxZoom: number;
   };
@@ -70,9 +69,9 @@ export class FeatureLayerSourceManager {
     if (!url) throw new Error('Source manager requires the URL of a feature layer.');
     this.url = url;
 
-    this.queryOptions = {
-      ...queryOptions,
-    };
+    const { ignoreLimits, ...query } = queryOptions;
+    this.queryOptions = query;
+
     if (authentication) this._authentication = authentication;
     if (layerDefinition) this.layerDefinition = layerDefinition;
 
@@ -102,10 +101,11 @@ export class FeatureLayerSourceManager {
 
       this._onDemandSettings = {
         maxTolerance: 156543, // meters per pixel at zoom level 0: https://wiki.openstreetmap.org/wiki/Zoom_levels
-        geometryPrecision: 6, // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
         minZoom: this._useStaticZoomLevel ? 7 : 2, // TODO set dynamically
         maxZoom: 22, // TODO
       };
+      if (!this.queryOptions.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
+
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
       if (this.layerDefinition.extent) await this._useServiceBounds();
@@ -191,13 +191,13 @@ export class FeatureLayerSourceManager {
     // fetch data
     let layerData: GeoJSON.FeatureCollection;
 
-    const { ignoreLimits, ...queryParams } = this.queryOptions;
-    const ignoreFeatureLimit = ignoreLimits ? ignoreLimits : false;
+    // const { ignoreLimits, ...queryParams } = this.queryOptions;
+    const ignoreFeatureLimit = false;
 
     const requestParams: IQueryAllFeaturesOptions = {
       url: this.url,
       authentication: this._authentication,
-      ...queryParams,
+      ...this.queryOptions,
     };
 
     if (ignoreFeatureLimit || !(await this._checkIfExceedsLimit(requestParams, geometryLimit))) {
@@ -301,6 +301,8 @@ export class FeatureLayerSourceManager {
     }
     else tilesToRequest.push(primaryTile);
 
+    // TODO intersect tiles to request with input spatial query
+
     // Update tile index
     for (let i = 0; i < tilesToRequest.length; i++) {
       const quadKey = tileToQuadkey(tilesToRequest[i]);
@@ -359,20 +361,15 @@ export class FeatureLayerSourceManager {
     const queryParams: IQueryAllFeaturesOptions = {
       url: this.url,
       ...(this._authentication && { authentication: this._authentication }),
+      ...this.queryOptions,
+
       f: 'geojson',
       resultType: 'tile',
       inSR: '4326',
       outSR: '4326',
-      returnZ: false,
-      returnM: false,
-
-      where: '1=1', // TODO pass query
-      outFields: '*', // TODO
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
-      geometry: tileExtent, // TODO intersect geometry with input spatial query?
-
-      geometryPrecision: this._onDemandSettings.geometryPrecision,
+      geometry: tileExtent,
       quantizationParameters: JSON.stringify({
         extent: tileExtent,
         mode: 'view',
@@ -380,7 +377,7 @@ export class FeatureLayerSourceManager {
       }),
     };
 
-    return await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
+    return await queryFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
   }
 
   _updateSourceData(fc: GeoJSON.FeatureCollection) {
