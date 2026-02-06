@@ -1,9 +1,11 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { customTest } from './BaseTest'
+import { customTest, featureMocks } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { FeatureLayerSourceManager } from '../src/FeatureLayerSourceManager';
 import { queryFeatures, queryAllFeatures } from '@esri/arcgis-rest-feature-service';
+
+const { multiLayerMock, trailsMock } = featureMocks;
 
 const test = customTest.extend({
   // trailsLayer: async ({}, use)=> {
@@ -17,7 +19,7 @@ const test = customTest.extend({
   // }
 });
 
-const mockId = 'geojson-source';
+const sourceId = 'geojson-source';
 
 describe('Feature layer data source tests', () => {
 
@@ -27,7 +29,7 @@ describe('Feature layer data source tests', () => {
     }).toThrowError('Source manager requires the ID of a GeoJSONSource.');
 
     expect(() => {
-      const featureManager = new FeatureLayerSourceManager(mockId);
+      const featureManager = new FeatureLayerSourceManager(sourceId);
     }).toThrowError('Source manager requires the URL of a feature layer.');
   });
 

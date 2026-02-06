@@ -1,39 +1,11 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { customTest } from './BaseTest'
+import { customTest, featureMocks } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { FeatureLayer } from '../src/FeatureLayer';
 import { queryFeatures, queryAllFeatures } from '@esri/arcgis-rest-feature-service';
 
-// Mock service containing multiple feature layers (12 layers)
-import multiLayerServiceDefinitionRaw from './mock/FeatureLayer/multiLayer-service-info.json';
-
-const multiLayerMock = {
-  itemId: '44299709cce447ea99014ff1e3bf8505',
-  serviceUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/ManyLayers/FeatureServer',
-  serviceDefinition: JSON.stringify(multiLayerServiceDefinitionRaw)
-}
-
-// Santa Monica Trails data
-import trailsLayerDefinitionRaw from './mock/FeatureLayer/trails/trails-layer-info.json';
-import trailsServiceDefinitionRaw from './mock/FeatureLayer/trails/trails-service-info.json';
-import trailsItemRaw from './mock/FeatureLayer/trails/trails-item-info.json';
-import trailsDataRaw from './mock/FeatureLayer/trails/trails-features.json';
-import trailsDataTruncatedRaw from './mock/FeatureLayer/trails/trails-features-truncated.json'
-import trailsQueryDataRaw from './mock/FeatureLayer/trails/trails-feature-query.json';
-import trailsExceedsLimitRaw from './mock/FeatureLayer/trails/trails-feature-exceedsLimit.json';
-
-export const trailsMock = {
-  itemId: '69e12682738e467eb509d8b54dc73cbd',
-  item: JSON.stringify(trailsItemRaw),
-  serviceUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer',
-  serviceDefinition: JSON.stringify(trailsServiceDefinitionRaw),
-  layerUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0',
-  layerDefinition: JSON.stringify(trailsLayerDefinitionRaw),
-  exceedsLimitResponse: JSON.stringify(trailsExceedsLimitRaw),
-  geoJSONSmall: JSON.stringify(trailsDataTruncatedRaw),
-  geoJSONLarge: JSON.stringify(trailsDataRaw),
-};
+const { multiLayerMock, trailsMock } = featureMocks;
 
 export const test = customTest.extend({
 
@@ -258,7 +230,7 @@ describe('Feature layer unit tests', () => {
       // Source object exists
       expect(Object.keys(featureLayer._sources).length).toBe(1);
       // Source object contains data
-      expect(featureLayer._sources['Trails_0'].data).toEqual(trailsDataRaw);
+      expect(featureLayer._sources['Trails_0'].data).toEqual(trailsMock.geoJSONRaw);
       expect(featureLayer._sources['Trails_0'].type).toBe('geojson');
     });
 
@@ -271,7 +243,7 @@ describe('Feature layer unit tests', () => {
       await featureService.initialize();
 
       expect(Object.keys(featureService._sources).length).toBe(1);
-      expect(featureService._sources['Trails_0'].data).toEqual(trailsDataRaw);
+      expect(featureService._sources['Trails_0'].data).toEqual(trailsMock.geoJSONLarge);
     });
     test('If the service contains more than 10 layers, only load the first 10 and log a warning', async () => {
 
@@ -471,7 +443,7 @@ describe('Feature layer unit tests', () => {
       await featureLayer.initialize();
 
       expect(featureLayer._serviceInfo.serviceUrl).toBe(trailsMock.serviceUrl);
-      expect(featureLayer._sources['Trails_0'].data).toEqual(trailsDataRaw);
+      expect(featureLayer._sources['Trails_0'].data).toEqual(trailsMock.geoJSONRaw);
     });
   });
 
@@ -590,18 +562,18 @@ describe('Feature layer unit tests', () => {
   test('Creates a layer from item ID with the `fromPortalItem` static method.', async () => {
     fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONLarge);
     const layer = await FeatureLayer.fromPortalItem(trailsMock.itemId);
-    expect(layer.source.data).toEqual(trailsDataRaw);
+    expect(layer.source.data).toEqual(trailsMock.geoJSONRaw);
   });
   test('Creates a layer from service URL with the `fromUrl` static method.', async () => {
     // From service URL
     fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONLarge);
     const layer = await FeatureLayer.fromUrl(trailsMock.serviceUrl);
-    expect(layer.source.data).toEqual(trailsDataRaw);
+    expect(layer.source.data).toEqual(trailsMock.geoJSONRaw);
 
     // From layer URL
     fetchMock.once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONLarge);
     const layer2 = await FeatureLayer.fromUrl(trailsMock.layerUrl);
-    expect(layer.source.data).toEqual(trailsDataRaw);
+    expect(layer.source.data).toEqual(trailsMock.geoJSONRaw);
   });
 
   describe('Methods inherited from HostedLayer work properly.', () => {
@@ -683,7 +655,7 @@ describe.skip('Works on a mock page with a `Map`',() => {
       });
     });
     expect(Object.keys(style.sources).length).toBe(1);
-    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(trailsDataRaw);
+    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(trailsMock.geoJSONRaw);
 
     expect(style.layers.length).toBe(1);
     expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);
@@ -705,7 +677,7 @@ describe.skip('Works on a mock page with a `Map`',() => {
       });
     });
     expect(Object.keys(style.sources).length).toBe(1);
-    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(trailsDataRaw);
+    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(trailsMock.geoJSONRaw);
 
     expect(style.layers.length).toBe(1);
     expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);
@@ -730,7 +702,7 @@ describe.skip('Works on a mock page with a `Map`',() => {
     });
 
     expect(Object.keys(style.sources).length).toBe(1);
-    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(trailsDataRaw);
+    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(trailsMock.geoJSONRaw);
 
     expect(style.layers.length).toBe(1);
     expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);

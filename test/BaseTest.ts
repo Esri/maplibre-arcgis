@@ -9,6 +9,42 @@ import {MOCK_API_KEY} from './mock/authentication/basemapApiKey.js';
 import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
 import sessionResponseRaw from './mock/BasemapSession/valid-session.json';
 
+// Mock service containing multiple feature layers (12 layers)
+import multiLayerServiceDefinitionRaw from './mock/FeatureLayer/multiLayer-service-info.json';
+
+const featureMultiLayerMock = {
+  itemId: '44299709cce447ea99014ff1e3bf8505',
+  serviceUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/ManyLayers/FeatureServer',
+  serviceDefinition: JSON.stringify(multiLayerServiceDefinitionRaw)
+}
+
+// Santa Monica trails feature mocks
+import trailsLayerDefinitionRaw from './mock/FeatureLayer/trails/trails-layer-info.json';
+import trailsServiceDefinitionRaw from './mock/FeatureLayer/trails/trails-service-info.json';
+import trailsItemRaw from './mock/FeatureLayer/trails/trails-item-info.json';
+import trailsDataRaw from './mock/FeatureLayer/trails/trails-features.json';
+import trailsDataTruncatedRaw from './mock/FeatureLayer/trails/trails-features-truncated.json'
+import trailsQueryDataRaw from './mock/FeatureLayer/trails/trails-feature-query.json';
+import trailsExceedsLimitRaw from './mock/FeatureLayer/trails/trails-feature-exceedsLimit.json';
+
+const featureTrailsMock = {
+  itemId: '69e12682738e467eb509d8b54dc73cbd',
+  item: JSON.stringify(trailsItemRaw),
+  serviceUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer',
+  serviceDefinition: JSON.stringify(trailsServiceDefinitionRaw),
+  layerUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0',
+  layerDefinition: JSON.stringify(trailsLayerDefinitionRaw),
+  exceedsLimitResponse: JSON.stringify(trailsExceedsLimitRaw),
+  geoJSONSmall: JSON.stringify(trailsDataTruncatedRaw),
+  geoJSONLarge: JSON.stringify(trailsDataRaw),
+  geoJSONRaw: trailsDataRaw
+};
+
+export const featureMocks = {
+  trailsMock: featureTrailsMock,
+  multiLayerMock: featureMultiLayerMock
+};
+
 let browser;
 async function setupBrowser() {
   if (browser) {
