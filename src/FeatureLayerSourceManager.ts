@@ -1,4 +1,4 @@
-import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap } from 'maplibre-gl';
+import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap, MercatorCoordinate, LngLatBounds } from 'maplibre-gl';
 import { type GeometryLimits, type IQueryOptions, esriGeometryInfo } from './FeatureLayer';
 import { getLayer, queryFeatures, type ILayerDefinition, type IQueryAllFeaturesOptions, queryAllFeatures, type IQueryFeaturesResponse } from '@esri/arcgis-rest-feature-service';
 import { getBlankFc, type RestJSAuthenticationManager, warn } from './Util';
@@ -6,6 +6,7 @@ import { bboxToTile, getChildren, tileToQuadkey, tileToBBOX, type Tile } from '@
 import { type IGeometry, request, type IExtent } from '@esri/arcgis-rest-request';
 import { type BBox } from 'geojson';
 
+// TODO credit Rowan: https://github.com/rowanwins/mapbox-gl-arcgis-featureserver/
 // TODO these might belong elsewhere
 interface IEnvelope extends IGeometry {
   xmin: number;
@@ -106,49 +107,27 @@ export class FeatureLayerSourceManager {
 
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
-      if (this.layerDefinition.extent) await this._useServiceBounds();
+      if (this.layerDefinition.extent) this._useServiceBounds();
 
       this._enableOnDemandLoading();
       this._clearAndRefreshTiles();
     }
   }
 
-  private async _useServiceBounds(): Promise<void> {
+  private _useServiceBounds(): void {
     const serviceExtent = this.layerDefinition.extent;
     if (serviceExtent.spatialReference?.wkid === 4326) {
       this._maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
     }
-    else {
-      const projectedExtent = await this._projectServiceBounds();
-      this._maxExtent = [projectedExtent.xmin, projectedExtent.ymin, projectedExtent.xmax, projectedExtent.ymax];
-    }
-  }
+    else if (serviceExtent.spatialReference?.wkid === 3857) {
+      // Convert 3857 CRS to 4326 lng/lat
+      const sw = new MercatorCoordinate(serviceExtent.xmin, serviceExtent.ymin).toLngLat();
+      const ne = new MercatorCoordinate(serviceExtent.xmax, serviceExtent.ymax).toLngLat();
+      const extent = new LngLatBounds(sw, ne);
 
-  private async _projectServiceBounds(): Promise<IExtent> {
-    const projectionEndpoint = `${this.url.split('rest/services')[0]}rest/services/Geometry/GeometryServer/project`;
-    const fallbackProjectionEndpoint = 'https://tasks.arcgisonline.com/arcgis/rest/services/Geometry/GeometryServer/project';
-
-    // Re-project layer extent to 4326
-    const requestOptions = {
-      ...(this._authentication && { authentication: this._authentication }),
-      f: 'json',
-      params: {
-        geometries: JSON.stringify({
-          geometryType: 'esriGeometryEnvelope',
-          geometries: [this.layerDefinition.extent],
-        }),
-        inSR: this.layerDefinition.extent.spatialReference.wkid,
-        outSR: 4326,
-      },
-    };
-    let response: GeometryProjectionResponse;
-    try {
-      response = await request(projectionEndpoint, requestOptions) as GeometryProjectionResponse;
+      this._maxExtent = [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
     }
-    catch (err) {
-      response = await request(fallbackProjectionEndpoint, requestOptions) as GeometryProjectionResponse;
-    };
-    return response.geometries[0] as IExtent;
+    // Only 4326 and 3857 are currently handled for service extent.
   }
 
   /**
@@ -374,10 +353,11 @@ export class FeatureLayerSourceManager {
       }),
     };
 
-    return await queryFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
+    return await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
   }
 
   _updateSourceData(fc: GeoJSON.FeatureCollection) {
+    console.log('Load complete, updating source data.');
     const source: GeoJSONSource = this.map.getSource(this.geojsonSourceId);
     if (source) source.setData(fc);
   }
