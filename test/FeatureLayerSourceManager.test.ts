@@ -130,4 +130,58 @@ describe('Feature layer data source tests', () => {
     expect(onDemandSpy).toHaveBeenCalled();
   });
 
+  describe('Snapshot mode loading tests', async () => {
+    test('Uses snapshot loading for queries below the limit.', () => {
+
+    });
+  });
+
+  describe('On-demand loading tests', () => {
+
+    test('On-demand loading is triggered when the maplibre \'moveend\' event fires', () => {
+
+    });
+
+    test('On-demand loading fetches the zoom level of the current map and uses it to build an index', async () => {
+      const getZoomSpy = vi.spyOn(map, 'getZoom').mockImplementation(() => 6);
+      const getBoundsSpy = vi.spyOn(map, 'getBounds').mockImplementation(() => {
+        return new LngLatBounds([0,0,0,0])
+      });
+      const maplibreSource: GeoJSONSource = {
+        data: getBlankFc()
+      };
+      const getSourceSpy = vi.spyOn(map, 'getSource').mockImplementationOnce(() => {
+        return maplibreSource;
+      });
+    });
+
+    test('Intersects the service extent with the bounds of the current map to determine if the layer should render.', async () => {
+
+    });
+
+    test('Uses on-demand loading for queries above the limit.', () => {
+
+    });
+    test('Supports SQL queries for on-demand loading.', () => {});
+
+    test('Uses the service extent to determine if the layer should load, if the service is in 4326.', () => {
+
+    });
+
+    test('If the service is in 3857, transforms the service extent to 4326 and uses it to determine loading', () => {
+
+    });
+
+    test('Sets the tolerance quantization parameter correctly to optimize loading.', () => {
+
+    });
+
+    test('Does not render features if the map scale is larger than the minScale of the service.', () => {
+      // TODO
+    });
+
+    test('Does not render features if the map scale is smaller than the maxScale of the service.', () => {
+      // TODO
+    });
+  });
 });
