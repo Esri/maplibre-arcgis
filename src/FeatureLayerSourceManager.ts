@@ -70,7 +70,7 @@ export class FeatureLayerSourceManager {
     if (!url) throw new Error('Source manager requires the URL of a feature layer.');
     this.url = url;
 
-    if (queryOptions) this.queryOptions = queryOptions;
+    this.queryOptions = queryOptions ? queryOptions : {};
     if (authentication) this._authentication = authentication;
     if (layerDefinition) this.layerDefinition = layerDefinition;
 
@@ -83,7 +83,7 @@ export class FeatureLayerSourceManager {
   }
 
   async load() {
-    await this._getLayerDefinition();
+    this.layerDefinition = await this._getLayerDefinition();
     try {
       // Try snapshot mode first
       const queryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
@@ -92,6 +92,7 @@ export class FeatureLayerSourceManager {
       this._updateSourceData(featureCollection);
     }
     catch (err) {
+      console.log(err);
       // Use on-demand loading as fallback
       console.log('Using on-demand loading for', this.url);
       this._tileIndices = new Map();
@@ -103,7 +104,7 @@ export class FeatureLayerSourceManager {
         minZoom: this._useStaticZoomLevel ? 7 : 2, // TODO set dynamically
         maxZoom: 22, // TODO
       };
-      if (!this.queryOptions.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
+      if (!this.queryOptions?.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
 
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
@@ -370,7 +371,6 @@ export class FeatureLayerSourceManager {
       httpMethod: 'GET',
       ...(this._authentication && { authentication: this._authentication }),
     });
-    this.layerDefinition = layerDefinition;
     return layerDefinition;
   }
 };

@@ -34,10 +34,12 @@ const featureTrailsMock = {
   serviceDefinition: JSON.stringify(trailsServiceDefinitionRaw),
   layerUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0',
   layerDefinition: JSON.stringify(trailsLayerDefinitionRaw),
+  layerDefinitionRaw: trailsLayerDefinitionRaw,
   exceedsLimitResponse: JSON.stringify(trailsExceedsLimitRaw),
   geoJSONSmall: JSON.stringify(trailsDataTruncatedRaw),
   geoJSONLarge: JSON.stringify(trailsDataRaw),
-  geoJSONRaw: trailsDataRaw
+  geoJSONRaw: trailsDataRaw,
+  geoJSONSmallRaw: trailsDataTruncatedRaw
 };
 
 export const featureMocks = {
