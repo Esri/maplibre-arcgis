@@ -47,6 +47,7 @@ export class FeatureLayerSourceManager {
   maplibreSource: GeoJSONSource;
 
   private _authentication?: RestJSAuthenticationManager;
+  private _abortController?: AbortController;
 
   private _onDemandSettings: {
     maxTolerance: number;
@@ -92,6 +93,10 @@ export class FeatureLayerSourceManager {
       this._updateSourceData(featureCollection);
     }
     catch (err) {
+      if (err && err.name === 'AbortError') {
+        console.log('Snapshot mode request aborted.');
+        return;
+      }
       console.log(err);
       // Use on-demand loading as fallback
       console.log('Using on-demand loading for', this.url);
@@ -104,7 +109,6 @@ export class FeatureLayerSourceManager {
         minZoom: this._useStaticZoomLevel ? 7 : 2, // TODO set dynamically
         maxZoom: 22, // TODO
       };
-      //if (!this.queryOptions?.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
 
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
@@ -168,13 +172,17 @@ export class FeatureLayerSourceManager {
     // fetch data
     let layerData: GeoJSON.FeatureCollection;
 
-    // const { ignoreLimits, ...queryParams } = this.queryOptions;
+    // Abort previous snapshot request
+    this._abortController?.abort();
+    this._abortController = new AbortController();
+
     const ignoreFeatureLimit = false;
 
     const requestParams: IQueryAllFeaturesOptions = {
       url: this.url,
       authentication: this._authentication,
       ...this.queryOptions,
+      signal: this._abortController.signal,
     };
 
     if (ignoreFeatureLimit || !(await this._checkIfExceedsLimit(requestParams, geometryLimit))) {
@@ -183,6 +191,7 @@ export class FeatureLayerSourceManager {
       const response = await queryAllFeatures({
         ...requestParams,
         f: 'geojson',
+        signal: this._abortController.signal,
       });
 
       layerData = response as unknown as GeoJSON.FeatureCollection;
@@ -244,6 +253,10 @@ export class FeatureLayerSourceManager {
   }
 
   async _loadFeaturesOnDemand() {
+    // Abort previous tile requests
+    this._abortController?.abort();
+    this._abortController = new AbortController();
+
     const zoom = this.map.getZoom();
     if (zoom < this._onDemandSettings.minZoom) return; // TODO set minZoom dynamically based on minScale of layer data
 
@@ -296,19 +309,35 @@ export class FeatureLayerSourceManager {
     }
     // New tiles need to be requested
     const tolerance = (360 / (2 ** (zoomLevel + 1))) / 1000;
-    await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
+    try {
+      await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection, this._abortController.signal);
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        console.log('Tile request aborted.');
+        return;
+      }
+      throw err;
+    }
 
     this._updateSourceData(featureCollection);
   }
 
-  async _loadTiles(tilesToRequest: Tile[], tolerance: number, featureIdIndex: FeatureIdIndexMap, fc: GeoJSON.FeatureCollection) {
-    return new Promise((resolve) => {
-      const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance));
-      void Promise.all(tileRequests).then((featureCollections) => {
+  async _loadTiles(
+    tilesToRequest: Tile[],
+    tolerance: number,
+    featureIdIndex: FeatureIdIndexMap,
+    fc: GeoJSON.FeatureCollection,
+    signal?: AbortSignal
+  ) {
+    return new Promise((resolve, reject) => {
+      const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance, signal));
+      Promise.all(tileRequests).then((featureCollections) => {
         featureCollections.forEach((tileFc) => {
           if (tileFc) this._iterateItems(tileFc, featureIdIndex, fc);
         });
         resolve(fc);
+      }).catch(err => {
+        reject(err);
       });
     });
   }
@@ -322,7 +351,7 @@ export class FeatureLayerSourceManager {
     });
   }
 
-  async _getTile(tile: Tile, tolerance: number): Promise<GeoJSON.FeatureCollection> {
+  async _getTile(tile: Tile, tolerance: number, signal?: AbortSignal): Promise<GeoJSON.FeatureCollection> {
     const tileBounds = tileToBBOX(tile);
     const tileExtent: IExtent = {
       spatialReference: {
@@ -334,7 +363,6 @@ export class FeatureLayerSourceManager {
       xmax: tileBounds[2],
       ymax: tileBounds[3],
     };
-    // TODO edge test case: Single tile has more than the maxVertexCount of features?
     const queryParams: IQueryAllFeaturesOptions = {
       url: this.url,
       ...(this._authentication && { authentication: this._authentication }),
@@ -343,7 +371,6 @@ export class FeatureLayerSourceManager {
       f: 'pbf-as-geojson',
       resultType: 'tile',
       inSR: '4326',
-      //where: `NAME = 'Morgan County' AND STATE_NAME = 'Colorado'`,
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
@@ -352,6 +379,7 @@ export class FeatureLayerSourceManager {
         mode: 'view',
         tolerance: tolerance,
       }),
+      signal,
     };
 
     console.log('tolerance', tolerance);
@@ -369,12 +397,17 @@ export class FeatureLayerSourceManager {
   }
 
   async _getLayerDefinition(): Promise<ILayerDefinition> {
+    // Abort previous layer definition request
+    this._abortController?.abort();
+    this._abortController = new AbortController();
+
     if (this.layerDefinition !== null) return Promise.resolve(this.layerDefinition);
 
     const layerDefinition = await getLayer({
       url: this.url,
       httpMethod: 'GET',
       ...(this._authentication && { authentication: this._authentication }),
+      signal: this._abortController.signal,
     });
     return layerDefinition;
   }
