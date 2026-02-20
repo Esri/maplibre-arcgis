@@ -104,7 +104,7 @@ export class FeatureLayerSourceManager {
         minZoom: this._useStaticZoomLevel ? 7 : 2, // TODO set dynamically
         maxZoom: 22, // TODO
       };
-      if (!this.queryOptions?.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
+      //if (!this.queryOptions?.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
 
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
@@ -295,7 +295,7 @@ export class FeatureLayerSourceManager {
       return;
     }
     // New tiles need to be requested
-    const tolerance = (this._onDemandSettings.maxTolerance / (2 ** zoomLevel));
+    const tolerance = (360 / (2 ** (zoomLevel + 1))) / 1000;
     await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
 
     this._updateSourceData(featureCollection);
@@ -340,10 +340,10 @@ export class FeatureLayerSourceManager {
       ...(this._authentication && { authentication: this._authentication }),
       ...this.queryOptions,
 
-      f: 'geojson',
+      f: 'pbf-as-geojson',
       resultType: 'tile',
       inSR: '4326',
-      outSR: '4326',
+      //where: `NAME = 'Morgan County' AND STATE_NAME = 'Colorado'`,
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
@@ -354,7 +354,12 @@ export class FeatureLayerSourceManager {
       }),
     };
 
-    return await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
+    console.log('tolerance', tolerance);
+    console.log(JSON.stringify(queryParams));
+
+    const res = await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
+    console.log(res);
+    return res;
   }
 
   _updateSourceData(fc: GeoJSON.FeatureCollection) {
