@@ -109,6 +109,7 @@ export class FeatureLayerSourceManager {
         minZoom: this._useStaticZoomLevel ? 7 : 2, // TODO set dynamically
         maxZoom: 22, // TODO
       };
+      //if (!this.queryOptions?.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
 
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
@@ -363,6 +364,7 @@ export class FeatureLayerSourceManager {
       xmax: tileBounds[2],
       ymax: tileBounds[3],
     };
+    // TODO edge test case: Single tile has more than the maxVertexCount of features?
     const queryParams: IQueryAllFeaturesOptions = {
       url: this.url,
       ...(this._authentication && { authentication: this._authentication }),
@@ -371,6 +373,7 @@ export class FeatureLayerSourceManager {
       f: 'pbf-as-geojson',
       resultType: 'tile',
       inSR: '4326',
+      //where: `NAME = 'Morgan County' AND STATE_NAME = 'Colorado'`,
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
