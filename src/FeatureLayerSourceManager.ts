@@ -24,6 +24,7 @@ type GeometryProjectionResponse = {
   geometries: IGeometry[];
 };
 
+type LoadingModeOptions = 'default' | 'snapshot' | 'ondemand';
 // Types for relevant classes
 type FeatureLayerSourceManagerOptions = {
   url: string;
@@ -31,6 +32,7 @@ type FeatureLayerSourceManagerOptions = {
   layerDefinition?: ILayerDefinition;
   authentication?: RestJSAuthenticationManager;
   useStaticZoomLevel?: boolean;
+  loadingMode?: LoadingModeOptions;
 };
 
 type FeatureIdIndexMap = Map<string | number, boolean>;
@@ -55,6 +57,7 @@ export class FeatureLayerSourceManager {
     maxZoom: number;
   };
 
+  private _loadingMode: LoadingModeOptions;
   private _useStaticZoomLevel: boolean;
   private _maxExtent: BBox;
   private _tileIndices: Map<number, TileIndexMap>;
@@ -66,7 +69,7 @@ export class FeatureLayerSourceManager {
     if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
     this.geojsonSourceId = id;
 
-    const { url, queryOptions, layerDefinition, authentication, useStaticZoomLevel } = options;
+    const { url, queryOptions, layerDefinition, authentication, useStaticZoomLevel, loadingMode } = options;
 
     if (!url) throw new Error('Source manager requires the URL of a feature layer.');
     this.url = url;
@@ -75,6 +78,7 @@ export class FeatureLayerSourceManager {
     if (authentication) this._authentication = authentication;
     if (layerDefinition) this.layerDefinition = layerDefinition;
 
+    this._loadingMode = loadingMode ? loadingMode : 'default';
     this._useStaticZoomLevel = useStaticZoomLevel ? useStaticZoomLevel : false;
   }
 
@@ -86,13 +90,17 @@ export class FeatureLayerSourceManager {
   async load() {
     this.layerDefinition = await this._getLayerDefinition();
     try {
-      // Try snapshot mode first
-      const queryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
-      const featureCollection = await this._loadFeatureSnapshot(queryLimit);
-      console.log('Snapshot mode succeeded for', this.url);
-      this._updateSourceData(featureCollection);
+      if (this._loadingMode === 'snapshot' || this._loadingMode === 'default') {
+        // Try snapshot mode first
+        const queryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
+        const featureCollection = await this._loadFeatureSnapshot(queryLimit);
+        console.log('Snapshot mode succeeded for', this.url);
+        this._updateSourceData(featureCollection);
+      }
+      else throw new Error('Snapshot mode not enabled.');
     }
     catch (err) {
+      if (this._loadingMode !== 'ondemand' && this._loadingMode !== 'default') throw new Error(`Unable to load using snapshot mode: ${err}`);
       if (err && err.name === 'AbortError') {
         console.log('Snapshot mode request aborted.');
         return;
@@ -109,7 +117,7 @@ export class FeatureLayerSourceManager {
         minZoom: this._useStaticZoomLevel ? 7 : 2, // TODO set dynamically
         maxZoom: 22, // TODO
       };
-      //if (!this.queryOptions?.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
+      // if (!this.queryOptions?.geometryPrecision) this.queryOptions.geometryPrecision = 6; // https://en.wikipedia.org/wiki/Decimal_degrees#Precision
 
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
@@ -312,7 +320,8 @@ export class FeatureLayerSourceManager {
     const tolerance = (360 / (2 ** (zoomLevel + 1))) / 1000;
     try {
       await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection, this._abortController.signal);
-    } catch (err) {
+    }
+    catch (err) {
       if (err && err.name === 'AbortError') {
         console.log('Tile request aborted.');
         return;
@@ -337,7 +346,7 @@ export class FeatureLayerSourceManager {
           if (tileFc) this._iterateItems(tileFc, featureIdIndex, fc);
         });
         resolve(fc);
-      }).catch(err => {
+      }).catch((err) => {
         reject(err);
       });
     });
@@ -373,7 +382,7 @@ export class FeatureLayerSourceManager {
       f: 'pbf-as-geojson',
       resultType: 'tile',
       inSR: '4326',
-      //where: `NAME = 'Morgan County' AND STATE_NAME = 'Colorado'`,
+      // where: `NAME = 'Morgan County' AND STATE_NAME = 'Colorado'`,
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
