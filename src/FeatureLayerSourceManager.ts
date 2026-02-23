@@ -199,7 +199,7 @@ export class FeatureLayerSourceManager {
       // Get all features
       const response = await queryAllFeatures({
         ...requestParams,
-        f: 'geojson',
+        f: 'pbf-as-geojson',
         signal: this._abortController.signal,
       });
 
