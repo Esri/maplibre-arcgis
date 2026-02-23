@@ -24,7 +24,7 @@ type GeometryProjectionResponse = {
   geometries: IGeometry[];
 };
 
-type LoadingModeOptions = 'default' | 'snapshot' | 'ondemand';
+export type LoadingModeOptions = 'default' | 'snapshot' | 'ondemand';
 // Types for relevant classes
 type FeatureLayerSourceManagerOptions = {
   url: string;

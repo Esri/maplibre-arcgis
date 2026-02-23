@@ -6,7 +6,7 @@ import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
 import type { Map } from 'maplibre-gl';
-import { FeatureLayerSourceManager } from './FeatureLayerSourceManager';
+import { FeatureLayerSourceManager, type LoadingModeOptions } from './FeatureLayerSourceManager';
 // const geoJSONDefaultStyleMap = {
 //     "Point":"circle",
 //     "MultiPoint":"circle",
@@ -74,6 +74,7 @@ export interface IFeatureLayerOptions extends IHostedLayerOptions {
   itemId?: string;
   url?: string;
   query?: IQueryOptions;
+  _loadingMode?: LoadingModeOptions;
 }
 
 /**
@@ -131,6 +132,7 @@ export class FeatureLayer extends HostedLayer {
   private _inputType: SupportedInputTypes;
 
   query?: IQueryOptions;
+  _loadingMode: LoadingModeOptions;
 
   /**
    * Creates a new FeatureLayer instance. You must provide either an ArcGIS item ID or a feature service URL. If both are provided, the item ID will be used and the URL ignored. Query parameters are only supported when constructing with a feature layer URL.
@@ -186,6 +188,8 @@ export class FeatureLayer extends HostedLayer {
         serviceUrl: cleanUrl(options.url),
       };
     };
+
+    this._loadingMode = options._loadingMode ? options._loadingMode : 'default';
   }
 
   // Initializes an individual layer of the feature service with a source, source manager, and style layer
@@ -221,6 +225,7 @@ export class FeatureLayer extends HostedLayer {
       queryOptions: this.query,
       layerDefinition: layerInfo,
       authentication: this._authentication,
+      loadingMode: this._loadingMode,
     });
 
     // Create default style layer for rendering
