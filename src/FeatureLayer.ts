@@ -219,13 +219,14 @@ export class FeatureLayer extends HostedLayer {
       attribution: this._setupAttribution(layerInfo),
       data: getBlankFc(),
     };
+
     // Create source manager to handle data loading
     this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, {
       url: layerUrl,
       queryOptions: this.query,
       layerDefinition: layerInfo,
       authentication: this._authentication,
-      loadingMode: this._loadingMode,
+      _loadingMode: this._loadingMode,
     });
 
     // Create default style layer for rendering

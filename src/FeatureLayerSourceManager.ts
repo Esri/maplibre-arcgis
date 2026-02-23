@@ -32,7 +32,7 @@ type FeatureLayerSourceManagerOptions = {
   layerDefinition?: ILayerDefinition;
   authentication?: RestJSAuthenticationManager;
   useStaticZoomLevel?: boolean;
-  loadingMode?: LoadingModeOptions;
+  _loadingMode?: LoadingModeOptions;
 };
 
 type FeatureIdIndexMap = Map<string | number, boolean>;
@@ -69,7 +69,7 @@ export class FeatureLayerSourceManager {
     if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
     this.geojsonSourceId = id;
 
-    const { url, queryOptions, layerDefinition, authentication, useStaticZoomLevel, loadingMode } = options;
+    const { url, queryOptions, layerDefinition, authentication, useStaticZoomLevel, _loadingMode } = options;
 
     if (!url) throw new Error('Source manager requires the URL of a feature layer.');
     this.url = url;
@@ -78,7 +78,7 @@ export class FeatureLayerSourceManager {
     if (authentication) this._authentication = authentication;
     if (layerDefinition) this.layerDefinition = layerDefinition;
 
-    this._loadingMode = loadingMode ? loadingMode : 'default';
+    this._loadingMode = _loadingMode ? _loadingMode : 'default';
     this._useStaticZoomLevel = useStaticZoomLevel ? useStaticZoomLevel : false;
   }
 
@@ -199,7 +199,7 @@ export class FeatureLayerSourceManager {
       // Get all features
       const response = await queryAllFeatures({
         ...requestParams,
-        f: 'pbf-as-geojson',
+        f: 'geojson',
         signal: this._abortController.signal,
       });
 
