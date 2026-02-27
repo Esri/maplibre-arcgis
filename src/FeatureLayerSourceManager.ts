@@ -153,13 +153,10 @@ export class FeatureLayerSourceManager {
   private async loadFeatureSnapshot(
     geometryLimit: GeometryLimits
   ): Promise<GeoJSON.FeatureCollection> {
-    let layerData: GeoJSON.FeatureCollection;
-
     // Abort previous snapshot request
     this.abortController?.abort();
     this.abortController = new AbortController();
 
-    const ignoreFeatureLimit = false;
     const requestParams: IQueryAllFeaturesOptions = {
       url: this.url,
       authentication: this.authentication,
@@ -167,19 +164,21 @@ export class FeatureLayerSourceManager {
       signal: this.abortController.signal,
     };
 
-    if (ignoreFeatureLimit || !(await this.checkIfExceedsLimit(requestParams, geometryLimit))) {
-      if (ignoreFeatureLimit) warn(`Feature count limits are being ignored from ${this.url}. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
-      const response = await queryAllFeatures({
-        ...requestParams,
-        f: 'geojson',
-        signal: this.abortController.signal,
-      });
-      layerData = response as unknown as GeoJSON.FeatureCollection;
-    } else {
+    const exceedsLimit = await this.checkIfExceedsLimit(requestParams, geometryLimit);
+    if (exceedsLimit) {
       throw new Error('Snapshot mode geometry limit exceeded.');
     }
-    if (!layerData) throw new Error('Unable to load data.');
-    return layerData;
+
+    const response = await queryAllFeatures({
+      ...requestParams,
+      f: 'geojson',
+      signal: this.abortController.signal,
+    });
+    const featureCollection = response as unknown as GeoJSON.FeatureCollection;
+    if (!featureCollection) {
+      throw new Error('Unable to load data.');
+    }
+    return featureCollection;
   }
 
   /**
