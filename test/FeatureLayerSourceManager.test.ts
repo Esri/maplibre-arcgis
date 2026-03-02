@@ -187,7 +187,10 @@ describe('Feature layer data source tests', () => {
     test('Uses on-demand loading for queries above the limit.', () => {
 
     });
-    test('Supports SQL queries for on-demand loading.', () => {});
+
+    test('Supports SQL queries for on-demand loading.', () => {
+
+    });
 
     test('Uses the service extent to determine if the layer should load, if the service is in 4326.', () => {
 
