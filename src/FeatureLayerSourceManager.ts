@@ -413,7 +413,7 @@ export class FeatureLayerSourceManager {
     this._abortController?.abort();
     this._abortController = new AbortController();
 
-    if (this.layerDefinition !== null) return Promise.resolve(this.layerDefinition);
+    if (this.layerDefinition) return Promise.resolve(this.layerDefinition);
 
     const layerDefinition = await getLayer({
       url: this.url,
