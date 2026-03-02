@@ -15,7 +15,8 @@ import multiLayerServiceDefinitionRaw from './mock/FeatureLayer/multiLayer-servi
 const featureMultiLayerMock = {
   itemId: '44299709cce447ea99014ff1e3bf8505',
   serviceUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/ManyLayers/FeatureServer',
-  serviceDefinition: JSON.stringify(multiLayerServiceDefinitionRaw)
+  serviceDefinition: JSON.stringify(multiLayerServiceDefinitionRaw),
+  serviceDefinitionRaw: multiLayerServiceDefinitionRaw
 }
 
 // Santa Monica trails feature mocks
