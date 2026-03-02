@@ -6,8 +6,6 @@ import { bboxToTile, getChildren, tileToQuadkey, tileToBBOX, type Tile } from '@
 import { type IGeometry, type IExtent } from '@esri/arcgis-rest-request';
 import { type BBox } from 'geojson';
 
-
-
 // =====================
 // Types and Interfaces
 // =====================
@@ -76,9 +74,9 @@ export class FeatureLayerSourceManager {
     if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
     this.geojsonSourceId = id;
 
+    if (!options || !options.url) throw new Error('Source manager requires the URL of a feature layer.');
     const { url, queryOptions, layerDefinition, authentication, useStaticZoomLevel, _loadingMode } = options;
 
-    if (!url) throw new Error('Source manager requires the URL of a feature layer.');
     this.url = url;
     this.queryOptions = queryOptions ?? {};
     if (authentication) this.authentication = authentication;
@@ -86,7 +84,6 @@ export class FeatureLayerSourceManager {
     this.loadingMode = _loadingMode ?? 'default';
     this.useStaticZoomLevel = useStaticZoomLevel ?? false;
   }
-
 
   // =====================
   // Main entry points
@@ -112,10 +109,12 @@ export class FeatureLayerSourceManager {
         const featureCollection = await this.loadFeatureSnapshot(queryLimit);
         console.log('Snapshot mode succeeded for', this.url);
         this.updateSourceData(featureCollection);
-      } else {
+      }
+      else {
         throw new Error('Snapshot mode not enabled.');
       }
-    } catch (err: any) {
+    }
+    catch (err: any) {
       if (this.loadingMode !== 'ondemand' && this.loadingMode !== 'default') {
         throw new Error(`Unable to load using snapshot mode: ${err}`);
       }
@@ -218,14 +217,15 @@ export class FeatureLayerSourceManager {
       let minZoomOfCandidates = candidateTiles[0][2];
       while (minZoomOfCandidates < zoomLevel) {
         const newCandidateTiles: Tile[] = [];
-        candidateTiles.forEach((t) => newCandidateTiles.push(...getChildren(t)));
+        candidateTiles.forEach(t => newCandidateTiles.push(...getChildren(t)));
         candidateTiles = newCandidateTiles;
         minZoomOfCandidates = candidateTiles[0][2];
       }
       for (let i = 0; i < candidateTiles.length; i++) {
         if (this.doesTileOverlapBounds(candidateTiles[i], mapBounds)) tilesToRequest.push(candidateTiles[i]);
       }
-    } else {
+    }
+    else {
       tilesToRequest.push(primaryTile);
     }
 
@@ -237,7 +237,8 @@ export class FeatureLayerSourceManager {
       if (zoomLevelIndex.has(quadKey)) {
         tilesToRequest.splice(i, 1);
         i--;
-      } else {
+      }
+      else {
         zoomLevelIndex.set(quadKey, true);
       }
     }
@@ -250,7 +251,8 @@ export class FeatureLayerSourceManager {
     const tolerance = 360 / 2 ** (zoomLevel + 1) / 1000;
     try {
       await this.loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection, this.abortController.signal);
-    } catch (err: any) {
+    }
+    catch (err: any) {
       if (err && err.name === 'AbortError') {
         console.log('Tile request aborted.');
         return;
@@ -272,7 +274,7 @@ export class FeatureLayerSourceManager {
     signal?: AbortSignal
   ): Promise<GeoJSON.FeatureCollection> {
     return new Promise((resolve, reject) => {
-      const tileRequests = tilesToRequest.map((tile) => this.getTile(tile, tolerance, signal));
+      const tileRequests = tilesToRequest.map(tile => this.getTile(tile, tolerance, signal));
       Promise.all(tileRequests)
         .then((featureCollections) => {
           featureCollections.forEach((tileFc) => {
@@ -393,7 +395,8 @@ export class FeatureLayerSourceManager {
     const serviceExtent = this.layerDefinition.extent;
     if (serviceExtent.spatialReference?.wkid === 4326) {
       this.maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
-    } else if (serviceExtent.spatialReference?.wkid === 3857) {
+    }
+    else if (serviceExtent.spatialReference?.wkid === 3857) {
       // Convert 3857 CRS to 4326 lng/lat
       const sw = new MercatorCoordinate(serviceExtent.xmin, serviceExtent.ymin).toLngLat();
       const ne = new MercatorCoordinate(serviceExtent.xmax, serviceExtent.ymax).toLngLat();

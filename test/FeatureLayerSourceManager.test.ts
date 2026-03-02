@@ -70,6 +70,10 @@ describe('Feature layer data source tests', () => {
     expect(() => {
       const featureManager = new FeatureLayerSourceManager(sourceId);
     }).toThrowError('Source manager requires the URL of a feature layer.');
+
+    expect(() => {
+      const featureManager = new FeatureLayerSourceManager(sourceId, {});
+    }).toThrowError('Source manager requires the URL of a feature layer.');
   });
 
 
@@ -101,10 +105,10 @@ describe('Feature layer data source tests', () => {
     });
 
     fetchMock.once(trailsMock.layerDefinition);
-    const layerDefinitionSpy = vi.spyOn(manager, '_getLayerDefinition');
+    const layerDefinitionSpy = vi.spyOn(manager, 'getLayerDefinition');
 
-    vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {return trailsMock.trailsDataTruncatedRaw});
-    vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
+    vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => {return trailsMock.trailsDataTruncatedRaw});
+    vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
     await manager.load();
 
     expect(getLayer).toHaveBeenCalled();
@@ -119,9 +123,9 @@ describe('Feature layer data source tests', () => {
       layerDefinition: trailsMock.layerDefinitionRaw
     });
 
-    const snapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {return getBlankFc()});
-    const onDemandSpy = vi.spyOn(manager, '_enableOnDemandLoading');
-    const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
+    const snapshotSpy = vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => {return getBlankFc()});
+    const onDemandSpy = vi.spyOn(manager, 'enableOnDemandLoading');
+    const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
     await manager.load();
 
     expect(snapshotSpy).toHaveBeenCalled();
@@ -134,9 +138,9 @@ describe('Feature layer data source tests', () => {
       layerDefinition: trailsMock.layerDefinitionRaw
     });
 
-    const snapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {throw new Error});
-    vi.spyOn(manager, '_enableOnDemandLoading').mockImplementation(() => {return true});
-    const onDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => {return true});
+    const snapshotSpy = vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => {throw new Error});
+    vi.spyOn(manager, 'enableOnDemandLoading').mockImplementation(() => {return true});
+    const onDemandSpy = vi.spyOn(manager, 'loadFeaturesOnDemand').mockImplementation(() => {return true});
 
     await manager.load();
 
@@ -145,7 +149,7 @@ describe('Feature layer data source tests', () => {
   });
 
   describe('Snapshot mode loading tests', async () => {
-    test.only('Loads data from a layer and uses it to update a MapLibre geojson source.', async () => {
+    test('Loads data from a layer and uses it to update a MapLibre geojson source.', async () => {
 
       const manager = new FeatureLayerSourceManager(sourceId, {
         url: trailsMock.layerUrl,
@@ -154,7 +158,7 @@ describe('Feature layer data source tests', () => {
       });
       fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
 
-      const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
+      const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
       await manager.load();
 
       expect(updateMapSpy).toHaveBeenCalledWith(trailsMock.geoJSONSmallRaw);
@@ -167,7 +171,7 @@ describe('Feature layer data source tests', () => {
 
     });
 
-    test('On-demand loading fetches the zoom level of the current map and uses it to build an index', async () => {
+    test('On-demand loading fetches the zoom level of the current map and uses it to build an index', async ({ map }) => {
       const getZoomSpy = vi.spyOn(map, 'getZoom').mockImplementation(() => 6);
       const getBoundsSpy = vi.spyOn(map, 'getBounds').mockImplementation(() => {
         return new LngLatBounds([0,0,0,0])
