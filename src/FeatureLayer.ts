@@ -6,7 +6,7 @@ import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
 import type { Map } from 'maplibre-gl';
-import { FeatureLayerSourceManager, type LoadingModeOptions } from './FeatureLayerSourceManager';
+import { FeatureLayerSourceManager, FeatureLayerSourceManagerOptions, type LoadingModeOptions } from './FeatureLayerSourceManager';
 // const geoJSONDefaultStyleMap = {
 //     "Point":"circle",
 //     "MultiPoint":"circle",
@@ -220,14 +220,14 @@ export class FeatureLayer extends HostedLayer {
       data: getBlankFc(),
     };
 
-    // Create source manager to handle data loading
-    this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, {
-      url: layerUrl,
-      queryOptions: this.query,
-      layerDefinition: layerInfo,
+    const options: FeatureLayerSourceManagerOptions = {
+      queryOptions: this.query ?? undefined,
       authentication: this._authentication,
-      _loadingMode: this._loadingMode,
-    });
+      loadingMode: this._loadingMode,
+    };
+
+    // Create source manager to handle data loading
+    this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, layerUrl, layerInfo, options);
 
     // Create default style layer for rendering
     const layerType = esriGeometryInfo[layerInfo.geometryType].type;

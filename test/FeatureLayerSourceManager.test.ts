@@ -94,7 +94,7 @@ describe('Feature layer data source tests', () => {
       url: trailsMock.layerUrl,
       layerDefinition: trailsMock.layerDefinitionRaw
     });
-    expect(manager.options.layerDefinition).toBe(trailsMock.layerDefinitionRaw);
+    expect(manager.layerDefinition).toBe(trailsMock.layerDefinitionRaw);
   });
 
   test('Load function fetches the layer definition if not provided in constructor', async () => {
@@ -113,7 +113,7 @@ describe('Feature layer data source tests', () => {
 
     expect(getLayer).toHaveBeenCalled();
     expect(layerDefinitionSpy).toHaveBeenCalled();
-    expect(manager.options.layerDefinition).toEqual(trailsMock.layerDefinitionRaw);
+    expect(manager.layerDefinition).toEqual(trailsMock.layerDefinitionRaw);
   });
 
   test('Load function tries to load via snapshot mode initially', async () => {

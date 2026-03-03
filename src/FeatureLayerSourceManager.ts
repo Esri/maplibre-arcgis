@@ -39,9 +39,7 @@ interface GeometryProjectionResponse {
 export type LoadingModeOptions = 'default' | 'snapshot' | 'ondemand';
 
 export interface FeatureLayerSourceManagerOptions {
-  url: string;
   queryOptions: IQueryOptions;
-  layerDefinition?: ILayerDefinition;
   authentication?: RestJSAuthenticationManager;
   useStaticZoomLevel?: boolean;
   loadingMode?: LoadingModeOptions;
@@ -64,14 +62,21 @@ export class FeatureLayerSourceManager {
   private featureCollections: Map<number, GeoJSON.FeatureCollection>;
   private boundEvent: (ev?: MapLibreEvent) => void;
   private options: FeatureLayerSourceManagerOptions;
+  public layerUrl: string;
+  public layerDefinition?: ILayerDefinition;
 
-  constructor(id: string, options: FeatureLayerSourceManagerOptions) {
+  constructor(id: string, layerUrl: string, layerDefinition: ILayerDefinition, options: FeatureLayerSourceManagerOptions) {
     if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
     this.geojsonSourceId = id;
-    if (!options || !options.url) throw new Error('Source manager requires the URL of a feature layer.');
-    this.options = options;
-    // set default values where none exist.
-    this.initializeOptions(options);
+    if (!layerUrl) {
+      throw new Error('Source manager requires the URL of a feature layer.');
+    }
+    if (!layerDefinition) {
+      throw new Error('Source manager requires a layer definition.');
+    }
+    this.options = this.initializeOptions(options);
+    this.layerUrl = layerUrl;
+    this.layerDefinition = layerDefinition;
   }
 
   // =====================
@@ -90,16 +95,13 @@ export class FeatureLayerSourceManager {
    * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
    */
   public async load() {
-    if (!this.options.layerDefinition) {
-      this.options.layerDefinition = await this.getLayerDefinition();
-    }
     try {
       const loadingMode = this.options.loadingMode ?? 'default';
       if (loadingMode === 'snapshot' || loadingMode === 'default') {
         // Try snapshot mode first
-        const queryLimit: GeometryLimits = esriGeometryInfo[this.options.layerDefinition.geometryType].limit;
+        const queryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
         const featureCollection = await this.loadFeatureSnapshot(queryLimit);
-        console.log('Snapshot mode succeeded for', this.options.url);
+        console.log('Snapshot mode succeeded for', this.layerUrl);
         this.updateSourceData(this.map, featureCollection);
       }
       else {
@@ -117,7 +119,7 @@ export class FeatureLayerSourceManager {
       }
       console.log(err);
       // Use on-demand loading as fallback
-      console.log('Using on-demand loading for', this.options.url);
+      console.log('Using on-demand loading for', this.layerUrl);
       this.tileIndices = new Map();
       this.featureIndices = new Map();
       this.featureCollections = new Map();
@@ -130,7 +132,7 @@ export class FeatureLayerSourceManager {
 
       // Use service bounds
       this.maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
-      if (this.options.layerDefinition.extent) this.useServiceBounds();
+      if (this.layerDefinition && this.layerDefinition.extent) this.useServiceBounds();
 
       this.enableOnDemandLoading();
       this.clearAndRefreshTiles();
@@ -150,7 +152,7 @@ export class FeatureLayerSourceManager {
     this.abortController = new AbortController();
 
     const requestParams: IQueryAllFeaturesOptions = {
-      url: this.options.url,
+      url: this.layerUrl,
       authentication: this.options.authentication,
       ...this.options.queryOptions,
       signal: this.abortController.signal,
@@ -198,7 +200,7 @@ export class FeatureLayerSourceManager {
       return;
     }
 
-    const zoomLevel = this.useStaticZoomLevel ? this.onDemandSettings.minZoom : Math.round(zoom);
+    const zoomLevel = this.options.useStaticZoomLevel ? this.onDemandSettings.minZoom : Math.round(zoom);
     const zoomLevelIndex = this.createOrGetTileIndex(zoomLevel);
     const featureIdIndex = this.createOrGetFeatureIdIndex(zoomLevel);
     const featureCollection = this.createOrGetFeatureCollection(zoomLevel);
@@ -361,7 +363,7 @@ export class FeatureLayerSourceManager {
     };
     // TODO: Single tile has more than the maxVertexCount of features?
     const queryParams: IQueryAllFeaturesOptions = {
-      url: this.options.url,
+      url: this.layerUrl,
       ...(this.options.authentication && { authentication: this.options.authentication }),
       ...this.options.queryOptions,
       f: 'pbf-as-geojson',
@@ -385,7 +387,8 @@ export class FeatureLayerSourceManager {
   }
 
   private useServiceBounds() {
-    const serviceExtent = this.options.layerDefinition.extent;
+    if (!this.layerDefinition) return;
+    const serviceExtent = this.layerDefinition.extent;
     if (serviceExtent.spatialReference?.wkid === 4326) {
       this.maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
     }
@@ -438,25 +441,10 @@ export class FeatureLayerSourceManager {
     console.warn('Unable to update source: could not find source with ID', this.geojsonSourceId);
   }
 
-  private async getLayerDefinition() {
-    // Abort previous layer definition request
-    this.abortController?.abort();
-    this.abortController = new AbortController();
-
-    const layerDefinition = await getLayer({
-      url: this.options.url,
-      httpMethod: 'GET',
-      ...(this.options.authentication && { authentication: this.options.authentication }),
-      signal: this.abortController.signal,
-    });
-    return layerDefinition;
-  }
-
   private initializeOptions(options: FeatureLayerSourceManagerOptions) {
     const hydratedOptions: FeatureLayerSourceManagerOptions = {
       url: options.url,
       queryOptions: options.queryOptions ?? {},
-      layerDefinition: options.layerDefinition,
       authentication: options.authentication,
       useStaticZoomLevel: options.useStaticZoomLevel ?? false,
       loadingMode: options.loadingMode ?? 'default',
