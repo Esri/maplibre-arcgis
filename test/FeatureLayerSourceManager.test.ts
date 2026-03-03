@@ -94,7 +94,7 @@ describe('Feature layer data source tests', () => {
       url: trailsMock.layerUrl,
       layerDefinition: trailsMock.layerDefinitionRaw
     });
-    expect(manager.layerDefinition).toBe(trailsMock.layerDefinitionRaw);
+    expect(manager.options.layerDefinition).toBe(trailsMock.layerDefinitionRaw);
   });
 
   test('Load function fetches the layer definition if not provided in constructor', async () => {
@@ -113,7 +113,7 @@ describe('Feature layer data source tests', () => {
 
     expect(getLayer).toHaveBeenCalled();
     expect(layerDefinitionSpy).toHaveBeenCalled();
-    expect(manager.layerDefinition).toEqual(trailsMock.layerDefinitionRaw);
+    expect(manager.options.layerDefinition).toEqual(trailsMock.layerDefinitionRaw);
   });
 
   test('Load function tries to load via snapshot mode initially', async () => {
@@ -150,18 +150,24 @@ describe('Feature layer data source tests', () => {
 
   describe('Snapshot mode loading tests', async () => {
     test('Loads data from a layer and uses it to update a MapLibre geojson source.', async () => {
-
+      const mockMap = {
+        getSource: vi.fn(() => ({
+          setData: vi.fn()
+        }))
+      };
       const manager = new FeatureLayerSourceManager(sourceId, {
         url: trailsMock.layerUrl,
         layerDefinition: trailsMock.layerDefinitionRaw,
-        _loadingMode: 'snapshot'
+        loadingMode: 'snapshot'
       });
+      manager.map = mockMap;
       fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
 
       const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
+
       await manager.load();
 
-      expect(updateMapSpy).toHaveBeenCalledWith(trailsMock.geoJSONSmallRaw);
+      expect(updateMapSpy).toHaveBeenCalledWith(mockMap, trailsMock.geoJSONSmallRaw);
     });
   });
 

@@ -70,8 +70,8 @@ export class FeatureLayerSourceManager {
     this.geojsonSourceId = id;
     if (!options || !options.url) throw new Error('Source manager requires the URL of a feature layer.');
     this.options = options;
-    // temporarily set a getter to throw error at runtime if an option is accessed but not defined.
-    this.tempOptionsDefinedHelper(options);
+    // set default values where none exist.
+    this.initializeOptions(options);
   }
 
   // =====================
@@ -452,27 +452,15 @@ export class FeatureLayerSourceManager {
     return layerDefinition;
   }
 
-  private tempOptionsDefinedHelper(options: FeatureLayerSourceManagerOptions) {
-    // Guarantee all keys in FeatureLayerSourceManagerOptions are present and throw if missing/undefined
-    const requiredKeys: (keyof FeatureLayerSourceManagerOptions)[] = [
-      'url',
-      'queryOptions',
-      'layerDefinition',
-      'authentication',
-      'useStaticZoomLevel',
-      'loadingMode',
-    ];
-
-    for (const key of requiredKeys) {
-      if (!(key in options) || options[key] === undefined) {
-        Object.defineProperty(this.options, key, {
-          configurable: true,
-          enumerable: true,
-          get() {
-            throw new Error(`Option ${key} is required but was not provided.`);
-          },
-        });
-      }
-    }
+  private initializeOptions(options: FeatureLayerSourceManagerOptions) {
+    const hydratedOptions: FeatureLayerSourceManagerOptions = {
+      url: options.url,
+      queryOptions: options.queryOptions ?? {},
+      layerDefinition: options.layerDefinition,
+      authentication: options.authentication,
+      useStaticZoomLevel: options.useStaticZoomLevel ?? false,
+      loadingMode: options.loadingMode ?? 'default',
+    };
+    return hydratedOptions;
   }
 }
