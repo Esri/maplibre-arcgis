@@ -44,7 +44,7 @@ export interface FeatureLayerSourceManagerOptions {
   layerDefinition?: ILayerDefinition;
   authentication?: RestJSAuthenticationManager;
   useStaticZoomLevel?: boolean;
-  _loadingMode?: LoadingModeOptions;
+  loadingMode?: LoadingModeOptions;
 }
 
 type FeatureIdIndexMap = Map<string | number, boolean>;
@@ -53,36 +53,25 @@ type TileIndexMap = Map<string, boolean>;
 // Main Class: FeatureLayerSourceManager
 export class FeatureLayerSourceManager {
   geojsonSourceId: string;
-  url: string;
   map: MaplibreMap;
-  queryOptions: Omit<IQueryOptions, 'ignoreLimits'>;
-  layerDefinition: ILayerDefinition;
   maplibreSource: GeoJSONSource;
   token?: string;
-  private authentication?: RestJSAuthenticationManager;
   private abortController?: AbortController;
   private onDemandSettings!: OnDemandSettings;
-  private loadingMode: LoadingModeOptions;
-  private useStaticZoomLevel: boolean;
   private maxExtent: BBox;
   private tileIndices: Map<number, TileIndexMap>;
   private featureIndices: Map<number, FeatureIdIndexMap>;
   private featureCollections: Map<number, GeoJSON.FeatureCollection>;
   private boundEvent: (ev?: MapLibreEvent) => void;
+  private options: FeatureLayerSourceManagerOptions;
 
   constructor(id: string, options: FeatureLayerSourceManagerOptions) {
     if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
     this.geojsonSourceId = id;
-
     if (!options || !options.url) throw new Error('Source manager requires the URL of a feature layer.');
-    const { url, queryOptions, layerDefinition, authentication, useStaticZoomLevel, _loadingMode } = options;
-
-    this.url = url;
-    this.queryOptions = queryOptions ?? {};
-    if (authentication) this.authentication = authentication;
-    if (layerDefinition) this.layerDefinition = layerDefinition;
-    this.loadingMode = _loadingMode ?? 'default';
-    this.useStaticZoomLevel = useStaticZoomLevel ?? false;
+    this.options = options;
+    // temporarily set a getter to throw error at runtime if an option is accessed but not defined.
+    this.tempOptionsDefinedHelper(options);
   }
 
   // =====================
@@ -92,7 +81,7 @@ export class FeatureLayerSourceManager {
   /**
    * Called by Maplibre when the source is added to the map.
    */
-  public onAdd(map: MaplibreMap): void {
+  public onAdd(map: MaplibreMap) {
     this.map = map;
     void this.load();
   }
@@ -101,21 +90,25 @@ export class FeatureLayerSourceManager {
    * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
    */
   public async load() {
-    this.layerDefinition = await this.getLayerDefinition();
+    if (!this.options.layerDefinition) {
+      this.options.layerDefinition = await this.getLayerDefinition();
+    }
     try {
-      if (this.loadingMode === 'snapshot' || this.loadingMode === 'default') {
+      const loadingMode = this.options.loadingMode ?? 'default';
+      if (loadingMode === 'snapshot' || loadingMode === 'default') {
         // Try snapshot mode first
-        const queryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
+        const queryLimit: GeometryLimits = esriGeometryInfo[this.options.layerDefinition.geometryType].limit;
         const featureCollection = await this.loadFeatureSnapshot(queryLimit);
-        console.log('Snapshot mode succeeded for', this.url);
-        this.updateSourceData(featureCollection);
+        console.log('Snapshot mode succeeded for', this.options.url);
+        this.updateSourceData(this.map, featureCollection);
       }
       else {
         throw new Error('Snapshot mode not enabled.');
       }
     }
     catch (err: any) {
-      if (this.loadingMode !== 'ondemand' && this.loadingMode !== 'default') {
+      const loadingMode = this.options.loadingMode ?? 'default';
+      if (loadingMode !== 'ondemand' && loadingMode !== 'default') {
         throw new Error(`Unable to load using snapshot mode: ${err}`);
       }
       if (err && err.name === 'AbortError') {
@@ -124,20 +117,20 @@ export class FeatureLayerSourceManager {
       }
       console.log(err);
       // Use on-demand loading as fallback
-      console.log('Using on-demand loading for', this.url);
+      console.log('Using on-demand loading for', this.options.url);
       this.tileIndices = new Map();
       this.featureIndices = new Map();
       this.featureCollections = new Map();
 
       this.onDemandSettings = {
         maxTolerance: 156543, // meters per pixel at zoom level 0
-        minZoom: this.useStaticZoomLevel ? 7 : 2, // TODO set dynamically
+        minZoom: this.options.useStaticZoomLevel ? 7 : 2, // TODO set dynamically
         maxZoom: 22, // TODO
       };
 
       // Use service bounds
       this.maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
-      if (this.layerDefinition.extent) this.useServiceBounds();
+      if (this.options.layerDefinition.extent) this.useServiceBounds();
 
       this.enableOnDemandLoading();
       this.clearAndRefreshTiles();
@@ -157,9 +150,9 @@ export class FeatureLayerSourceManager {
     this.abortController = new AbortController();
 
     const requestParams: IQueryAllFeaturesOptions = {
-      url: this.url,
-      authentication: this.authentication,
-      ...this.queryOptions,
+      url: this.options.url,
+      authentication: this.options.authentication,
+      ...this.options.queryOptions,
       signal: this.abortController.signal,
     };
 
@@ -244,7 +237,7 @@ export class FeatureLayerSourceManager {
     }
     // Load tiles
     if (tilesToRequest.length === 0) {
-      this.updateSourceData(featureCollection);
+      this.updateSourceData(this.map, featureCollection);
       return;
     }
     // New tiles need to be requested
@@ -260,7 +253,7 @@ export class FeatureLayerSourceManager {
       throw err;
     }
 
-    this.updateSourceData(featureCollection);
+    this.updateSourceData(this.map, featureCollection);
   }
 
   /**
@@ -292,19 +285,19 @@ export class FeatureLayerSourceManager {
   // Utility/tooling methods
   // =====================
 
-  private enableOnDemandLoading(): void {
+  private enableOnDemandLoading() {
     this.boundEvent = this.loadFeaturesOnDemand.bind(this) as () => void;
     this.map.on('moveend', this.boundEvent);
   }
 
-  private clearAndRefreshTiles(): void {
+  private clearAndRefreshTiles() {
     this.tileIndices = new Map();
     this.featureIndices = new Map();
     this.featureCollections = new Map();
     void this.loadFeaturesOnDemand();
   }
 
-  private createOrGetTileIndex(zoomLevel: number): TileIndexMap {
+  private createOrGetTileIndex(zoomLevel: number) {
     const existingZoomIndex = this.tileIndices.get(zoomLevel);
     if (existingZoomIndex) return existingZoomIndex;
     const newTileIndex = new Map() as TileIndexMap;
@@ -312,7 +305,7 @@ export class FeatureLayerSourceManager {
     return newTileIndex;
   }
 
-  private createOrGetFeatureIdIndex(zoomLevel: number): FeatureIdIndexMap {
+  private createOrGetFeatureIdIndex(zoomLevel: number) {
     const existingFeatureIdIndex = this.featureIndices.get(zoomLevel);
     if (existingFeatureIdIndex) return existingFeatureIdIndex;
     const newFeatureIdIndex = new Map() as FeatureIdIndexMap;
@@ -320,7 +313,7 @@ export class FeatureLayerSourceManager {
     return newFeatureIdIndex;
   }
 
-  private createOrGetFeatureCollection(zoomLevel: number): GeoJSON.FeatureCollection {
+  private createOrGetFeatureCollection(zoomLevel: number) {
     const existingZoomIndex = this.featureCollections.get(zoomLevel);
     if (existingZoomIndex) return existingZoomIndex;
     const fc = getBlankFc();
@@ -328,7 +321,7 @@ export class FeatureLayerSourceManager {
     return fc;
   }
 
-  private doesTileOverlapBounds(tile: Tile | BBox, bounds: [number, number][]): boolean {
+  private doesTileOverlapBounds(tile: Tile | BBox, bounds: [number, number][]) {
     const tileBBox = tile.length === 4 ? (tile as BBox) : tileToBBOX(tile as Tile);
     if (tileBBox[2] < bounds[0][0]) return false;
     if (tileBBox[0] > bounds[1][0]) return false;
@@ -341,7 +334,7 @@ export class FeatureLayerSourceManager {
     tileFc: GeoJSON.FeatureCollection,
     featureIdIndex: FeatureIdIndexMap,
     fc: GeoJSON.FeatureCollection
-  ): void {
+  ) {
     tileFc.features.forEach((feature) => {
       if (!featureIdIndex.has(feature.id)) {
         fc.features.push(feature);
@@ -354,7 +347,7 @@ export class FeatureLayerSourceManager {
     tile: Tile,
     tolerance: number,
     signal?: AbortSignal
-  ): Promise<GeoJSON.FeatureCollection> {
+  ) {
     const tileBounds = tileToBBOX(tile);
     const tileExtent: IExtent = {
       spatialReference: {
@@ -368,9 +361,9 @@ export class FeatureLayerSourceManager {
     };
     // TODO: Single tile has more than the maxVertexCount of features?
     const queryParams: IQueryAllFeaturesOptions = {
-      url: this.url,
-      ...(this.authentication && { authentication: this.authentication }),
-      ...this.queryOptions,
+      url: this.options.url,
+      ...(this.options.authentication && { authentication: this.options.authentication }),
+      ...this.options.queryOptions,
       f: 'pbf-as-geojson',
       resultType: 'tile',
       inSR: '4326',
@@ -391,8 +384,8 @@ export class FeatureLayerSourceManager {
     return res;
   }
 
-  private useServiceBounds(): void {
-    const serviceExtent = this.layerDefinition.extent;
+  private useServiceBounds() {
+    const serviceExtent = this.options.layerDefinition.extent;
     if (serviceExtent.spatialReference?.wkid === 4326) {
       this.maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
     }
@@ -415,7 +408,7 @@ export class FeatureLayerSourceManager {
   private async checkIfExceedsLimit(
     params: IQueryAllFeaturesOptions,
     geometryLimit: GeometryLimits
-  ): Promise<boolean> {
+  ) {
     const exceedsLimitParams: IQueryAllFeaturesOptions = {
       ...params,
       outStatistics: [
@@ -435,25 +428,51 @@ export class FeatureLayerSourceManager {
     return exceedsLimitResponse.features[0].attributes.exceedslimit === 1;
   }
 
-  private updateSourceData(fc: GeoJSON.FeatureCollection): void {
+  private updateSourceData(map: MaplibreMap, fc: GeoJSON.FeatureCollection): void {
     console.log('Load complete, updating source data.');
-    const source: GeoJSONSource = this.map.getSource(this.geojsonSourceId);
-    if (source) source.setData(fc);
+    const source: GeoJSONSource | undefined = map.getSource(this.geojsonSourceId);
+    if (source) {
+      source.setData(fc);
+      return;
+    };
+    console.warn('Unable to update source: could not find source with ID', this.geojsonSourceId);
   }
 
-  private async getLayerDefinition(): Promise<ILayerDefinition> {
+  private async getLayerDefinition() {
     // Abort previous layer definition request
     this.abortController?.abort();
     this.abortController = new AbortController();
 
-    if (this.layerDefinition) return Promise.resolve(this.layerDefinition);
-
     const layerDefinition = await getLayer({
-      url: this.url,
+      url: this.options.url,
       httpMethod: 'GET',
-      ...(this.authentication && { authentication: this.authentication }),
+      ...(this.options.authentication && { authentication: this.options.authentication }),
       signal: this.abortController.signal,
     });
     return layerDefinition;
+  }
+
+  private tempOptionsDefinedHelper(options: FeatureLayerSourceManagerOptions) {
+    // Guarantee all keys in FeatureLayerSourceManagerOptions are present and throw if missing/undefined
+    const requiredKeys: (keyof FeatureLayerSourceManagerOptions)[] = [
+      'url',
+      'queryOptions',
+      'layerDefinition',
+      'authentication',
+      'useStaticZoomLevel',
+      'loadingMode',
+    ];
+
+    for (const key of requiredKeys) {
+      if (!(key in options) || options[key] === undefined) {
+        Object.defineProperty(this.options, key, {
+          configurable: true,
+          enumerable: true,
+          get() {
+            throw new Error(`Option ${key} is required but was not provided.`);
+          },
+        });
+      }
+    }
   }
 }
