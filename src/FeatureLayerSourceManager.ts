@@ -94,36 +94,55 @@ export class FeatureLayerSourceManager {
   /**
    * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
    */
-  public async load() {
-    try {
-      const loadingMode = this.options.loadingMode ?? 'default';
-      if (loadingMode === 'snapshot' || loadingMode === 'default') {
-        // Try snapshot mode first
-        const queryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
-        const featureCollection = await this.loadFeatureSnapshot(queryLimit);
-        console.log('Snapshot mode succeeded for', this.layerUrl);
-        this.updateSourceData(this.map, featureCollection);
+  private async load() {
+    const loadingMode = this.options.loadingMode;
+    const defaultOrSnapshot = loadingMode === 'default' || loadingMode === 'snapshot';
+    const defaultOrOnDemand = loadingMode === 'default' || loadingMode === 'ondemand';
+
+    // load snapshot mode if specified and under geometry limits
+    if (defaultOrSnapshot) {
+      if (!this.layerDefinition?.geometryType) {
+        throw new Error('Layer definition with geometry type undefined.');
+      }
+      const geometryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
+      const requestParams: IQueryAllFeaturesOptions = {
+        url: this.layerUrl,
+        authentication: this.options.authentication,
+      };
+      const exceedsLimit = await this.checkIfExceedsLimit(requestParams, geometryLimit);
+      if (!exceedsLimit) {
+        try {
+          // load with snapshot mode
+          const featureCollection = await this.loadFeatureSnapshot();
+          console.log('Snapshot mode succeeded for', this.layerUrl);
+          this.updateSourceData(this.map, featureCollection);
+          return;
+        }
+        catch (err) {
+          // handle abort controller
+          if ((err as unknown as { name: string }).name === 'AbortError') {
+            console.log('Snapshot mode request aborted.');
+            return;
+          }
+          // complete failure
+          throw new Error(`Unable to load using snapshot mode: ${err}`);
+        }
       }
       else {
-        throw new Error('Snapshot mode not enabled.');
+        // if force snapshot mode, throw error
+        if (loadingMode === 'snapshot') {
+          throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
+        }
+        // else, fall back to on-demand
+        console.log('Snapshot mode geometry limit exceeded, falling back to on-demand.');
       }
     }
-    catch (err: any) {
-      const loadingMode = this.options.loadingMode ?? 'default';
-      if (loadingMode !== 'ondemand' && loadingMode !== 'default') {
-        throw new Error(`Unable to load using snapshot mode: ${err}`);
-      }
-      if (err && err.name === 'AbortError') {
-        console.log('Snapshot mode request aborted.');
-        return;
-      }
-      console.log(err);
-      // Use on-demand loading as fallback
-      console.log('Using on-demand loading for', this.layerUrl);
+
+    // fall back to on demand loading
+    if (defaultOrOnDemand) {
       this.tileIndices = new Map();
       this.featureIndices = new Map();
       this.featureCollections = new Map();
-
       this.onDemandSettings = {
         maxTolerance: 156543, // meters per pixel at zoom level 0
         minZoom: this.options.useStaticZoomLevel ? 7 : 2, // TODO set dynamically
@@ -136,7 +155,13 @@ export class FeatureLayerSourceManager {
 
       this.enableOnDemandLoading();
       this.clearAndRefreshTiles();
+      return;
     }
+    throw new Error('Fatal error: unable to load features.');
+  }
+
+  private manageLoadFeaturesOnDemand() {
+
   }
 
   /**
@@ -144,9 +169,7 @@ export class FeatureLayerSourceManager {
    * @param geometryLimit - The geometry limit for this specific layer type, determined via the layer definition
    * @returns - GeoJSON feature collection containing all features in a layer
    */
-  private async loadFeatureSnapshot(
-    geometryLimit: GeometryLimits
-  ): Promise<GeoJSON.FeatureCollection> {
+  private async loadFeatureSnapshot() {
     // Abort previous snapshot request
     this.abortController?.abort();
     this.abortController = new AbortController();
@@ -154,14 +177,7 @@ export class FeatureLayerSourceManager {
     const requestParams: IQueryAllFeaturesOptions = {
       url: this.layerUrl,
       authentication: this.options.authentication,
-      ...this.options.queryOptions,
-      signal: this.abortController.signal,
     };
-
-    const exceedsLimit = await this.checkIfExceedsLimit(requestParams, geometryLimit);
-    if (exceedsLimit) {
-      throw new Error('Snapshot mode geometry limit exceeded.');
-    }
 
     const response = await queryAllFeatures({
       ...requestParams,
@@ -443,7 +459,6 @@ export class FeatureLayerSourceManager {
 
   private initializeOptions(options: FeatureLayerSourceManagerOptions) {
     const hydratedOptions: FeatureLayerSourceManagerOptions = {
-      url: options.url,
       queryOptions: options.queryOptions ?? {},
       authentication: options.authentication,
       useStaticZoomLevel: options.useStaticZoomLevel ?? false,
