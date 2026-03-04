@@ -101,9 +101,10 @@ describe('Feature layer data source tests', () => {
 
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
-    const snapshotSpy = vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => {return getBlankFc()});
+    const exceedsLimitSpy = vi.spyOn(manager, 'checkIfExceedsLimit').mockImplementation(() => false);
+    const snapshotSpy = vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => getBlankFc());
     const bindEventSpy = vi.spyOn(manager, 'bindLoadFeaturesToMoveEndEvent');
-    const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
+    const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => true);
     await manager.load();
 
     expect(snapshotSpy).toHaveBeenCalled();
@@ -130,23 +131,19 @@ describe('Feature layer data source tests', () => {
     // }).rejects.toThrowError(`The requested feature count from ${trailsMock.layerUrl}/ exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
   });
 
-  test('Uses on-demand loading if snapshot mode fails.', async () => {
-    const manager = new FeatureLayerSourceManager(sourceId, {
-      url: trailsMock.layerUrl,
-      layerDefinition: trailsMock.layerDefinitionRaw
-    });
-  test('Load function falls back to on-demand loading if snapshot fails', async () => {
+  test('Load function falls back to on-demand loading if the snapshot limit is exceeded.', async () => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
-
-    const snapshotSpy = vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => {throw new Error});
-    vi.spyOn(manager, 'bindLoadFeaturesToMoveEndEvent').mockImplementation();
+    const exceedsLimitSpy = vi.spyOn(manager, 'checkIfExceedsLimit').mockImplementation(() => true);
+    vi.spyOn(manager, 'bindLoadFeaturesToMoveEndEvent').mockImplementation(() => {});
     const onDemandSpy = vi.spyOn(manager, 'loadFeaturesOnDemand').mockImplementation(() => {return true});
 
     await manager.load();
-
-    expect(snapshotSpy).toThrowError();
     expect(onDemandSpy).toHaveBeenCalled();
+  });
+
+  test('Load function falls back to on-demand loading if snapshot mode throws.', async () => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {})
   });
 
   test('If loadingMode parameter is set to snapshot, uses snapshot only and throws if limits are exceeded.', async () => {
@@ -163,9 +160,7 @@ describe('Feature layer data source tests', () => {
           setData: vi.fn()
         }))
       };
-      const manager = new FeatureLayerSourceManager(sourceId, {
-        url: trailsMock.layerUrl,
-        layerDefinition: trailsMock.layerDefinitionRaw,
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
         loadingMode: 'snapshot'
       });
       manager.map = mockMap;
@@ -183,10 +178,9 @@ describe('Feature layer data source tests', () => {
       const {ApiKeyManager} = await import('@esri/arcgis-rest-request');
 
       const apiKeyManager = ApiKeyManager.fromKey(apiKey);
-      const manager = new FeatureLayerSourceManager(sourceId, {
-        url: trailsMock.layerUrl,
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
         authentication: apiKeyManager,
-        _loadingMode: 'snapshot'
+        loadingMode: 'snapshot'
       });
 
       const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
@@ -207,13 +201,11 @@ describe('Feature layer data source tests', () => {
         where: 'ELEV_MIN > 2000'
       }
 
-      const manager = new FeatureLayerSourceManager(sourceId, {
-        url: trailsMock.layerUrl,
-        layerDefinition: trailsMock.layerDefinitionRaw,
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
         queryOptions: trailQuery
       });
 
-      expect(manager.queryOptions).toEqual(trailQuery);
+      expect(manager.options.queryOptions).toEqual(trailQuery);
 
       const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
       fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
