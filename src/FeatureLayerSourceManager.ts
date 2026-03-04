@@ -51,15 +51,15 @@ type TileIndexMap = Map<string, boolean>;
 // Main Class: FeatureLayerSourceManager
 export class FeatureLayerSourceManager {
   geojsonSourceId: string;
-  map: MaplibreMap;
-  maplibreSource: GeoJSONSource;
+  map: MaplibreMap = undefined as unknown as MaplibreMap;
+  maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
   private abortController?: AbortController;
   private onDemandSettings!: OnDemandSettings;
-  private maxExtent: BBox;
-  private tileIndices: Map<number, TileIndexMap>;
-  private featureIndices: Map<number, FeatureIdIndexMap>;
-  private featureCollections: Map<number, GeoJSON.FeatureCollection>;
+  private maxExtent: BBox = [-Infinity, Infinity, -Infinity, Infinity];
+  private tileIndices: Map<number, TileIndexMap> = new Map();
+  private featureIndices: Map<number, FeatureIdIndexMap> = new Map();
+  private featureCollections: Map<number, GeoJSON.FeatureCollection> = new Map();
   private options: FeatureLayerSourceManagerOptions;
   public layerUrl: string;
   public layerDefinition?: ILayerDefinition;
