@@ -51,6 +51,8 @@ type TileIndexMap = Map<string, boolean>;
 // Main Class: FeatureLayerSourceManager
 export class FeatureLayerSourceManager {
   geojsonSourceId: string;
+  layerUrl: string;
+  layerDefinition?: ILayerDefinition;
   map: MaplibreMap = undefined as unknown as MaplibreMap;
   maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
@@ -61,21 +63,19 @@ export class FeatureLayerSourceManager {
   private featureIndices: Map<number, FeatureIdIndexMap> = new Map();
   private featureCollections: Map<number, GeoJSON.FeatureCollection> = new Map();
   private options: FeatureLayerSourceManagerOptions;
-  public layerUrl: string;
-  public layerDefinition?: ILayerDefinition;
 
   constructor(id: string, layerUrl: string, layerDefinition: ILayerDefinition, options: FeatureLayerSourceManagerOptions) {
     if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
-    this.geojsonSourceId = id;
     if (!layerUrl) {
       throw new Error('Source manager requires the URL of a feature layer.');
     }
     if (!layerDefinition) {
       throw new Error('Source manager requires a layer definition.');
     }
-    this.options = this.initializeOptions(options);
+    this.geojsonSourceId = id;
     this.layerUrl = layerUrl;
     this.layerDefinition = layerDefinition;
+    this.options = this.initializeOptions(options);
   }
 
   // =====================
@@ -148,7 +148,7 @@ export class FeatureLayerSourceManager {
       // Use service bounds
       this.maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
       if (this.layerDefinition && this.layerDefinition.extent) this.useServiceBounds();
-      this.bindLoadFeaturesToMoveEvent();
+      this.bindLoadFeaturesToMoveEndEvent();
       this.clearTiles();
       void this.loadFeaturesOnDemand();
       return;
@@ -288,7 +288,7 @@ export class FeatureLayerSourceManager {
   // Utility/tooling methods
   // =====================
 
-  private bindLoadFeaturesToMoveEvent() {
+  private bindLoadFeaturesToMoveEndEvent() {
     this.map.on('moveend', () => {
       void this.loadFeaturesOnDemand();
     });
