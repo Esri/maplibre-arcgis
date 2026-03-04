@@ -284,19 +284,12 @@ export class FeatureLayerSourceManager {
     fc: GeoJSON.FeatureCollection,
     signal?: AbortSignal
   ): Promise<GeoJSON.FeatureCollection> {
-    return new Promise((resolve, reject) => {
-      const tileRequests = tilesToRequest.map(tile => this.getTile(tile, tolerance, signal));
-      Promise.all(tileRequests)
-        .then((featureCollections) => {
-          featureCollections.forEach((tileFc) => {
-            if (tileFc) this.iterateItems(tileFc, featureIdIndex, fc);
-          });
-          resolve(fc);
-        })
-        .catch((err) => {
-          reject(err);
-        });
+    const tileRequests = tilesToRequest.map(tile => this.getTile(tile, tolerance, signal));
+    const featureCollections = await Promise.all(tileRequests);
+    featureCollections.forEach((tileFc) => {
+      if (tileFc) this.iterateItems(tileFc, featureIdIndex, fc);
     });
+    return fc;
   }
 
   // =====================
