@@ -18,7 +18,7 @@ export const test = customTest.extend({
     const trailsLayer = new FeatureLayer({
       url: trailsMock.layerUrl
     });
-    fetchMock.once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+    fetchMock.once(trailsMock.layerDefinition);
     await trailsLayer.initialize();
 
     await use(trailsLayer);
@@ -44,6 +44,10 @@ describe('Feature layer unit tests', () => {
     }).toThrowError('Feature layer requires either an \'itemId\' or \'url\'.');
   });
 
+  test('Accepts a loadingMode parameter that determines how service data is retrieved.', async () => {
+    // TODO loading of snapshot vs ondemand
+  });
+
   describe('Works with secure layers', () => {
     test('Accepts authentication as a string via `token`.', ({apiKey}) => {
       const featureLayer = new FeatureLayer({
@@ -63,7 +67,7 @@ describe('Feature layer unit tests', () => {
     });
     */
     test('Passes authentication to all REST JS requests.', async ({apiKey}) => {
-      const { getLayer, getService, queryAllFeatures, queryFeatures } = await import('@esri/arcgis-rest-feature-service');
+      const { getLayer, getService } = await import('@esri/arcgis-rest-feature-service');
       const { getItem } = await import('@esri/arcgis-rest-portal');
       const {ApiKeyManager} = await import('@esri/arcgis-rest-request');
 
@@ -72,7 +76,7 @@ describe('Feature layer unit tests', () => {
         token: apiKey
       });
 
-      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await authLayer.initialize();
 
       const apiKeyManager = ApiKeyManager.fromKey(apiKey);
@@ -80,16 +84,11 @@ describe('Feature layer unit tests', () => {
       expect(getItem).toHaveBeenCalledWith(trailsMock.itemId, expect.objectContaining({authentication:apiKeyManager}));
       expect(getService).toHaveBeenCalledWith(expect.objectContaining({authentication:apiKeyManager}));
       expect(getLayer).toHaveBeenCalledWith(expect.objectContaining({authentication: apiKeyManager}));
-      expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining({authentication:apiKeyManager}));
-      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({authentication:apiKeyManager}));
     });
   });
 
   describe('Supports a `query` parameter.', () => {
-    test('Accepts a `query` parameter and adds the query to service URL requests.', async () => {
-
-      const {queryFeatures, queryAllFeatures} = await import('@esri/arcgis-rest-feature-service');
-
+    test('Accepts a `query` parameter.', async () => {
       const trailQuery = {
         outFields: ['TRL_ID', 'ELEV_MIN', 'ELEV_MAX'],
         where: 'ELEV_MIN > 2000'
@@ -98,16 +97,9 @@ describe('Feature layer unit tests', () => {
         url: trailsMock.layerUrl,
         query: trailQuery
       });
-
       expect(layer.query).toEqual(trailQuery);
-      fetchMock.once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
-      await layer.initialize();
-
-      expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
-      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
     });
-    test('Supports `query` with a service URL, but only when the service contains a single layer.', async () => {
-      const {queryFeatures, queryAllFeatures} = await import('@esri/arcgis-rest-feature-service');
+    test('Supports a `query` parameter with a service, but only when the service contains a single layer.', async () => {
 
       const trailQuery = {
         outFields: ['TRL_ID', 'ELEV_MIN', 'ELEV_MAX'],
@@ -120,12 +112,10 @@ describe('Feature layer unit tests', () => {
       });
 
       expect(layer.query).toEqual(trailQuery);
-      fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await layer.initialize();
 
-      expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
-      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
-
+      expect(layer.layers.length).toBe(1);
       // Throws on multi-layer service
       await expect(async () => {
         const multiService = new FeatureLayer({
@@ -140,7 +130,6 @@ describe('Feature layer unit tests', () => {
       }).rejects.toThrowError('Unable to use `query` parameter: This feature service contains multiple feature layers.');
     });
     test('Supports `query` with an item ID, but only when the item contains a single layer.', async () => {
-            const {queryFeatures, queryAllFeatures} = await import('@esri/arcgis-rest-feature-service');
 
       const trailQuery = {
         outFields: ['TRL_ID', 'ELEV_MIN', 'ELEV_MAX'],
@@ -153,11 +142,10 @@ describe('Feature layer unit tests', () => {
       });
 
       expect(layer.query).toEqual(trailQuery);
-      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await layer.initialize();
 
-      expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
-      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
+      expect(layer.layers.length).toBe(1);
 
       // Throws on multi-layer service
       await expect(async () => {
@@ -171,20 +159,6 @@ describe('Feature layer unit tests', () => {
         fetchMock.once(trailsMock.item).once(multiLayerMock.serviceDefinition);
         await multiService.initialize();
       }).rejects.toThrowError('Unable to use `query` parameter: This feature service contains multiple feature layers.');
-    });
-    test('Accepts an `ignoreLimits` parameter and warns the user about best practices when using it.', async () => {
-
-      const warningSpy = vi.spyOn(console, 'warn').mockImplementation((warningText) => {});
-
-      const layer = new FeatureLayer({
-        url: trailsMock.layerUrl,
-        query: {
-          ignoreLimits: true
-        }
-      })
-      fetchMock.once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
-      await layer.initialize();
-      expect(warningSpy).toHaveBeenCalledWith(`Feature count limits are being ignored from ${trailsMock.layerUrl}/. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
     });
   });
 
@@ -264,21 +238,6 @@ describe('Feature layer unit tests', () => {
       expect(featureService._layers.length).toBe(10);
       // Warning
       expect(warningSpy).toHaveBeenCalledWith('This feature service contains more than 10 layers. Only the first 10 layers will be loaded.');
-    });
-
-    test('Throws if they attempt to load layers that exceed the hardcoded limit.', async () => {
-      const featureLayer = new FeatureLayer({
-        url: trailsMock.layerUrl
-      });
-      const warningSpy = vi.spyOn(console,'warn').mockImplementation((warningText) => {});
-
-      fetchMock.once(trailsMock.layerDefinition).once(JSON.stringify({
-        features:[{attributes:{exceedsLimit:1}}]
-      })).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
-
-      await expect(async () => {
-        await featureLayer.initialize();
-      }).rejects.toThrowError(`The requested feature count from ${trailsMock.layerUrl}/ exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
     });
     test('Throws if the layer does not support the `exceedsLimit` statistic.', async () => {
       const layer = new FeatureLayer({
@@ -469,7 +428,7 @@ describe('Feature layer unit tests', () => {
         itemId: trailsMock.itemId
       });
       // Load item info -> service info -> layer info -> layer data
-      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
 
       await featureLayer.initialize();
 
@@ -479,16 +438,16 @@ describe('Feature layer unit tests', () => {
       expect(featureLayer._itemInfo?.licenseInfo).toBeDefined();
     });
 
-    test('Fetches the service URL from item info and loads data based on that.', async () => {
+    test('Fetches the service URL from item info and initializes a source with empty feature collection.', async () => {
       const featureLayer = new FeatureLayer({
         itemId: trailsMock.itemId
       });
-      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONLarge);
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
 
       await featureLayer.initialize();
 
       expect(featureLayer._serviceInfo.serviceUrl).toBe(trailsMock.serviceUrl);
-      expect(featureLayer._sources['Trails_0'].data).toEqual(trailsMock.geoJSONRaw);
+      expect(featureLayer._sources['Trails_0'].data).toEqual(getBlankFc());
     });
   });
 
@@ -519,21 +478,21 @@ describe('Feature layer unit tests', () => {
       });
 
       // Lines
-      fetchMock.once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.layerDefinition);
       const lines = new FeatureLayer({
         url: trailsMock.layerUrl
       });
       await lines.initialize();
 
       // Points
-      fetchMock.once(pointsMock.layerDefinition).once(exceedsLimitResponse).once(pointsMock.layerDefinition).once(pointsMock.geoJSON);
+      fetchMock.once(pointsMock.layerDefinition);
       const points = new FeatureLayer({
         url: pointsMock.layerUrl
       });
       await points.initialize();
 
       // Polygons
-      fetchMock.once(polygonsMock.layerDefinition).once(exceedsLimitResponse).once(polygonsMock.layerDefinition).once(polygonsMock.geoJSON);
+      fetchMock.once(polygonsMock.layerDefinition);
       const polygons = new FeatureLayer({
         url: polygonsMock.layerUrl
       });
@@ -564,7 +523,7 @@ describe('Feature layer unit tests', () => {
         attribution: 'User-provided attribution.'
       });
 
-      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await layer.initialize();
 
       expect(layer._sources['Trails_0'].attribution).toBe('User-provided attribution.')
@@ -574,7 +533,7 @@ describe('Feature layer unit tests', () => {
         itemId: trailsMock.itemId
       });
 
-      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await layer.initialize();
 
       expect(layer._sources['Trails_0'].attribution).toBe('Access information from item info.');
@@ -584,7 +543,7 @@ describe('Feature layer unit tests', () => {
         url: trailsMock.serviceUrl
       });
 
-      fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await layer.initialize();
       expect(layer._sources['Trails_0'].attribution).toBe('Copyright text from layer info.');
     });
@@ -594,23 +553,23 @@ describe('Feature layer unit tests', () => {
       });
 
       const emptyCopyrightLayerInfo = JSON.stringify({
-        ...trailsLayerDefinitionRaw,
+        ...trailsMock.layerDefinitionRaw,
         copyrightText: null
       })
-      fetchMock.once(trailsMock.serviceDefinition).once(emptyCopyrightLayerInfo).once(trailsMock.exceedsLimitResponse).once(emptyCopyrightLayerInfo).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.serviceDefinition).once(emptyCopyrightLayerInfo);
       await layer.initialize();
       expect(layer._sources['Trails_0'].attribution).toBe('Copyright text from service info.');
     });
   });
 
-  test.only('Initializes a layer from item ID with the `fromPortalItem` static method.', async () => {
+  test('Initializes a layer from item ID with the `fromPortalItem` static method.', async () => {
     fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
     const layer = await FeatureLayer.fromPortalItem(trailsMock.itemId);
     expect(layer.source).toBeDefined();
     expect(layer.layer).toBeDefined();
     expect(layer.sourceId).toEqual(trailsMock.layerDefinitionRaw.name);
   });
-  test.only('Creates a layer from service URL with the `fromUrl` static method.', async () => {
+  test('Creates a layer from service URL with the `fromUrl` static method.', async () => {
     // From service URL
     fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
     const layer = await FeatureLayer.fromUrl(trailsMock.serviceUrl);
@@ -705,7 +664,7 @@ describe.skip('Works on a mock page with a `Map`',() => {
       });
     });
     expect(Object.keys(style.sources).length).toBe(1);
-    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(trailsMock.geoJSONRaw);
+    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(getBlankFc());
 
     expect(style.layers.length).toBe(1);
     expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);
