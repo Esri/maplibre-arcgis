@@ -118,17 +118,12 @@ export class FeatureLayerSourceManager {
           return;
         }
         catch (err) {
-          // handle abort controller
-          if ((err as unknown as { name: string }).name === 'AbortError') {
-            console.log('Snapshot mode request aborted.');
-            return;
-          }
           // complete failure
           throw new Error(`Unable to load using snapshot mode: ${err}`);
         }
       }
       else {
-        // if force snapshot mode, throw error
+        // if force snapshot mode, fail
         if (loadingMode === 'snapshot') {
           throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
         }
@@ -162,10 +157,6 @@ export class FeatureLayerSourceManager {
    * @returns - GeoJSON feature collection containing all features in a layer
    */
   private async loadFeatureSnapshot() {
-    // Abort previous snapshot request
-    this.abortController?.abort();
-    this.abortController = new AbortController();
-
     const requestParams: IQueryAllFeaturesOptions = {
       url: this.layerUrl,
       authentication: this.options.authentication,
@@ -174,7 +165,6 @@ export class FeatureLayerSourceManager {
     const response = await queryAllFeatures({
       ...requestParams,
       f: 'geojson',
-      signal: this.abortController.signal,
     });
     const featureCollection = response as unknown as GeoJSON.FeatureCollection;
     if (!featureCollection) {
@@ -256,6 +246,7 @@ export class FeatureLayerSourceManager {
       await this.loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection, this.abortController.signal);
     }
     catch (err: any) {
+      console.error('Dixon: Error loading tiles:', err);
       if (err && err.name === 'AbortError') {
         console.log('Tile request aborted.');
         return;
