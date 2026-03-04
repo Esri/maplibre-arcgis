@@ -72,16 +72,14 @@ describe('Feature layer data source tests', () => {
     }).toThrowError('Source manager requires the URL of a feature layer.');
 
     expect(() => {
-      const featureManager = new FeatureLayerSourceManager(sourceId, {});
-    }).toThrowError('Source manager requires the URL of a feature layer.');
+      const featureManager = new FeatureLayerSourceManager(sourceId, "url");
+    }).toThrowError('Source manager requires a layer definition.');
   });
 
 
   test('onAdd event triggers the load function.', async ({ map }) => {
 
-    const manager = new FeatureLayerSourceManager(sourceId, {
-      url: trailsMock.layerUrl
-    });
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
     const loadSpy = vi.spyOn(manager, 'load');
 
@@ -90,56 +88,30 @@ describe('Feature layer data source tests', () => {
   });
 
   test('Accepts a layer definition in the constructor', async () => {
-    const manager = new FeatureLayerSourceManager(sourceId, {
-      url: trailsMock.layerUrl,
-      layerDefinition: trailsMock.layerDefinitionRaw
-    });
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
+
     expect(manager.layerDefinition).toBe(trailsMock.layerDefinitionRaw);
-  });
-
-  test('Load function fetches the layer definition if not provided in constructor', async () => {
-
-    const { getLayer } = await import('@esri/arcgis-rest-feature-service');
-    const manager = new FeatureLayerSourceManager(sourceId, {
-      url: trailsMock.layerUrl
-    });
-
-    fetchMock.once(trailsMock.layerDefinition);
-    const layerDefinitionSpy = vi.spyOn(manager, 'getLayerDefinition');
-
-    vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => {return trailsMock.trailsDataTruncatedRaw});
-    vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
-    await manager.load();
-
-    expect(getLayer).toHaveBeenCalled();
-    expect(layerDefinitionSpy).toHaveBeenCalled();
-    expect(manager.layerDefinition).toEqual(trailsMock.layerDefinitionRaw);
   });
 
   test('Load function tries to load via snapshot mode initially', async () => {
 
-    const manager = new FeatureLayerSourceManager(sourceId, {
-      url: trailsMock.layerUrl,
-      layerDefinition: trailsMock.layerDefinitionRaw
-    });
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
     const snapshotSpy = vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => {return getBlankFc()});
-    const onDemandSpy = vi.spyOn(manager, 'enableOnDemandLoading');
+    const bindEventSpy = vi.spyOn(manager, 'bindLoadFeaturesToMoveEndEvent');
     const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
     await manager.load();
 
     expect(snapshotSpy).toHaveBeenCalled();
-    expect(onDemandSpy).not.toHaveBeenCalled();
+    expect(bindEventSpy).not.toHaveBeenCalled();
   });
 
   test('Load function falls back to on-demand loading if snapshot fails', async () => {
-    const manager = new FeatureLayerSourceManager(sourceId, {
-      url: trailsMock.layerUrl,
-      layerDefinition: trailsMock.layerDefinitionRaw
-    });
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
+
 
     const snapshotSpy = vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => {throw new Error});
-    vi.spyOn(manager, 'enableOnDemandLoading').mockImplementation(() => {return true});
+    vi.spyOn(manager, 'bindLoadFeaturesToMoveEndEvent').mockImplementation();
     const onDemandSpy = vi.spyOn(manager, 'loadFeaturesOnDemand').mockImplementation(() => {return true});
 
     await manager.load();
