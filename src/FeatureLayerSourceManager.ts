@@ -56,7 +56,7 @@ export class FeatureLayerSourceManager {
   map: MaplibreMap = undefined as unknown as MaplibreMap;
   maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
-  private abortController?: AbortController;
+  private activeAbortControllers = new Set<AbortController>();
   private onDemandSettings!: OnDemandSettings;
   private maxExtent: BBox = [-Infinity, Infinity, -Infinity, Infinity];
   private tileIndices: Map<number, TileIndexMap> = new Map();
@@ -178,8 +178,11 @@ export class FeatureLayerSourceManager {
    */
   private async loadFeaturesOnDemand() {
     // Abort previous tile requests
-    this.abortController?.abort();
-    this.abortController = new AbortController();
+    this.activeAbortControllers.forEach(controller => controller.abort());
+    this.activeAbortControllers.clear();
+
+    const abortController = new AbortController();
+    this.activeAbortControllers.add(abortController);
 
     const zoom = this.map.getZoom();
     if (zoom < this.onDemandSettings.minZoom) return; // TODO: set minZoom dynamically based on minScale of layer data
@@ -192,7 +195,7 @@ export class FeatureLayerSourceManager {
       mapBounds[1][1],
     ]);
 
-    console.log('Load attempt.', this.maxExtent, mapBounds);
+    console.log('Max Extent, MapBounds', this.maxExtent, mapBounds);
     if (this.maxExtent[0] !== -Infinity && !this.doesTileOverlapBounds(this.maxExtent, mapBounds)) {
       // Don't load features whose extent is completely off screen
       return;
@@ -243,12 +246,11 @@ export class FeatureLayerSourceManager {
     // New tiles need to be requested
     const tolerance = 360 / 2 ** (zoomLevel + 1) / 1000;
     try {
-      await this.loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection, this.abortController.signal);
+      await this.loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection, abortController.signal);
     }
     catch (err: any) {
-      console.error('Dixon: Error loading tiles:', err);
       if (err && err.name === 'AbortError') {
-        console.log('Tile request aborted.');
+        console.error('Tile request aborted.', { tilesToRequest, tolerance, zoomLevel, featureIdIndex });
         return;
       }
       throw err;
@@ -372,9 +374,8 @@ export class FeatureLayerSourceManager {
       signal,
     };
 
-    console.log('tolerance', tolerance);
     const res = await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
-    console.log(res);
+    console.log(`features in tile ${JSON.stringify(tile)}`, { fc: res });
     return res;
   }
 
