@@ -60,7 +60,6 @@ export class FeatureLayerSourceManager {
   private tileIndices: Map<number, TileIndexMap>;
   private featureIndices: Map<number, FeatureIdIndexMap>;
   private featureCollections: Map<number, GeoJSON.FeatureCollection>;
-  private boundEvent: (ev?: MapLibreEvent) => void;
   private options: FeatureLayerSourceManagerOptions;
   public layerUrl: string;
   public layerDefinition?: ILayerDefinition;
@@ -152,16 +151,12 @@ export class FeatureLayerSourceManager {
       // Use service bounds
       this.maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
       if (this.layerDefinition && this.layerDefinition.extent) this.useServiceBounds();
-      this.enableOnDemandLoading();
+      this.bindLoadFeaturesToMoveEvent();
       this.clearTiles();
       void this.loadFeaturesOnDemand();
       return;
     }
     throw new Error('Fatal error: unable to load features.');
-  }
-
-  private manageLoadFeaturesOnDemand() {
-
   }
 
   /**
@@ -194,7 +189,7 @@ export class FeatureLayerSourceManager {
   /**
    * Loads features on demand for visible tiles.
    */
-  private async loadFeaturesOnDemand(): Promise<void> {
+  private async loadFeaturesOnDemand() {
     // Abort previous tile requests
     this.abortController?.abort();
     this.abortController = new AbortController();
@@ -296,9 +291,10 @@ export class FeatureLayerSourceManager {
   // Utility/tooling methods
   // =====================
 
-  private enableOnDemandLoading() {
-    this.boundEvent = this.loadFeaturesOnDemand.bind(this) as () => void;
-    this.map.on('moveend', this.boundEvent);
+  private bindLoadFeaturesToMoveEvent() {
+    this.map.on('moveend', () => {
+      void this.loadFeaturesOnDemand();
+    });
   }
 
   private clearTiles() {
