@@ -139,9 +139,6 @@ export class FeatureLayerSourceManager {
 
     // fall back to on demand loading
     if (defaultOrOnDemand) {
-      this.tileIndices = new Map();
-      this.featureIndices = new Map();
-      this.featureCollections = new Map();
       this.onDemandSettings = {
         maxTolerance: 156543, // meters per pixel at zoom level 0
         minZoom: this.options.useStaticZoomLevel ? 7 : 2, // TODO set dynamically
