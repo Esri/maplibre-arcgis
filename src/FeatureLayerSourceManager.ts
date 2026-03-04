@@ -152,9 +152,9 @@ export class FeatureLayerSourceManager {
       // Use service bounds
       this.maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
       if (this.layerDefinition && this.layerDefinition.extent) this.useServiceBounds();
-
       this.enableOnDemandLoading();
-      this.clearAndRefreshTiles();
+      this.clearTiles();
+      void this.loadFeaturesOnDemand();
       return;
     }
     throw new Error('Fatal error: unable to load features.');
@@ -301,11 +301,10 @@ export class FeatureLayerSourceManager {
     this.map.on('moveend', this.boundEvent);
   }
 
-  private clearAndRefreshTiles() {
+  private clearTiles() {
     this.tileIndices = new Map();
     this.featureIndices = new Map();
     this.featureCollections = new Map();
-    void this.loadFeaturesOnDemand();
   }
 
   private createOrGetTileIndex(zoomLevel: number) {
