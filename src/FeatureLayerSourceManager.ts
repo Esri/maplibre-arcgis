@@ -56,7 +56,6 @@ export class FeatureLayerSourceManager {
   map: MaplibreMap = undefined as unknown as MaplibreMap;
   maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
-  private activeAbortControllers = new Set<AbortController>();
   private onDemandSettings!: OnDemandSettings;
   private maxExtent: BBox = [-Infinity, Infinity, -Infinity, Infinity];
   private tileIndices: Map<number, TileIndexMap> = new Map();
@@ -177,12 +176,6 @@ export class FeatureLayerSourceManager {
    * Loads features on demand for visible tiles.
    */
   private async loadFeaturesOnDemand() {
-    // Abort previous tile requests
-    this.activeAbortControllers.forEach(controller => controller.abort());
-    this.activeAbortControllers.clear();
-
-    const abortController = new AbortController();
-    this.activeAbortControllers.add(abortController);
 
     const zoom = this.map.getZoom();
     if (zoom < this.onDemandSettings.minZoom) return; // TODO: set minZoom dynamically based on minScale of layer data
@@ -246,13 +239,10 @@ export class FeatureLayerSourceManager {
     // New tiles need to be requested
     const tolerance = 360 / 2 ** (zoomLevel + 1) / 1000;
     try {
-      await this.loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection, abortController.signal);
+      await this.loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
     }
     catch (err: any) {
-      if (err && err.name === 'AbortError') {
-        console.error('Tile request aborted.', { tilesToRequest, tolerance, zoomLevel, featureIdIndex });
-        return;
-      }
+      console.error('Error loading tiles:', err);
       throw err;
     }
 
@@ -267,9 +257,8 @@ export class FeatureLayerSourceManager {
     tolerance: number,
     featureIdIndex: FeatureIdIndexMap,
     fc: GeoJSON.FeatureCollection,
-    signal?: AbortSignal
   ): Promise<GeoJSON.FeatureCollection> {
-    const tileRequests = tilesToRequest.map(tile => this.getTile(tile, tolerance, signal));
+    const tileRequests = tilesToRequest.map(tile => this.getTile(tile, tolerance));
     const featureCollections = await Promise.all(tileRequests);
     featureCollections.forEach((tileFc) => {
       if (tileFc) this.iterateItems(tileFc, featureIdIndex, fc);
@@ -342,7 +331,6 @@ export class FeatureLayerSourceManager {
   private async getTile(
     tile: Tile,
     tolerance: number,
-    signal?: AbortSignal
   ) {
     const tileBounds = tileToBBOX(tile);
     const tileExtent: IExtent = {
@@ -371,7 +359,6 @@ export class FeatureLayerSourceManager {
         mode: 'view',
         tolerance: tolerance,
       }),
-      signal,
     };
 
     const res = await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
