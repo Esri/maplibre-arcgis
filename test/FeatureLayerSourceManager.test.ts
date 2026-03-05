@@ -156,18 +156,13 @@ describe('Feature layer data source tests', () => {
       expect(updateMapSpy).toHaveBeenCalledWith(mockMap, trailsMock.geoJSONSmallRaw);
     });
 
-    test.only('Passes authentication to all snapshot mode REST JS requests.', async ({apiKey}) => {
+    test('Passes authentication to all snapshot mode REST JS requests.', async () => {
 
-      vi.doMock(import('@esri/arcgis-rest-feature-service'), () => {
-        return {
-          queryAllFeatures: () => {},
-          queryFeatures: () => {}
-        }
-      });
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
+      queryFeatures = vi.fn().mockResolvedValue(trailsMock.exceedsLimitResponseRaw);
+      const apiKey = "fake-api-key";
 
-      const {ApiKeyManager} = await import('@esri/arcgis-rest-request');
-
-      const apiKeyManager = ApiKeyManager.fromKey(apiKey);
+      const apiKeyManager = { getToken: () => apiKey };
       const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
         authentication: apiKeyManager,
         loadingMode: 'snapshot'
