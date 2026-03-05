@@ -56,6 +56,8 @@ export class FeatureLayerSourceManager {
   map: MaplibreMap = undefined as unknown as MaplibreMap;
   maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
+  private _snapshotResultRecordCount: number;
+  private _onDemandResultRecordCount: number;
   private _onDemandSettings!: OnDemandSettings;
   private _maxExtent: BBox = [-Infinity, Infinity, -Infinity, Infinity];
   private _tileIndices: Map<number, TileIndexMap> = new Map();
@@ -74,6 +76,13 @@ export class FeatureLayerSourceManager {
     this.geojsonSourceId = id;
     this.layerUrl = layerUrl;
     this.layerDefinition = layerDefinition;
+
+    const maxRecordCountFactor = this.layerDefinition.advancedQueryCapabilities?.supportsMaxRecordCountFactor ? 4 : 1;
+
+    this._snapshotResultRecordCount = Math.min((this.layerDefinition.maxRecordCount ?? 2000) * maxRecordCountFactor, 8000);
+
+    this._onDemandResultRecordCount = Math.min((this.layerDefinition.tileMaxRecordCount ?? 2000) * maxRecordCountFactor, 8000);
+
     this._options = {
       queryOptions: options.queryOptions ?? {},
       authentication: options.authentication,
@@ -155,6 +164,13 @@ export class FeatureLayerSourceManager {
     throw new Error('Fatal error: unable to load features.');
   }
 
+  private _getResultRecordCount(maxRecordCount: number) {
+    if (!maxRecordCount) maxRecordCount = 2000;
+    const serviceRecordCount = maxRecordCount * this._maxRecordCountFactor;
+
+    return Math.min(serviceRecordCount, 8000);
+  }
+
   /**
    * Loads all features in the service layer, as long as there are less than a hardcoded geometry limit
    * @param geometryLimit - The geometry limit for this specific layer type, determined via the layer definition
@@ -164,6 +180,7 @@ export class FeatureLayerSourceManager {
     const requestParams: IQueryAllFeaturesOptions = {
       url: this.layerUrl,
       authentication: this._options.authentication,
+      resultRecordCount: this._snapshotResultRecordCount,
     };
 
     const response = await queryAllFeatures({
@@ -358,6 +375,7 @@ export class FeatureLayerSourceManager {
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
+      resultRecordCount: this._onDemandResultRecordCount,
       quantizationParameters: JSON.stringify({
         extent: tileExtent,
         mode: 'view',
@@ -367,7 +385,7 @@ export class FeatureLayerSourceManager {
 
     const res = await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
     if (res.features.length > 0) {
-      console.log(`tile ${JSON.stringify(tile)} with features`, { fc: res });
+      console.log(`tile ${JSON.stringify(tile)} with ${res.features.length} features`, { fc: res });
     }
     return res;
   }
