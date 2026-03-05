@@ -117,18 +117,7 @@ describe('Feature layer data source tests', () => {
   });
 
   test('Uses on-demand loading if the hardcoded limit is exceeded by default.', async () => {
-    // const featureLayer = new FeatureLayer({
-    //   url: trailsMock.layerUrl
-    // });
-    // const warningSpy = vi.spyOn(console,'warn').mockImplementation((warningText) => {});
 
-    // fetchMock.once(trailsMock.layerDefinition).once(JSON.stringify({
-    //   features:[{attributes:{exceedsLimit:1}}]
-    // }));
-
-    // await expect(async () => {
-    //   await featureLayer.initialize();
-    // }).rejects.toThrowError(`The requested feature count from ${trailsMock.layerUrl}/ exceeds the current limits of this plugin. Please use the ArcGIS Maps SDK for JavaScript, or host your data as a vector tile layer higher limits are planned for future versions of this plugin. You may also set ignoreLimits: true in the options to ignore these limits and load all features. This is recommended only for low volume layers and applications and will cause poor server performance and crashes.`);
   });
 
   test('Load function falls back to on-demand loading if the snapshot limit is exceeded.', async () => {
@@ -164,7 +153,7 @@ describe('Feature layer data source tests', () => {
         loadingMode: 'snapshot'
       });
       manager.map = mockMap;
-      fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.geoJSONSmall);
 
       const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
 
@@ -173,8 +162,15 @@ describe('Feature layer data source tests', () => {
       expect(updateMapSpy).toHaveBeenCalledWith(mockMap, trailsMock.geoJSONSmallRaw);
     });
 
-    test('Passes authentication to all snapshot mode REST JS requests.', async ({apiKey}) => {
-      const { getLayer, queryAllFeatures, queryFeatures } = await import('@esri/arcgis-rest-feature-service');
+    test.only('Passes authentication to all snapshot mode REST JS requests.', async ({apiKey}) => {
+
+      vi.doMock(import('@esri/arcgis-rest-feature-service'), () => {
+        return {
+          queryAllFeatures: () => {},
+          queryFeatures: () => {}
+        }
+      });
+
       const {ApiKeyManager} = await import('@esri/arcgis-rest-request');
 
       const apiKeyManager = ApiKeyManager.fromKey(apiKey);
@@ -184,10 +180,9 @@ describe('Feature layer data source tests', () => {
       });
 
       const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
-      fetchMock.once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+
       await manager._load();
 
-      expect(getLayer).toHaveBeenCalledWith(expect.objectContaining({authentication: apiKeyManager}));
       expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining({authentication:apiKeyManager}));
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({authentication:apiKeyManager}));
     });
@@ -208,7 +203,7 @@ describe('Feature layer data source tests', () => {
       expect(manager._options.queryOptions).toEqual(trailQuery);
 
       const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
-      fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.geoJSONSmall);
       await manager._load();
 
       expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));

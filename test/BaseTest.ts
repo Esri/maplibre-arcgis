@@ -37,6 +37,7 @@ const featureTrailsMock = {
   layerDefinition: JSON.stringify(trailsLayerDefinitionRaw),
   layerDefinitionRaw: trailsLayerDefinitionRaw,
   exceedsLimitResponse: JSON.stringify(trailsExceedsLimitRaw),
+  exceedsLimitResponseRaw: trailsExceedsLimitRaw,
   geoJSONSmall: JSON.stringify(trailsDataTruncatedRaw),
   geoJSONLarge: JSON.stringify(trailsDataRaw),
   geoJSONRaw: trailsDataRaw,
