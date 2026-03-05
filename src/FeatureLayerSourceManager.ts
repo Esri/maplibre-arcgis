@@ -56,12 +56,12 @@ export class FeatureLayerSourceManager {
   map: MaplibreMap = undefined as unknown as MaplibreMap;
   maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
-  private onDemandSettings!: OnDemandSettings;
-  private maxExtent: BBox = [-Infinity, Infinity, -Infinity, Infinity];
-  private tileIndices: Map<number, TileIndexMap> = new Map();
-  private featureIndices: Map<number, FeatureIdIndexMap> = new Map();
-  private featureCollections: Map<number, GeoJSON.FeatureCollection> = new Map();
-  private options: FeatureLayerSourceManagerOptions;
+  private _onDemandSettings!: OnDemandSettings;
+  private _maxExtent: BBox = [-Infinity, Infinity, -Infinity, Infinity];
+  private _tileIndices: Map<number, TileIndexMap> = new Map();
+  private _featureIndices: Map<number, FeatureIdIndexMap> = new Map();
+  private _featureCollections: Map<number, GeoJSON.FeatureCollection> = new Map();
+  private _options: FeatureLayerSourceManagerOptions;
 
   constructor(id: string, layerUrl: string, layerDefinition: ILayerDefinition, options: FeatureLayerSourceManagerOptions) {
     if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
@@ -74,7 +74,12 @@ export class FeatureLayerSourceManager {
     this.geojsonSourceId = id;
     this.layerUrl = layerUrl;
     this.layerDefinition = layerDefinition;
-    this.options = this.initializeOptions(options);
+    this._options = {
+      queryOptions: options.queryOptions ?? {},
+      authentication: options.authentication,
+      useStaticZoomLevel: options.useStaticZoomLevel ?? false,
+      loadingMode: options.loadingMode ?? 'default',
+    };
   }
 
   // =====================
@@ -86,14 +91,14 @@ export class FeatureLayerSourceManager {
    */
   public onAdd(map: MaplibreMap) {
     this.map = map;
-    void this.load();
+    void this._load();
   }
 
   /**
    * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
    */
-  private async load() {
-    const loadingMode = this.options.loadingMode;
+  private async _load() {
+    const loadingMode = this._options.loadingMode;
     const defaultOrSnapshot = loadingMode === 'default' || loadingMode === 'snapshot';
     const defaultOrOnDemand = loadingMode === 'default' || loadingMode === 'ondemand';
 
@@ -105,15 +110,15 @@ export class FeatureLayerSourceManager {
       const geometryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
       const requestParams: IQueryAllFeaturesOptions = {
         url: this.layerUrl,
-        authentication: this.options.authentication,
+        authentication: this._options.authentication,
       };
-      const exceedsLimit = await this.checkIfExceedsLimit(requestParams, geometryLimit);
+      const exceedsLimit = await this._checkIfExceedsLimit(requestParams, geometryLimit);
       if (!exceedsLimit) {
         try {
           // load with snapshot mode
-          const featureCollection = await this.loadFeatureSnapshot();
+          const featureCollection = await this._loadFeatureSnapshot();
           console.log('Snapshot mode succeeded for', this.layerUrl);
-          this.updateSourceData(this.map, featureCollection);
+          this._updateSourceData(this.map, featureCollection);
           return;
         }
         catch (err) {
@@ -133,18 +138,18 @@ export class FeatureLayerSourceManager {
 
     // fall back to on demand loading
     if (defaultOrOnDemand) {
-      this.onDemandSettings = {
+      this._onDemandSettings = {
         maxTolerance: 156543, // meters per pixel at zoom level 0
-        minZoom: this.options.useStaticZoomLevel ? 7 : 2, // TODO set dynamically
+        minZoom: this._options.useStaticZoomLevel ? 7 : 2, // TODO set dynamically
         maxZoom: 22, // TODO
       };
 
       // Use service bounds
-      this.maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
-      if (this.layerDefinition && this.layerDefinition.extent) this.useServiceBounds();
-      this.bindLoadFeaturesToMoveEndEvent();
-      this.clearTiles();
-      void this.loadFeaturesOnDemand();
+      this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
+      if (this.layerDefinition && this.layerDefinition.extent) this._useServiceBounds();
+      this._bindLoadFeaturesToMoveEndEvent();
+      this._clearTiles();
+      void this._loadFeaturesOnDemand();
       return;
     }
     throw new Error('Fatal error: unable to load features.');
@@ -155,10 +160,10 @@ export class FeatureLayerSourceManager {
    * @param geometryLimit - The geometry limit for this specific layer type, determined via the layer definition
    * @returns - GeoJSON feature collection containing all features in a layer
    */
-  private async loadFeatureSnapshot() {
+  private async _loadFeatureSnapshot() {
     const requestParams: IQueryAllFeaturesOptions = {
       url: this.layerUrl,
-      authentication: this.options.authentication,
+      authentication: this._options.authentication,
     };
 
     const response = await queryAllFeatures({
@@ -175,10 +180,10 @@ export class FeatureLayerSourceManager {
   /**
    * Loads features on demand for visible tiles.
    */
-  private async loadFeaturesOnDemand() {
+  private async _loadFeaturesOnDemand() {
 
     const zoom = this.map.getZoom();
-    if (zoom < this.onDemandSettings.minZoom) return; // TODO: set minZoom dynamically based on minScale of layer data
+    if (zoom < this._onDemandSettings.minZoom) return; // TODO: set minZoom dynamically based on minScale of layer data
 
     const mapBounds = this.map.getBounds().toArray();
     const primaryTile = bboxToTile([
@@ -188,16 +193,16 @@ export class FeatureLayerSourceManager {
       mapBounds[1][1],
     ]);
 
-    console.log('Max Extent, MapBounds', this.maxExtent, mapBounds);
-    if (this.maxExtent[0] !== -Infinity && !this.doesTileOverlapBounds(this.maxExtent, mapBounds)) {
+    console.log('Max Extent, MapBounds', this._maxExtent, mapBounds);
+    if (this._maxExtent[0] !== -Infinity && !this._doesTileOverlapBounds(this._maxExtent, mapBounds)) {
       // Don't load features whose extent is completely off screen
       return;
     }
 
-    const zoomLevel = this.options.useStaticZoomLevel ? this.onDemandSettings.minZoom : Math.round(zoom);
-    const zoomLevelIndex = this.createOrGetTileIndex(zoomLevel);
-    const featureIdIndex = this.createOrGetFeatureIdIndex(zoomLevel);
-    const featureCollection = this.createOrGetFeatureCollection(zoomLevel);
+    const zoomLevel = this._options.useStaticZoomLevel ? this._onDemandSettings.minZoom : Math.round(zoom);
+    const zoomLevelIndex = this._createOrGetTileIndex(zoomLevel);
+    const featureIdIndex = this._createOrGetFeatureIdIndex(zoomLevel);
+    const featureCollection = this._createOrGetFeatureCollection(zoomLevel);
 
     // Find tiles to request
     const tilesToRequest: Tile[] = [];
@@ -211,7 +216,7 @@ export class FeatureLayerSourceManager {
         minZoomOfCandidates = candidateTiles[0][2];
       }
       for (let i = 0; i < candidateTiles.length; i++) {
-        if (this.doesTileOverlapBounds(candidateTiles[i], mapBounds)) tilesToRequest.push(candidateTiles[i]);
+        if (this._doesTileOverlapBounds(candidateTiles[i], mapBounds)) tilesToRequest.push(candidateTiles[i]);
       }
     }
     else {
@@ -233,35 +238,35 @@ export class FeatureLayerSourceManager {
     }
     // Load tiles
     if (tilesToRequest.length === 0) {
-      this.updateSourceData(this.map, featureCollection);
+      this._updateSourceData(this.map, featureCollection);
       return;
     }
     // New tiles need to be requested
     const tolerance = 360 / 2 ** (zoomLevel + 1) / 1000;
     try {
-      await this.loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
+      await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
     }
     catch (err: any) {
       console.error('Error loading tiles:', err);
       throw err;
     }
 
-    this.updateSourceData(this.map, featureCollection);
+    this._updateSourceData(this.map, featureCollection);
   }
 
   /**
    * Loads features for a set of tiles.
    */
-  private async loadTiles(
+  private async _loadTiles(
     tilesToRequest: Tile[],
     tolerance: number,
     featureIdIndex: FeatureIdIndexMap,
     fc: GeoJSON.FeatureCollection,
   ): Promise<GeoJSON.FeatureCollection> {
-    const tileRequests = tilesToRequest.map(tile => this.getTile(tile, tolerance));
+    const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance));
     const featureCollections = await Promise.all(tileRequests);
     featureCollections.forEach((tileFc) => {
-      if (tileFc) this.iterateItems(tileFc, featureIdIndex, fc);
+      if (tileFc) this._iterateItems(tileFc, featureIdIndex, fc);
     });
     return fc;
   }
@@ -270,43 +275,43 @@ export class FeatureLayerSourceManager {
   // Utility/tooling methods
   // =====================
 
-  private bindLoadFeaturesToMoveEndEvent() {
+  private _bindLoadFeaturesToMoveEndEvent() {
     this.map.on('moveend', () => {
-      void this.loadFeaturesOnDemand();
+      void this._loadFeaturesOnDemand();
     });
   }
 
-  private clearTiles() {
-    this.tileIndices = new Map();
-    this.featureIndices = new Map();
-    this.featureCollections = new Map();
+  private _clearTiles() {
+    this._tileIndices = new Map();
+    this._featureIndices = new Map();
+    this._featureCollections = new Map();
   }
 
-  private createOrGetTileIndex(zoomLevel: number) {
-    const existingZoomIndex = this.tileIndices.get(zoomLevel);
+  private _createOrGetTileIndex(zoomLevel: number) {
+    const existingZoomIndex = this._tileIndices.get(zoomLevel);
     if (existingZoomIndex) return existingZoomIndex;
     const newTileIndex = new Map() as TileIndexMap;
-    this.tileIndices.set(zoomLevel, newTileIndex);
+    this._tileIndices.set(zoomLevel, newTileIndex);
     return newTileIndex;
   }
 
-  private createOrGetFeatureIdIndex(zoomLevel: number) {
-    const existingFeatureIdIndex = this.featureIndices.get(zoomLevel);
+  private _createOrGetFeatureIdIndex(zoomLevel: number) {
+    const existingFeatureIdIndex = this._featureIndices.get(zoomLevel);
     if (existingFeatureIdIndex) return existingFeatureIdIndex;
     const newFeatureIdIndex = new Map() as FeatureIdIndexMap;
-    this.featureIndices.set(zoomLevel, newFeatureIdIndex);
+    this._featureIndices.set(zoomLevel, newFeatureIdIndex);
     return newFeatureIdIndex;
   }
 
-  private createOrGetFeatureCollection(zoomLevel: number) {
-    const existingZoomIndex = this.featureCollections.get(zoomLevel);
+  private _createOrGetFeatureCollection(zoomLevel: number) {
+    const existingZoomIndex = this._featureCollections.get(zoomLevel);
     if (existingZoomIndex) return existingZoomIndex;
     const fc = getBlankFc();
-    this.featureCollections.set(zoomLevel, fc);
+    this._featureCollections.set(zoomLevel, fc);
     return fc;
   }
 
-  private doesTileOverlapBounds(tile: Tile | BBox, bounds: [number, number][]) {
+  private _doesTileOverlapBounds(tile: Tile | BBox, bounds: [number, number][]) {
     const tileBBox = tile.length === 4 ? (tile as BBox) : tileToBBOX(tile as Tile);
     if (tileBBox[2] < bounds[0][0]) return false;
     if (tileBBox[0] > bounds[1][0]) return false;
@@ -315,7 +320,7 @@ export class FeatureLayerSourceManager {
     return true;
   }
 
-  private iterateItems(
+  private _iterateItems(
     tileFc: GeoJSON.FeatureCollection,
     featureIdIndex: FeatureIdIndexMap,
     fc: GeoJSON.FeatureCollection
@@ -328,7 +333,7 @@ export class FeatureLayerSourceManager {
     });
   }
 
-  private async getTile(
+  private async _getTile(
     tile: Tile,
     tolerance: number,
   ) {
@@ -346,8 +351,8 @@ export class FeatureLayerSourceManager {
     // TODO: Single tile has more than the maxVertexCount of features?
     const queryParams: IQueryAllFeaturesOptions = {
       url: this.layerUrl,
-      ...(this.options.authentication && { authentication: this.options.authentication }),
-      ...this.options.queryOptions,
+      ...(this._options.authentication && { authentication: this._options.authentication }),
+      ...this._options.queryOptions,
       f: 'pbf-as-geojson',
       resultType: 'tile',
       inSR: '4326',
@@ -368,18 +373,18 @@ export class FeatureLayerSourceManager {
     return res;
   }
 
-  private useServiceBounds() {
+  private _useServiceBounds() {
     if (!this.layerDefinition) return;
     const serviceExtent = this.layerDefinition.extent;
     if (serviceExtent.spatialReference?.wkid === 4326) {
-      this.maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
+      this._maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
     }
     else if (serviceExtent.spatialReference?.wkid === 3857) {
       // Convert 3857 CRS to 4326 lng/lat
       const sw = new MercatorCoordinate(serviceExtent.xmin, serviceExtent.ymin).toLngLat();
       const ne = new MercatorCoordinate(serviceExtent.xmax, serviceExtent.ymax).toLngLat();
       const extent = new LngLatBounds(sw, ne);
-      this.maxExtent = [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
+      this._maxExtent = [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
     }
     // Only 4326 and 3857 are currently handled for service extent.
   }
@@ -390,7 +395,7 @@ export class FeatureLayerSourceManager {
    * @param geometryLimit - The geometry limit for the specific type of feature (point, line, or polygon)
    * @returns True if the layer exceeds the limit, and false otherwise.
    */
-  private async checkIfExceedsLimit(
+  private async _checkIfExceedsLimit(
     params: IQueryAllFeaturesOptions,
     geometryLimit: GeometryLimits
   ) {
@@ -413,7 +418,7 @@ export class FeatureLayerSourceManager {
     return exceedsLimitResponse.features[0].attributes.exceedslimit === 1;
   }
 
-  private updateSourceData(map: MaplibreMap, fc: GeoJSON.FeatureCollection): void {
+  private _updateSourceData(map: MaplibreMap, fc: GeoJSON.FeatureCollection): void {
     console.log('%cLoad complete, updating source data.', 'color: #88E788;');
     const source: GeoJSONSource | undefined = map.getSource(this.geojsonSourceId);
     if (source) {
@@ -421,15 +426,5 @@ export class FeatureLayerSourceManager {
       return;
     };
     console.warn('Unable to update source: could not find source with ID', this.geojsonSourceId);
-  }
-
-  private initializeOptions(options: FeatureLayerSourceManagerOptions) {
-    const hydratedOptions: FeatureLayerSourceManagerOptions = {
-      queryOptions: options.queryOptions ?? {},
-      authentication: options.authentication,
-      useStaticZoomLevel: options.useStaticZoomLevel ?? false,
-      loadingMode: options.loadingMode ?? 'default',
-    };
-    return hydratedOptions;
   }
 }
