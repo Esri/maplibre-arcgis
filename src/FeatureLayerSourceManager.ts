@@ -181,7 +181,6 @@ export class FeatureLayerSourceManager {
    * Loads features on demand for visible tiles.
    */
   private async _loadFeaturesOnDemand() {
-
     const zoom = this.map.getZoom();
     if (zoom < this._onDemandSettings.minZoom) return; // TODO: set minZoom dynamically based on minScale of layer data
 
@@ -246,7 +245,7 @@ export class FeatureLayerSourceManager {
     try {
       await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
     }
-    catch (err: any) {
+    catch (err) {
       console.error('Error loading tiles:', err);
       throw err;
     }
@@ -266,7 +265,7 @@ export class FeatureLayerSourceManager {
     const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance));
     const featureCollections = await Promise.all(tileRequests);
     featureCollections.forEach((tileFc) => {
-      if (tileFc) this._iterateItems(tileFc, featureIdIndex, fc);
+      if (tileFc) this._addTileFeaturesToFeatureCollection(tileFc, featureIdIndex, fc);
     });
     return fc;
   }
@@ -320,7 +319,7 @@ export class FeatureLayerSourceManager {
     return true;
   }
 
-  private _iterateItems(
+  private _addTileFeaturesToFeatureCollection(
     tileFc: GeoJSON.FeatureCollection,
     featureIdIndex: FeatureIdIndexMap,
     fc: GeoJSON.FeatureCollection
