@@ -375,7 +375,9 @@ export class FeatureLayerSourceManager {
     };
 
     const res = await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
-    console.log(`features in tile ${JSON.stringify(tile)}`, { fc: res });
+    if (res.features.length > 0) {
+      console.log(`tile ${JSON.stringify(tile)} with features`, { fc: res });
+    }
     return res;
   }
 
@@ -425,7 +427,7 @@ export class FeatureLayerSourceManager {
   }
 
   private updateSourceData(map: MaplibreMap, fc: GeoJSON.FeatureCollection): void {
-    console.log('Load complete, updating source data.');
+    console.log('%cLoad complete, updating source data.', 'color: #88E788;');
     const source: GeoJSONSource | undefined = map.getSource(this.geojsonSourceId);
     if (source) {
       source.setData(fc);
