@@ -85,7 +85,7 @@ describe('Feature layer data source tests', () => {
 
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
-    const loadSpy = vi.spyOn(manager, 'load');
+    const loadSpy = vi.spyOn(manager, '_load');
 
     manager.onAdd(map);
     expect(loadSpy).toHaveBeenCalled();
@@ -101,11 +101,11 @@ describe('Feature layer data source tests', () => {
 
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
-    const exceedsLimitSpy = vi.spyOn(manager, 'checkIfExceedsLimit').mockImplementation(() => false);
-    const snapshotSpy = vi.spyOn(manager, 'loadFeatureSnapshot').mockImplementation(() => getBlankFc());
-    const bindEventSpy = vi.spyOn(manager, 'bindLoadFeaturesToMoveEndEvent');
-    const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => true);
-    await manager.load();
+    const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => false);
+    const snapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => getBlankFc());
+    const bindEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent');
+    const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => true);
+    await manager._load();
 
     expect(snapshotSpy).toHaveBeenCalled();
     expect(bindEventSpy).not.toHaveBeenCalled();
@@ -134,11 +134,11 @@ describe('Feature layer data source tests', () => {
   test('Load function falls back to on-demand loading if the snapshot limit is exceeded.', async () => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
-    const exceedsLimitSpy = vi.spyOn(manager, 'checkIfExceedsLimit').mockImplementation(() => true);
-    vi.spyOn(manager, 'bindLoadFeaturesToMoveEndEvent').mockImplementation(() => {});
-    const onDemandSpy = vi.spyOn(manager, 'loadFeaturesOnDemand').mockImplementation(() => {return true});
+    const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
+    vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => {});
+    const onDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => {return true});
 
-    await manager.load();
+    await manager._load();
     expect(onDemandSpy).toHaveBeenCalled();
   });
 
@@ -166,9 +166,9 @@ describe('Feature layer data source tests', () => {
       manager.map = mockMap;
       fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
 
-      const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
+      const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
 
-      await manager.load();
+      await manager._load();
 
       expect(updateMapSpy).toHaveBeenCalledWith(mockMap, trailsMock.geoJSONSmallRaw);
     });
@@ -183,9 +183,9 @@ describe('Feature layer data source tests', () => {
         loadingMode: 'snapshot'
       });
 
-      const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
+      const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
       fetchMock.once(trailsMock.layerDefinition).once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
-      await manager.load();
+      await manager._load();
 
       expect(getLayer).toHaveBeenCalledWith(expect.objectContaining({authentication: apiKeyManager}));
       expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining({authentication:apiKeyManager}));
@@ -205,11 +205,11 @@ describe('Feature layer data source tests', () => {
         queryOptions: trailQuery
       });
 
-      expect(manager.options.queryOptions).toEqual(trailQuery);
+      expect(manager._options.queryOptions).toEqual(trailQuery);
 
-      const updateMapSpy = vi.spyOn(manager, 'updateSourceData').mockImplementation(() => {return true});
+      const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
       fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.layerDefinition).once(trailsMock.geoJSONSmall);
-      await manager.load();
+      await manager._load();
 
       expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
