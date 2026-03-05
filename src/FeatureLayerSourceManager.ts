@@ -14,6 +14,7 @@ import { type BBox } from 'geojson';
  */
 interface OnDemandSettings {
   maxTolerance: number;
+  staticZoomLevel: number;
   minZoom: number;
   maxZoom: number;
 }
@@ -149,8 +150,9 @@ export class FeatureLayerSourceManager {
     if (defaultOrOnDemand) {
       this._onDemandSettings = {
         maxTolerance: 156543, // meters per pixel at zoom level 0
-        minZoom: this._options.useStaticZoomLevel ? 7 : 2, // TODO set dynamically
-        maxZoom: 22, // TODO
+        staticZoomLevel: 7,
+        minZoom: 0,
+        maxZoom: 23,
       };
 
       // Use service bounds
@@ -199,7 +201,7 @@ export class FeatureLayerSourceManager {
    */
   private async _loadFeaturesOnDemand() {
     const zoom = this.map.getZoom();
-    if (zoom < this._onDemandSettings.minZoom) return; // TODO: set minZoom dynamically based on minScale of layer data
+    if (zoom < this._onDemandSettings.minZoom || zoom > this._onDemandSettings.maxZoom) return;
 
     const mapBounds = this.map.getBounds().toArray();
     const primaryTile = bboxToTile([
@@ -215,7 +217,7 @@ export class FeatureLayerSourceManager {
       return;
     }
 
-    const zoomLevel = this._options.useStaticZoomLevel ? this._onDemandSettings.minZoom : Math.round(zoom);
+    const zoomLevel = this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(zoom);
     const zoomLevelIndex = this._createOrGetTileIndex(zoomLevel);
     const featureIdIndex = this._createOrGetFeatureIdIndex(zoomLevel);
     const featureCollection = this._createOrGetFeatureCollection(zoomLevel);
@@ -364,7 +366,7 @@ export class FeatureLayerSourceManager {
       xmax: tileBounds[2],
       ymax: tileBounds[3],
     };
-    // TODO: Single tile has more than the maxVertexCount of features?
+
     const queryParams: IQueryAllFeaturesOptions = {
       url: this.layerUrl,
       ...(this._options.authentication && { authentication: this._options.authentication }),

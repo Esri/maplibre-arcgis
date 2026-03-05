@@ -76,9 +76,8 @@ describe('Feature layer data source tests', () => {
     }).toThrowError('Source manager requires a layer definition.');
   });
 
-  test('Accepts a loadingMode parameter that determines how service data is retrieved.', async () => {
-
-    // TODO loading of snapshot vs ondemand
+  test('Accepts a loadingMode parameter and saves it internally.', async () => {
+    // TODO
   });
 
   test('onAdd event triggers the load function.', async ({ map }) => {
@@ -111,13 +110,8 @@ describe('Feature layer data source tests', () => {
     expect(bindEventSpy).not.toHaveBeenCalled();
   });
 
-  test('Snapshot mode references hardcoded geometry limits for each type of feature data.', async () => {
-
-    // TODO test hardcoded geometryLimit
-  });
-
-  test('Uses on-demand loading if the hardcoded limit is exceeded by default.', async () => {
-
+  test('Snapshot mode performs an initial exceedsLimit request using hardcoded values specific to each geometry type.', async () => {
+    // TODO
   });
 
   test('Load function falls back to on-demand loading if the snapshot limit is exceeded.', async () => {
@@ -135,10 +129,10 @@ describe('Feature layer data source tests', () => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {})
   });
 
-  test('If loadingMode parameter is set to snapshot, uses snapshot only and throws if limits are exceeded.', async () => {
+  test('If loadingMode parameter is set to snapshot, only tries snapshot mode and throws if limits are exceeded.', async () => {
     // TODO
   });
-  test('If loadingMode parameter is set to ondemand, uses on-demand only.', async () => {
+  test('If loadingMode parameter is set to ondemand, only tries on-demand mode.', async () => {
     // TODO
   });
 
@@ -212,11 +206,6 @@ describe('Feature layer data source tests', () => {
   });
 
   describe('On-demand loading tests', () => {
-
-    test('On-demand loading is triggered when the maplibre \'moveend\' event fires', () => {
-
-    });
-
     test('On-demand loading fetches the zoom level of the current map and uses it to build an index', async ({ map }) => {
       const getZoomSpy = vi.spyOn(map, 'getZoom').mockImplementation(() => 6);
       const getBoundsSpy = vi.spyOn(map, 'getBounds').mockImplementation(() => {
@@ -230,36 +219,25 @@ describe('Feature layer data source tests', () => {
       });
     });
 
-    test('Intersects the service extent with the bounds of the current map to determine if the layer should render.', async () => {
-
+    test('Passes SQL queries in the `where` clause for on-demand loading.', () => {
+      // TODO
     });
-
-    test('Uses on-demand loading for queries above the limit.', () => {
-
+    test('Passes quantizationParameters when using on-demand loading', () => {
+      // TODO
     });
-
-    test('Supports SQL queries for on-demand loading.', () => {
-
-    });
-
-    test('Uses the service extent to determine if the layer should load, if the service is in 4326.', () => {
-
-    });
-
-    test('If the service is in 3857, transforms the service extent to 4326 and uses it to determine loading', () => {
-
-    });
-
-    test('Sets the tolerance quantization parameter correctly to optimize loading.', () => {
-
-    });
-
-    test('Does not render features if the map scale is larger than the minScale of the service.', () => {
+    test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', () => {
       // TODO
     });
 
-    test('Does not render features if the map scale is smaller than the maxScale of the service.', () => {
-      // TODO
-    });
+    // --- out of scope for rn
+    // test('On-demand loading is triggered when the maplibre \'moveend\' event fires', () => {
+
+    // });
+    // test('Uses the service extent to determine if the layer should load, if the service is in 4326.', () => {
+
+    // });
+    // test('If the service is in 3857, transforms the service extent to 4326 and uses it to determine loading', () => {
+
+    // });
   });
 });
