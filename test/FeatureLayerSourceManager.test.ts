@@ -51,7 +51,6 @@ const test = customTest.extend({
 const sourceId = 'geojson-source';
 
 describe('Feature layer data source tests', () => {
-
   beforeAll(async () => {
     useMock();
     return () => {
@@ -80,12 +79,10 @@ describe('Feature layer data source tests', () => {
     const featureManager = new FeatureLayerSourceManager(sourceId, "url", {}, {
       loadingMode: 'snapshot'
     });
-
     expect(featureManager._options.loadingMode).toBe('snapshot');
   });
 
   test('onAdd event triggers the load function.', async ({ map }) => {
-
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
     const loadSpy = vi.spyOn(manager, '_load');
@@ -101,7 +98,6 @@ describe('Feature layer data source tests', () => {
   });
 
   test('Load function tries to load via snapshot mode initially', async () => {
-
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => false);
@@ -115,7 +111,20 @@ describe('Feature layer data source tests', () => {
   });
 
   test('Snapshot mode performs an initial exceedsLimit request using hardcoded values specific to each geometry type.', async () => {
-    // TODO
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      loadingMode: 'snapshot'
+    });
+    manager.map = {};
+
+    const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => false);
+    const loadFeatureSnapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {});
+    const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => null);
+
+    await manager._load();
+    // check if exceeds limit was called with both args with the hardcoded geometry limits for the trails layer (polygon)
+    expect(exceedsLimitSpy).toHaveBeenCalledWith(expect.objectContaining({}), { maxVertexCount:250000, maxRecordCount:8000 });
+    expect(loadFeatureSnapshotSpy).toHaveBeenCalled();
+    expect(updateMapSpy).toHaveBeenCalled();
   });
 
   test('Load function falls back to on-demand loading if the snapshot limit is exceeded.', async () => {
@@ -158,7 +167,21 @@ describe('Feature layer data source tests', () => {
   });
 
   test('If loadingMode parameter is set to ondemand, only tries on-demand mode.', async () => {
-    // TODO
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      loadingMode: 'ondemand'
+    });
+
+    const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
+    const useServiceBoundsSpy = vi.spyOn(manager, '_useServiceBounds').mockImplementation(() => null);
+    const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
+    const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
+    const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
+
+    await manager._load();
+    expect(useServiceBoundsSpy).toHaveBeenCalled();
+    expect(bindLoadFeaturesToMoveEndEventSpy).toHaveBeenCalled();
+    expect(clearTilesSpy).toHaveBeenCalled();
+    expect(loadFeaturesOnDemandSpy).toHaveBeenCalled();
   });
 
   describe('Snapshot mode loading tests', async () => {
@@ -262,7 +285,6 @@ describe('Feature layer data source tests', () => {
 
     // });
     // test('If the service is in 3857, transforms the service extent to 4326 and uses it to determine loading', () => {
-
-    // });
+  / / });
   });
 });
