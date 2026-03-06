@@ -166,13 +166,6 @@ export class FeatureLayerSourceManager {
     throw new Error('Fatal error: unable to load features.');
   }
 
-  private _getResultRecordCount(maxRecordCount: number) {
-    if (!maxRecordCount) maxRecordCount = 2000;
-    const serviceRecordCount = maxRecordCount * this._maxRecordCountFactor;
-
-    return Math.min(serviceRecordCount, 8000);
-  }
-
   /**
    * Loads all features in the service layer, as long as there are less than a hardcoded geometry limit
    * @param geometryLimit - The geometry limit for this specific layer type, determined via the layer definition
