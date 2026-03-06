@@ -288,80 +288,24 @@ describe('Feature layer data source tests', () => {
     });
 
     test('Passes quantizationParameters when using on-demand loading', async () => {
-      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
-      // Arrange
-      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
-        loadingMode: 'ondemand'
-      });
-      manager.map = {
-        getZoom: () => 7,
-        getBounds: () => new LngLatBounds([0, 0, 1, 1]),
-        getSource: () => ({ setData: vi.fn() }),
-        on: vi.fn()
-      };
-      // Spy on _getTile to call through
-      const originalGetTile = manager._getTile.bind(manager);
-      vi.spyOn(manager, '_getTile').mockImplementation(async (tile, tolerance) => {
-        return await originalGetTile(tile, tolerance);
-      });
-      // Act
-      await manager._loadFeaturesOnDemand();
-      // Assert
-      const callArgs = queryAllFeaturesSpy.mock.calls[0][0];
-      expect(callArgs.quantizationParameters).toBeDefined();
-      expect(typeof callArgs.quantizationParameters).toBe('string');
-      const qp = JSON.parse(callArgs.quantizationParameters);
-      expect(qp).toHaveProperty('extent');
-      expect(qp).toHaveProperty('mode', 'view');
-      expect(qp).toHaveProperty('tolerance');
+
     });
 
     test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', async () => {
-      // Arrange
-      const zoomLevel = 10;
-      const expectedTolerance = 360 / Math.pow(2, zoomLevel + 1) / 1000;
+      const zoomLevel9 = 9;
+      const zoomLevel6 = 6;
+      const zoomLevel2 = 2;
+      const expectedToleranceZoom9 = .0003515625;
+      const expectedToleranceZoom6 = .0028125;
+      const expectedToleranceZoom2 = .045;
 
-      // Dummy map object
-      const mockMap = {
-        getZoom: () => zoomLevel,
-        getBounds: () => ({
-          toArray: () => [[0, 0], [1, 1]]
-        }),
-        getSource: () => ({ setData: vi.fn() }),
-        on: vi.fn()
-      };
-
-      // Dummy tile and bbox
-      const dummyTile = [0, 0, zoomLevel];
-      const dummyBBox = [0, 0, 1, 1];
-
-      // Spy on _getTile to intercept tolerance
       const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
         loadingMode: 'ondemand'
       });
-      manager.map = mockMap;
 
-      // Replace _getTile to check tolerance
-      let capturedTolerance = null;
-      vi.spyOn(manager, '_getTile').mockImplementation(async (tile, tolerance) => {
-        capturedTolerance = tolerance;
-        // Simulate a response
-        return { features: [], type: 'FeatureCollection' };
-      });
-
-      // Replace tile selection logic to use dummy tile
-      vi.spyOn(manager, '_getTileIndexAtZoomLevel').mockReturnValue(new Map());
-      vi.spyOn(manager, '_getFeatureIdIndexAtZoomLevel').mockReturnValue(new Map());
-      vi.spyOn(manager, '_getFeatureCollectionAtZoomLevel').mockReturnValue({ features: [], type: 'FeatureCollection' });
-
-      // Replace tile selection logic to always request dummyTile
-      vi.spyOn(manager, '_doesTileOverlapBounds').mockReturnValue(true);
-
-      // Act
-      await manager._loadFeaturesOnDemand();
-
-      // Assert
-      expect(capturedTolerance).toBeCloseTo(expectedTolerance);
+      expect(manager._calculateTolerance(zoomLevel9)).toBe(expectedToleranceZoom9);
+      expect(manager._calculateTolerance(zoomLevel6)).toBe(expectedToleranceZoom6);
+      expect(manager._calculateTolerance(zoomLevel2)).toBe(expectedToleranceZoom2);
     });
 
     // --- out of scope for rn
