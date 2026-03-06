@@ -285,6 +285,6 @@ describe('Feature layer data source tests', () => {
 
     // });
     // test('If the service is in 3857, transforms the service extent to 4326 and uses it to determine loading', () => {
-  / / });
+    // });
   });
 });
