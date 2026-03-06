@@ -172,16 +172,16 @@ export class FeatureLayerSourceManager {
    * @returns - GeoJSON feature collection containing all features in a layer
    */
   private async _loadFeatureSnapshot() {
-    const requestParams: IQueryAllFeaturesOptions = {
+    const queryParams: IQueryAllFeaturesOptions = {
       url: this.layerUrl,
       authentication: this._options.authentication,
       resultRecordCount: this._snapshotResultRecordCount,
+      ...this._options.queryOptions,
+      f: 'geojson',
     };
 
-    const response = await queryAllFeatures({
-      ...requestParams,
-      f: 'geojson',
-    });
+    console.log('Attempting to load data in snapshot mode with query params:', queryParams);
+    const response = await queryAllFeatures(queryParams);
     const featureCollection = response as unknown as GeoJSON.FeatureCollection;
     if (!featureCollection) {
       throw new Error('Unable to load data.');

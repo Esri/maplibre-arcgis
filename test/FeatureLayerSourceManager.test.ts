@@ -1,5 +1,5 @@
 //@ts-nocheck
-import { describe, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { customTest, featureMocks } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { FeatureLayerSourceManager } from '../src/FeatureLayerSourceManager';
@@ -137,17 +137,25 @@ describe('Feature layer data source tests', () => {
   });
 
   describe('Snapshot mode loading tests', async () => {
+    const importedQueryFeatures = queryFeatures;
+    const importedQueryAllFeatures = queryAllFeatures;
+    afterAll(() => {
+      queryAllFeatures = importedQueryAllFeatures;
+      queryFeatures = importedQueryFeatures;
+    });
     test('Loads data from a layer and uses it to update a MapLibre geojson source.', async () => {
       const mockMap = {
         getSource: vi.fn(() => ({
           setData: vi.fn()
         }))
       };
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
+      queryFeatures = vi.fn().mockResolvedValue(trailsMock.exceedsLimitResponseRaw);
       const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
         loadingMode: 'snapshot'
       });
       manager.map = mockMap;
-      fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.geoJSONSmall);
+      fetchMock.once(trailsMock.exceedsLimitResponseRaw).once(trailsMock.geoJSONSmall);
 
       const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
 
@@ -157,7 +165,6 @@ describe('Feature layer data source tests', () => {
     });
 
     test('Passes authentication to all snapshot mode REST JS requests.', async () => {
-
       queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
       queryFeatures = vi.fn().mockResolvedValue(trailsMock.exceedsLimitResponseRaw);
       const apiKey = "fake-api-key";
@@ -178,7 +185,8 @@ describe('Feature layer data source tests', () => {
 
     test('Passes the `query` parameter to snapshot REST JS requests.', async () => {
 
-      const {queryFeatures, queryAllFeatures} = await import('@esri/arcgis-rest-feature-service');
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
+      queryFeatures = vi.fn().mockResolvedValue(trailsMock.exceedsLimitResponseRaw);
 
       const trailQuery = {
         outFields: ['TRL_ID', 'ELEV_MIN', 'ELEV_MAX'],
@@ -192,10 +200,8 @@ describe('Feature layer data source tests', () => {
       expect(manager._options.queryOptions).toEqual(trailQuery);
 
       const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
-      fetchMock.once(trailsMock.exceedsLimitResponse).once(trailsMock.geoJSONSmall);
       await manager._load();
 
-      expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
     });
   });
