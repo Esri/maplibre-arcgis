@@ -132,7 +132,7 @@ export class FeatureLayerSourceManager {
           return;
         }
         catch (err) {
-          // complete failure
+          // total failure
           throw new Error(`Unable to load using snapshot mode: ${err}`);
         }
       }
