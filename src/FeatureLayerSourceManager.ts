@@ -194,66 +194,25 @@ export class FeatureLayerSourceManager {
    */
   private async _loadFeaturesOnDemand() {
     const zoom = this.map.getZoom();
-    if (zoom < this._onDemandSettings.minZoom || zoom > this._onDemandSettings.maxZoom) return;
+    if (!this._isZoomInRange(zoom)) return;
 
     const mapBounds = this.map.getBounds().toArray();
-    const primaryTile = bboxToTile([
-      mapBounds[0][0],
-      mapBounds[0][1],
-      mapBounds[1][0],
-      mapBounds[1][1],
-    ]);
+    if (!this._isExtentVisible(mapBounds)) return;
 
-    console.log('Max Extent, MapBounds', this._maxExtent, mapBounds);
-    if (this._maxExtent[0] !== -Infinity && !this._doesTileOverlapBounds(this._maxExtent, mapBounds)) {
-      // Don't load features whose extent is completely off screen
-      return;
-    }
+    const zoomLevel = this._getZoomLevel(zoom);
+    const zoomLevelIndex = this._getTileIndexAtZoomLevel(zoomLevel);
+    const featureIdIndex = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
+    const featureCollection = this._getFeatureCollectionAtZoomLevel(zoomLevel);
 
-    const zoomLevel = this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(zoom);
-    const zoomLevelIndex = this._createOrGetTileIndex(zoomLevel);
-    const featureIdIndex = this._createOrGetFeatureIdIndex(zoomLevel);
-    const featureCollection = this._createOrGetFeatureCollection(zoomLevel);
+    const tilesToRequest = this._findTilesToRequest(mapBounds, zoomLevel);
+    this._filterRequestedTiles(tilesToRequest, zoomLevelIndex);
 
-    // Find tiles to request
-    const tilesToRequest: Tile[] = [];
-    if (primaryTile[2] < zoomLevel) {
-      let candidateTiles = getChildren(primaryTile);
-      let minZoomOfCandidates = candidateTiles[0][2];
-      while (minZoomOfCandidates < zoomLevel) {
-        const newCandidateTiles: Tile[] = [];
-        candidateTiles.forEach(t => newCandidateTiles.push(...getChildren(t)));
-        candidateTiles = newCandidateTiles;
-        minZoomOfCandidates = candidateTiles[0][2];
-      }
-      for (let i = 0; i < candidateTiles.length; i++) {
-        if (this._doesTileOverlapBounds(candidateTiles[i], mapBounds)) tilesToRequest.push(candidateTiles[i]);
-      }
-    }
-    else {
-      tilesToRequest.push(primaryTile);
-    }
-
-    // TODO: intersect tiles to request with input spatial query
-
-    // Update tile index
-    for (let i = 0; i < tilesToRequest.length; i++) {
-      const quadKey = tileToQuadkey(tilesToRequest[i]);
-      if (zoomLevelIndex.has(quadKey)) {
-        tilesToRequest.splice(i, 1);
-        i--;
-      }
-      else {
-        zoomLevelIndex.set(quadKey, true);
-      }
-    }
-    // Load tiles
     if (tilesToRequest.length === 0) {
       this._updateSourceData(this.map, featureCollection);
       return;
     }
-    // New tiles need to be requested
-    const tolerance = 360 / 2 ** (zoomLevel + 1) / 1000;
+
+    const tolerance = this._calculateTolerance(zoomLevel);
     try {
       await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
     }
@@ -298,7 +257,7 @@ export class FeatureLayerSourceManager {
     this._featureCollections = new Map();
   }
 
-  private _createOrGetTileIndex(zoomLevel: number) {
+  private _getTileIndexAtZoomLevel(zoomLevel: number) {
     const existingZoomIndex = this._tileIndices.get(zoomLevel);
     if (existingZoomIndex) return existingZoomIndex;
     const newTileIndex = new Map() as TileIndexMap;
@@ -306,7 +265,7 @@ export class FeatureLayerSourceManager {
     return newTileIndex;
   }
 
-  private _createOrGetFeatureIdIndex(zoomLevel: number) {
+  private _getFeatureIdIndexAtZoomLevel(zoomLevel: number) {
     const existingFeatureIdIndex = this._featureIndices.get(zoomLevel);
     if (existingFeatureIdIndex) return existingFeatureIdIndex;
     const newFeatureIdIndex = new Map() as FeatureIdIndexMap;
@@ -314,7 +273,7 @@ export class FeatureLayerSourceManager {
     return newFeatureIdIndex;
   }
 
-  private _createOrGetFeatureCollection(zoomLevel: number) {
+  private _getFeatureCollectionAtZoomLevel(zoomLevel: number) {
     const existingZoomIndex = this._featureCollections.get(zoomLevel);
     if (existingZoomIndex) return existingZoomIndex;
     const fc = getBlankFc();
@@ -388,10 +347,10 @@ export class FeatureLayerSourceManager {
   private _useServiceBounds() {
     if (!this.layerDefinition) return;
     const serviceExtent = this.layerDefinition.extent;
-    if (serviceExtent.spatialReference?.wkid === 4326) {
+    if (serviceExtent?.spatialReference?.wkid === 4326) {
       this._maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
     }
-    else if (serviceExtent.spatialReference?.wkid === 3857) {
+    else if (serviceExtent?.spatialReference?.wkid === 3857) {
       // Convert 3857 CRS to 4326 lng/lat
       const sw = new MercatorCoordinate(serviceExtent.xmin, serviceExtent.ymin).toLngLat();
       const ne = new MercatorCoordinate(serviceExtent.xmax, serviceExtent.ymax).toLngLat();
@@ -438,5 +397,68 @@ export class FeatureLayerSourceManager {
       return;
     };
     console.warn('Unable to update source: could not find source with ID', this.geojsonSourceId);
+  }
+
+  // =====================
+  // Helpers for _loadFeaturesOnDemand
+  // =====================
+
+  private _isZoomInRange(zoom: number) {
+    return zoom >= this._onDemandSettings.minZoom && zoom <= this._onDemandSettings.maxZoom;
+  }
+
+  private _isExtentVisible(mapBounds: [number, number][])  {
+    console.log('Max Extent, MapBounds', this._maxExtent, mapBounds);
+    return (
+      this._maxExtent[0] === -Infinity || this._doesTileOverlapBounds(this._maxExtent, mapBounds)
+    );
+  }
+
+  private _getZoomLevel(zoom: number): number {
+    return this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(zoom);
+  }
+
+  private _findTilesToRequest(mapBounds: [number, number][], zoomLevel: number) {
+    const primaryTile = bboxToTile([
+      mapBounds[0][0],
+      mapBounds[0][1],
+      mapBounds[1][0],
+      mapBounds[1][1],
+    ]);
+    const tilesToRequest: Tile[] = [];
+    if (primaryTile[2] < zoomLevel) {
+      let candidateTiles = getChildren(primaryTile);
+      let minZoomOfCandidates = candidateTiles[0][2];
+      while (minZoomOfCandidates < zoomLevel) {
+        const newCandidateTiles: Tile[] = [];
+        candidateTiles.forEach(t => newCandidateTiles.push(...getChildren(t)));
+        candidateTiles = newCandidateTiles;
+        minZoomOfCandidates = candidateTiles[0][2];
+      }
+      for (let i = 0; i < candidateTiles.length; i++) {
+        if (this._doesTileOverlapBounds(candidateTiles[i], mapBounds)) tilesToRequest.push(candidateTiles[i]);
+      }
+    }
+    else {
+      tilesToRequest.push(primaryTile);
+    }
+    // TODO: intersect tiles to request with input spatial query
+    return tilesToRequest;
+  }
+
+  private _filterRequestedTiles(tilesToRequest: Tile[], zoomLevelIndex: TileIndexMap) {
+    for (let i = 0; i < tilesToRequest.length; i++) {
+      const quadKey = tileToQuadkey(tilesToRequest[i]);
+      if (zoomLevelIndex.has(quadKey)) {
+        tilesToRequest.splice(i, 1);
+        i--;
+      } else {
+        zoomLevelIndex.set(quadKey, true);
+      }
+    }
+  }
+
+  private _calculateTolerance(zoomLevel: number) {
+    return 360 / 2 ** (zoomLevel + 1) / 1000;
   }
 }
