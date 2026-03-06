@@ -157,7 +157,7 @@ export class FeatureLayerSourceManager {
 
       // Use service bounds
       this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
-      if (this.layerDefinition && this.layerDefinition.extent) this._useServiceBounds();
+      if (this.layerDefinition?.extent) this._setMaxExtentFromLayerExtent(this.layerDefinition.extent);
       this._bindLoadFeaturesToMoveEndEvent();
       this._clearTiles();
       void this._loadFeaturesOnDemand();
@@ -344,20 +344,18 @@ export class FeatureLayerSourceManager {
     return res;
   }
 
-  private _useServiceBounds() {
-    if (!this.layerDefinition) return;
-    const serviceExtent = this.layerDefinition.extent;
-    if (serviceExtent?.spatialReference?.wkid === 4326) {
-      this._maxExtent = [serviceExtent.xmin, serviceExtent.ymin, serviceExtent.xmax, serviceExtent.ymax];
+  // Only 4326 and 3857 are currently handled for service extent.
+  private _setMaxExtentFromLayerExtent(layerExtent: IExtent) {
+    if (layerExtent.spatialReference?.wkid === 4326) {
+      this._maxExtent = [layerExtent.xmin, layerExtent.ymin, layerExtent.xmax, layerExtent.ymax];
     }
-    else if (serviceExtent?.spatialReference?.wkid === 3857) {
+    else if (layerExtent.spatialReference?.wkid === 3857) {
       // Convert 3857 CRS to 4326 lng/lat
-      const sw = new MercatorCoordinate(serviceExtent.xmin, serviceExtent.ymin).toLngLat();
-      const ne = new MercatorCoordinate(serviceExtent.xmax, serviceExtent.ymax).toLngLat();
+      const sw = new MercatorCoordinate(layerExtent.xmin, layerExtent.ymin).toLngLat();
+      const ne = new MercatorCoordinate(layerExtent.xmax, layerExtent.ymax).toLngLat();
       const extent = new LngLatBounds(sw, ne);
       this._maxExtent = [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
     }
-    // Only 4326 and 3857 are currently handled for service extent.
   }
 
   /**
@@ -374,6 +372,7 @@ export class FeatureLayerSourceManager {
       ...params,
       outStatistics: [
         {
+          // eslint-disable-next-line @typescript-eslint/consistent-type-imports
           onStatisticField: null, // Required by REST JS but not used
           statisticType: 'exceedslimit',
           outStatisticFieldName: 'exceedslimit',
@@ -395,7 +394,7 @@ export class FeatureLayerSourceManager {
     if (source) {
       source.setData(fc);
       return;
-    };
+    }
     console.warn('Unable to update source: could not find source with ID', this.geojsonSourceId);
   }
 
@@ -452,7 +451,8 @@ export class FeatureLayerSourceManager {
       if (zoomLevelIndex.has(quadKey)) {
         tilesToRequest.splice(i, 1);
         i--;
-      } else {
+      }
+      else {
         zoomLevelIndex.set(quadKey, true);
       }
     }

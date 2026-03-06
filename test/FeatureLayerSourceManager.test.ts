@@ -142,13 +142,13 @@ describe('Feature layer data source tests', () => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
-    const useServiceBoundsSpy = vi.spyOn(manager, '_useServiceBounds').mockImplementation(() => null);
+    const setMaxExtentFromLayerExtentSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
     const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
 
     await manager._load();
-    expect(useServiceBoundsSpy).toHaveBeenCalled();
+    expect(setMaxExtentFromLayerExtentSpy).toHaveBeenCalled();
     expect(bindLoadFeaturesToMoveEndEventSpy).toHaveBeenCalled();
     expect(clearTilesSpy).toHaveBeenCalled();
     expect(loadFeaturesOnDemandSpy).toHaveBeenCalled();
@@ -172,7 +172,7 @@ describe('Feature layer data source tests', () => {
     });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
-    const useServiceBoundsSpy = vi.spyOn(manager, '_useServiceBounds').mockImplementation(() => null);
+    const useServiceBoundsSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
     const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
@@ -231,7 +231,6 @@ describe('Feature layer data source tests', () => {
     });
 
     test('Passes the `query` parameter to snapshot REST JS requests.', async () => {
-
       queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
       queryFeatures = vi.fn().mockResolvedValue(trailsMock.exceedsLimitResponseRaw);
 
@@ -254,6 +253,12 @@ describe('Feature layer data source tests', () => {
   });
 
   describe('On-demand loading tests', () => {
+    const importedQueryFeatures = queryFeatures;
+    const importedQueryAllFeatures = queryAllFeatures;
+    afterAll(() => {
+      queryAllFeatures = importedQueryAllFeatures;
+      queryFeatures = importedQueryFeatures;
+    });
     test('On-demand loading fetches the zoom level of the current map and uses it to build an index', async ({ map }) => {
       const getZoomSpy = vi.spyOn(map, 'getZoom').mockImplementation(() => 6);
       const getBoundsSpy = vi.spyOn(map, 'getBounds').mockImplementation(() => {
@@ -267,14 +272,96 @@ describe('Feature layer data source tests', () => {
       });
     });
 
-    test('Passes SQL queries in the `where` clause for on-demand loading.', () => {
-      // TODO
+    test('Passes SQL queries in the `where` clause for on-demand loading.', async () => {
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
+      // Arrange
+      const whereClause = 'ELEV_MIN > 2000';
+      const queryOptions = { where: whereClause };
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        queryOptions,
+        loadingMode: 'ondemand'
+      });
+      // where clause is accessed from global object and parsed in _getTile, so we check for accessibility and parsing.
+      expect(manager._options.queryOptions.where).toBe(whereClause);
+      await manager._getTile({}, 1);
+      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({ where: whereClause }));
     });
-    test('Passes quantizationParameters when using on-demand loading', () => {
-      // TODO
+
+    test('Passes quantizationParameters when using on-demand loading', async () => {
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
+      // Arrange
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+      manager.map = {
+        getZoom: () => 7,
+        getBounds: () => new LngLatBounds([0, 0, 1, 1]),
+        getSource: () => ({ setData: vi.fn() }),
+        on: vi.fn()
+      };
+      // Spy on _getTile to call through
+      const originalGetTile = manager._getTile.bind(manager);
+      vi.spyOn(manager, '_getTile').mockImplementation(async (tile, tolerance) => {
+        return await originalGetTile(tile, tolerance);
+      });
+      // Act
+      await manager._loadFeaturesOnDemand();
+      // Assert
+      const callArgs = queryAllFeaturesSpy.mock.calls[0][0];
+      expect(callArgs.quantizationParameters).toBeDefined();
+      expect(typeof callArgs.quantizationParameters).toBe('string');
+      const qp = JSON.parse(callArgs.quantizationParameters);
+      expect(qp).toHaveProperty('extent');
+      expect(qp).toHaveProperty('mode', 'view');
+      expect(qp).toHaveProperty('tolerance');
     });
-    test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', () => {
-      // TODO
+
+    test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', async () => {
+      // Arrange
+      const zoomLevel = 10;
+      const expectedTolerance = 360 / Math.pow(2, zoomLevel + 1) / 1000;
+
+      // Dummy map object
+      const mockMap = {
+        getZoom: () => zoomLevel,
+        getBounds: () => ({
+          toArray: () => [[0, 0], [1, 1]]
+        }),
+        getSource: () => ({ setData: vi.fn() }),
+        on: vi.fn()
+      };
+
+      // Dummy tile and bbox
+      const dummyTile = [0, 0, zoomLevel];
+      const dummyBBox = [0, 0, 1, 1];
+
+      // Spy on _getTile to intercept tolerance
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+      manager.map = mockMap;
+
+      // Replace _getTile to check tolerance
+      let capturedTolerance = null;
+      vi.spyOn(manager, '_getTile').mockImplementation(async (tile, tolerance) => {
+        capturedTolerance = tolerance;
+        // Simulate a response
+        return { features: [], type: 'FeatureCollection' };
+      });
+
+      // Replace tile selection logic to use dummy tile
+      vi.spyOn(manager, '_getTileIndexAtZoomLevel').mockReturnValue(new Map());
+      vi.spyOn(manager, '_getFeatureIdIndexAtZoomLevel').mockReturnValue(new Map());
+      vi.spyOn(manager, '_getFeatureCollectionAtZoomLevel').mockReturnValue({ features: [], type: 'FeatureCollection' });
+
+      // Replace tile selection logic to always request dummyTile
+      vi.spyOn(manager, '_doesTileOverlapBounds').mockReturnValue(true);
+
+      // Act
+      await manager._loadFeaturesOnDemand();
+
+      // Assert
+      expect(capturedTolerance).toBeCloseTo(expectedTolerance);
     });
 
     // --- out of scope for rn
