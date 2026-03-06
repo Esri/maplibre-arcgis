@@ -193,35 +193,34 @@ export class FeatureLayerSourceManager {
    * Loads features on demand for visible tiles.
    */
   private async _loadFeaturesOnDemand() {
-    const zoom = this.map.getZoom();
-    if (!this._isZoomInRange(zoom)) return;
+    const zoomLevel = this._getZoomLevel(this.map.getZoom());
+    if (!this._isZoomInRange(zoomLevel)) return;
 
     const mapBounds = this.map.getBounds().toArray();
     if (!this._isExtentVisible(mapBounds)) return;
 
-    const zoomLevel = this._getZoomLevel(zoom);
-    const zoomLevelIndex = this._getTileIndexAtZoomLevel(zoomLevel);
-    const featureIdIndex = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
-    const featureCollection = this._getFeatureCollectionAtZoomLevel(zoomLevel);
+    const tileIndexAtZoomLevel = this._getTileIndexAtZoomLevel(zoomLevel);
+    const featureIdIndexAtZoomLevel = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
+    const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
 
-    const tilesToRequest = this._findTilesToRequest(mapBounds, zoomLevel);
-    this._filterRequestedTiles(tilesToRequest, zoomLevelIndex);
+    const tilesToRequestAtZoomLevel = this._findTilesToRequestAtZoomLevel(mapBounds, zoomLevel);
+    this._filterRequestedTiles(tilesToRequestAtZoomLevel, tileIndexAtZoomLevel);
 
-    if (tilesToRequest.length === 0) {
-      this._updateSourceData(this.map, featureCollection);
+    if (tilesToRequestAtZoomLevel.length === 0) {
+      this._updateSourceData(this.map, featureCollectionAtZoomLevel);
       return;
     }
 
     const tolerance = this._calculateTolerance(zoomLevel);
     try {
-      await this._loadTiles(tilesToRequest, tolerance, featureIdIndex, featureCollection);
+      await this._loadTiles(tilesToRequestAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel);
     }
     catch (err) {
       console.error('Error loading tiles:', err);
       throw err;
     }
 
-    this._updateSourceData(this.map, featureCollection);
+    this._updateSourceData(this.map, featureCollectionAtZoomLevel);
   }
 
   /**
@@ -417,7 +416,7 @@ export class FeatureLayerSourceManager {
     return this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(zoom);
   }
 
-  private _findTilesToRequest(mapBounds: [number, number][], zoomLevel: number) {
+  private _findTilesToRequestAtZoomLevel(mapBounds: [number, number][], zoomLevel: number) {
     const primaryTile = bboxToTile([
       mapBounds[0][0],
       mapBounds[0][1],
@@ -445,15 +444,15 @@ export class FeatureLayerSourceManager {
     return tilesToRequest;
   }
 
-  private _filterRequestedTiles(tilesToRequest: Tile[], zoomLevelIndex: TileIndexMap) {
+  private _filterRequestedTiles(tilesToRequest: Tile[], tileIndex: TileIndexMap) {
     for (let i = 0; i < tilesToRequest.length; i++) {
       const quadKey = tileToQuadkey(tilesToRequest[i]);
-      if (zoomLevelIndex.has(quadKey)) {
+      if (tileIndex.has(quadKey)) {
         tilesToRequest.splice(i, 1);
         i--;
       }
       else {
-        zoomLevelIndex.set(quadKey, true);
+        tileIndex.set(quadKey, true);
       }
     }
   }
