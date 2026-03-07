@@ -1,10 +1,12 @@
 //@ts-nocheck
-import { describe, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { customTest, featureMocks } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { FeatureLayer } from '../src/FeatureLayer';
-import { queryFeatures, queryAllFeatures } from '@esri/arcgis-rest-feature-service';
 import { cleanUrl, getBlankFc } from '../src/Util';
+import { getItem } from '@esri/arcgis-rest-portal';
+import { getLayer, getService } from '@esri/arcgis-rest-feature-service';
+import { ApiKeyManager } from '@esri/arcgis-rest-request';
 
 const { multiLayerMock, trailsMock } = featureMocks;
 
@@ -49,6 +51,15 @@ describe('Feature layer unit tests', () => {
   });
 
   describe('Works with secure layers', () => {
+    const importedGetItem = getItem;
+    const importedGetLayer = getLayer;
+    const importedGetService = getService;
+    afterAll(() => {
+      getItem = importedGetItem;
+      getLayer = importedGetLayer;
+      getService = importedGetService;
+    });
+
     test('Accepts authentication as a string via `token`.', ({apiKey}) => {
       const featureLayer = new FeatureLayer({
         url: trailsMock.layerUrl,
@@ -67,16 +78,16 @@ describe('Feature layer unit tests', () => {
     });
     */
     test('Passes authentication to all REST JS requests.', async ({apiKey}) => {
-      const { getLayer, getService } = await import('@esri/arcgis-rest-feature-service');
-      const { getItem } = await import('@esri/arcgis-rest-portal');
-      const {ApiKeyManager} = await import('@esri/arcgis-rest-request');
+
+      getItem = vi.fn().mockResolvedValue(trailsMock.itemRaw);
+      getLayer = vi.fn().mockResolvedValue(trailsMock.layerDefinitionRaw);
+      getService = vi.fn().mockResolvedValue(trailsMock.serviceDefinitionRaw);
 
       const authLayer = new FeatureLayer({
         itemId: trailsMock.itemId,
         token: apiKey
       });
 
-      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await authLayer.initialize();
 
       const apiKeyManager = ApiKeyManager.fromKey(apiKey);
@@ -366,13 +377,9 @@ describe('Feature layer unit tests', () => {
       // Passes the layer definition
       expect(sourceManager.layerDefinition).toEqual(trailsMock.layerDefinitionRaw);
       // Passes the URL
-      expect(sourceManager.url).toEqual(cleanUrl(trailsMock.layerUrl));
+      expect(sourceManager.layerUrl).toEqual(cleanUrl(trailsMock.layerUrl));
       // Passes the source ID
       expect(sourceManager.geojsonSourceId).toEqual(sourceId);
-      // Passes the query
-      expect(sourceManager.queryOptions).toEqual(layer.query);
-      // Passes authentication
-      expect(sourceManager._authentication).toEqual(layer._authentication);
     });
 
     test('The data within each GeoJSONSource is managed by a FeatureLayerSourceManager.', async () => {

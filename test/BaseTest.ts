@@ -31,8 +31,10 @@ import trailsExceedsLimitRaw from './mock/FeatureLayer/trails/trails-feature-exc
 const featureTrailsMock = {
   itemId: '69e12682738e467eb509d8b54dc73cbd',
   item: JSON.stringify(trailsItemRaw),
+  itemRaw: trailsItemRaw,
   serviceUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer',
   serviceDefinition: JSON.stringify(trailsServiceDefinitionRaw),
+  serviceDefinitionRaw: trailsServiceDefinitionRaw,
   layerUrl: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0',
   layerDefinition: JSON.stringify(trailsLayerDefinitionRaw),
   layerDefinitionRaw: trailsLayerDefinitionRaw,
@@ -64,7 +66,7 @@ async function setupBrowser() {
 export const customTest = testBase.extend({
   // API key
   apiKey: async ({}, use) => {
-    await use (process.env.PRODUCTION_KEY_ALP);
+    await use (process.env.PRODUCTION_KEY_ALP || "fake-api-key");
   },
 
   basemapSession: async ({apiKey}, use) => {

@@ -127,7 +127,6 @@ export class FeatureLayerSourceManager {
         try {
           // load with snapshot mode
           const featureCollection = await this._loadFeatureSnapshot();
-          console.log('Snapshot mode succeeded for', this.layerUrl);
           this._updateSourceData(this.map, featureCollection);
           return;
         }
@@ -142,7 +141,6 @@ export class FeatureLayerSourceManager {
           throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
         }
         // else, fall back to on-demand
-        console.log('Snapshot mode geometry limit exceeded, falling back to on-demand.');
       }
     }
 
@@ -180,7 +178,6 @@ export class FeatureLayerSourceManager {
       f: 'geojson',
     };
 
-    console.log('Attempting to load data in snapshot mode with query params:', queryParams);
     const response = await queryAllFeatures(queryParams);
     const featureCollection = response as unknown as GeoJSON.FeatureCollection;
     if (!featureCollection) {
@@ -212,14 +209,7 @@ export class FeatureLayerSourceManager {
     }
 
     const tolerance = this._calculateTolerance(zoomLevel);
-    try {
-      await this._loadTiles(tilesToRequestAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel);
-    }
-    catch (err) {
-      console.error('Error loading tiles:', err);
-      throw err;
-    }
-
+    await this._loadTiles(tilesToRequestAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel);
     this._updateSourceData(this.map, featureCollectionAtZoomLevel);
   }
 
@@ -337,9 +327,6 @@ export class FeatureLayerSourceManager {
     };
 
     const res = await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
-    if (res.features.length > 0) {
-      console.log(`tile ${JSON.stringify(tile)} with ${res.features.length} features`, { fc: res });
-    }
     return res;
   }
 
@@ -388,13 +375,11 @@ export class FeatureLayerSourceManager {
   }
 
   private _updateSourceData(map: MaplibreMap, fc: GeoJSON.FeatureCollection): void {
-    console.log('%cLoad complete, updating source data.', 'color: #88E788;');
     const source: GeoJSONSource | undefined = map.getSource(this.geojsonSourceId);
     if (source) {
       source.setData(fc);
       return;
     }
-    console.warn('Unable to update source: could not find source with ID', this.geojsonSourceId);
   }
 
   // =====================
@@ -406,7 +391,6 @@ export class FeatureLayerSourceManager {
   }
 
   private _isExtentVisible(mapBounds: [number, number][]) {
-    console.log('Max Extent, MapBounds', this._maxExtent, mapBounds);
     return (
       this._maxExtent[0] === -Infinity || this._doesTileOverlapBounds(this._maxExtent, mapBounds)
     );
