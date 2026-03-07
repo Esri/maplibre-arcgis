@@ -193,7 +193,7 @@ export class FeatureLayerSourceManager {
    * Loads features on demand for visible tiles.
    */
   private async _loadFeaturesOnDemand() {
-    const zoomLevel = this._getZoomLevel(this.map.getZoom());
+    const zoomLevel = this._getZoomLevel(this.map);
     if (!this._isZoomInRange(zoomLevel)) return;
 
     const mapBounds = this.map.getBounds().toArray();
@@ -405,15 +405,15 @@ export class FeatureLayerSourceManager {
     return zoom >= this._onDemandSettings.minZoom && zoom <= this._onDemandSettings.maxZoom;
   }
 
-  private _isExtentVisible(mapBounds: [number, number][])  {
+  private _isExtentVisible(mapBounds: [number, number][]) {
     console.log('Max Extent, MapBounds', this._maxExtent, mapBounds);
     return (
       this._maxExtent[0] === -Infinity || this._doesTileOverlapBounds(this._maxExtent, mapBounds)
     );
   }
 
-  private _getZoomLevel(zoom: number): number {
-    return this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(zoom);
+  private _getZoomLevel(map: MaplibreMap): number {
+    return this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(map.getZoom());
   }
 
   private _findTilesToRequestAtZoomLevel(mapBounds: [number, number][], zoomLevel: number) {
@@ -440,7 +440,6 @@ export class FeatureLayerSourceManager {
     else {
       tilesToRequest.push(primaryTile);
     }
-    // TODO: intersect tiles to request with input spatial query
     return tilesToRequest;
   }
 
