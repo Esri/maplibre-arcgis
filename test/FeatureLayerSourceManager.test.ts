@@ -288,7 +288,35 @@ describe('Feature layer data source tests', () => {
     });
 
     test('Passes quantizationParameters when using on-demand loading', async () => {
+      // Use a realistic tile
+      const tile = [0, 6, 6]; // z=6 tile, x=0, y=6
+      const bbox = [-180, 80.17871349622823, -174.375, 81.09321385260839];
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
 
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+
+      const tileExtent = {
+        spatialReference: {
+          latestWkid: 4326,
+          wkid: 4326,
+        },
+        xmin: bbox[0],
+        ymin: bbox[1],
+        xmax: bbox[2],
+        ymax: bbox[3],
+      };
+      const tolerance = manager._calculateTolerance(6);
+
+      manager._getTile(tile, tolerance);
+      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({
+        quantizationParameters: JSON.stringify({
+          extent: tileExtent,
+          mode: 'view',
+          tolerance: tolerance
+        })
+      }));
     });
 
     test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', async () => {
