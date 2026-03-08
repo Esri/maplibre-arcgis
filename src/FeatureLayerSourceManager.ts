@@ -65,6 +65,7 @@ export class FeatureLayerSourceManager {
   private _featureIndices: Map<number, FeatureIdIndexMap> = new Map();
   private _featureCollections: Map<number, GeoJSON.FeatureCollection> = new Map();
   private _options: FeatureLayerSourceManagerOptions;
+  private _maxRecordCountFactor: number;
 
   constructor(id: string, layerUrl: string, layerDefinition: ILayerDefinition, options: FeatureLayerSourceManagerOptions) {
     if (!id) throw new Error('Source manager requires the ID of a GeoJSONSource.');
@@ -78,11 +79,11 @@ export class FeatureLayerSourceManager {
     this.layerUrl = layerUrl;
     this.layerDefinition = layerDefinition;
 
-    const maxRecordCountFactor = this.layerDefinition.advancedQueryCapabilities?.supportsMaxRecordCountFactor ? 4 : 1;
+    this._maxRecordCountFactor = this.layerDefinition.advancedQueryCapabilities?.supportsMaxRecordCountFactor ? 4 : 1;
 
-    this._snapshotResultRecordCount = Math.min((this.layerDefinition.maxRecordCount ?? 2000) * maxRecordCountFactor, 8000);
+    this._snapshotResultRecordCount = Math.min((this.layerDefinition.maxRecordCount ?? 2000) * this._maxRecordCountFactor, 8000);
 
-    this._onDemandResultRecordCount = Math.min((this.layerDefinition.tileMaxRecordCount ?? 2000) * maxRecordCountFactor, 8000);
+    this._onDemandResultRecordCount = Math.min((this.layerDefinition.tileMaxRecordCount ?? 2000) * this._maxRecordCountFactor, 8000);
 
     this._options = {
       queryOptions: options.queryOptions ?? {},
@@ -318,7 +319,10 @@ export class FeatureLayerSourceManager {
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
-      resultRecordCount: this._onDemandResultRecordCount,
+      params: {
+        resultRecordCount: this._onDemandResultRecordCount, // temp solution until rest JS checks for both options.resultRecordCount and options.params.resultRecordCount
+        maxRecordCountFactor: this._maxRecordCountFactor, // temp solution to get around REST JS not supporting maxRecordCountFactor
+      },
       quantizationParameters: JSON.stringify({
         extent: tileExtent,
         mode: 'view',
@@ -358,7 +362,7 @@ export class FeatureLayerSourceManager {
       ...params,
       outStatistics: [
         {
-          // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+
           onStatisticField: null, // Required by REST JS but not used
           statisticType: 'exceedslimit',
           outStatisticFieldName: 'exceedslimit',
