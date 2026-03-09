@@ -319,10 +319,8 @@ export class FeatureLayerSourceManager {
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
-      params: {
-        resultRecordCount: this._onDemandResultRecordCount, // temp solution until rest JS checks for both options.resultRecordCount and options.params.resultRecordCount
-        maxRecordCountFactor: this._maxRecordCountFactor, // temp solution to get around REST JS not supporting maxRecordCountFactor
-      },
+      resultRecordCount: this._onDemandResultRecordCount,
+      maxRecordCountFactor: this._maxRecordCountFactor,
       quantizationParameters: JSON.stringify({
         extent: tileExtent,
         mode: 'view',
