@@ -6,7 +6,7 @@ import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
 import type { Map } from 'maplibre-gl';
-import { FeatureLayerSourceManager, FeatureLayerSourceManagerOptions, type LoadingModeOptions } from './FeatureLayerSourceManager';
+import { FeatureLayerSourceManager, type FeatureLayerSourceManagerOptions, type LoadingModeOptions } from './FeatureLayerSourceManager';
 // const geoJSONDefaultStyleMap = {
 //     "Point":"circle",
 //     "MultiPoint":"circle",

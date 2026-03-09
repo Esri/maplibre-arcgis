@@ -7,8 +7,10 @@
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "isolatedModules": false,
-        "noEmit": true,
-        "typeRoots":["src/@types","node_modules/@types"]
+        "typeRoots":["src/@types","node_modules/@types"],
+        "emitDeclarationOnly": true,
+        "declaration": true,
+        "outDir": "./dist/esm/types"
     },
     "include": [
         "src/**/*.ts",

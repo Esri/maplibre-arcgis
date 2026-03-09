@@ -79,10 +79,11 @@ export class FeatureLayerSourceManager {
     this.layerUrl = layerUrl;
     this.layerDefinition = layerDefinition;
 
+    // @ts-expect-error - supportsMaxRecordCountFactor is not included in ILayerDefinition yet
     this._maxRecordCountFactor = this.layerDefinition.advancedQueryCapabilities?.supportsMaxRecordCountFactor ? 4 : 1;
 
     this._snapshotResultRecordCount = Math.min((this.layerDefinition.maxRecordCount ?? 2000) * this._maxRecordCountFactor, 8000);
-
+    // @ts-expect-error - tileMaxRecordCount is not included in ILayerDefinition yet
     this._onDemandResultRecordCount = Math.min((this.layerDefinition.tileMaxRecordCount ?? 2000) * this._maxRecordCountFactor, 8000);
 
     this._options = {
