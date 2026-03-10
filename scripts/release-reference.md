@@ -8,6 +8,7 @@ Prior to beginning a release, you must run these commands and ensure everything 
 
 * `npm i` -- Update package-lock.json.
 * `npm run build` -- Build latest files to /dist.
+* `npx tsc` -- Build type files (.d.ts)
 * `npm run test` -- Run unit tests. **All** tests must pass prior to release.
 
 After this point, the code for the release is final. No source code files should be modified.
