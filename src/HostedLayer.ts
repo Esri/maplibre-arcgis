@@ -34,6 +34,21 @@ import type { RestJSAuthenticationManager } from './Util';
  */
 export type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpecification;
 
+type SupportedSourceOptions = Omit<GeoJSONSourceSpecification,
+  'type'
+  | 'data'
+  | 'generateId'> // GeoJSON data is immutable
+  & Omit<VectorSourceSpecification,
+  'type'
+  | 'url'
+  | 'tiles'
+  | 'scheme'
+  | 'encoding'
+  >;
+
+type TransformSourceFunction = (sourceId: string, source: SupportedSourceSpecification) => SupportedSourceSpecification;
+type TransformLayerFunction = (layer: LayerSpecification) => LayerSpecification;
+
 /**
  * Options accepted by all instances of HostedLayer.
  */
@@ -90,7 +105,7 @@ export abstract class HostedLayer {
   /**
    * An ArcGIS access token is required for accessing secure data layers. To get a token, go to the [Security and Authentication Guide](https://developers.arcgis.com/documentation/security-and-authentication/get-started/).
    */
-  token: string;
+  token?: string;
 
   protected _authentication?: RestJSAuthenticationManager;
 
@@ -106,7 +121,7 @@ export abstract class HostedLayer {
   /**
    * Stores custom attribution text for the hosted layer
    */
-  protected _customAttribution: string;
+  protected _customAttribution?: string;
 
   /**
    * Retrieves information about the associated hosted data service in ArcGIS.
@@ -271,26 +286,76 @@ export abstract class HostedLayer {
    * Convenience method that adds all associated Maplibre sources and data layers to a map.
    * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
    */
-  addSourcesAndLayersTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add sources and layers to map: Layer is not loaded.');
+  addSourcesAndLayersTo(map: Map, options?: {
+    transformSources?: TransformSourceFunction;
+    transformLayers?: TransformLayerFunction;
+  }): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add sources and layers to map: Class is not initialized.');
     this._map = map;
 
     Object.keys(this._sources).forEach((sourceId) => {
-      map.addSource(sourceId, this._sources[sourceId]);
+      let source = this._sources[sourceId];
+      if (options?.transformSources) source = options.transformSources(sourceId, source);
+      map.addSource(sourceId, source);
     });
     this._layers.forEach((layer) => {
+      if (options?.transformLayers) layer = options.transformLayers(layer);
       map.addLayer(layer);
     });
     this._onAdd(map);
     return this;
   }
 
-  addSourcesTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add sources to map: Layer is not loaded.');
-    this._map = map;
+  addSourceTo(map: Map, options?: SupportedSourceOptions): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add source to map: Class is not initialized.');
+
+    const sourceIds = Object.keys(this._sources);
+    if (sourceIds.length === 0) throw new Error('Cannot add 0 sources to map.');
+    if (sourceIds.length > 1) throw new Error('Hosted layer class contains more than one source. Use `addSources` function to add all to map.');
+
+    let source = this._sources[sourceIds[0]];
+
+    if (options) {
+      // validate protected options
+      const protectedProperties = ['type', 'data', 'generateId', 'url', 'tiles', 'scheme', 'encoding'];
+      if (protectedProperties.some(property => Object.prototype.hasOwnProperty.call(source, property))) throw new Error('Cannot set protected property of source.');
+      source = {
+        ...source,
+        ...options,
+      };
+    }
+
+    map.addSource(sourceIds[0], source);
+    this._onAdd(map);
+    return this;
+  }
+
+  addSourcesTo(map: Map, transformSources?: TransformSourceFunction): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add sources to map: Class is not initialized.');
+
     Object.keys(this._sources).forEach((sourceId) => {
-      map.addSource(sourceId, this._sources[sourceId]);
+      let source = this._sources[sourceId];
+      if (transformSources) source = transformSources(sourceId, source);
+      map.addSource(sourceId, source);
     });
+    this._onAdd(map);
+    return this;
+  }
+
+  addLayerTo(map: Map, customLayer?: LayerSpecification): HostedLayer {
+    // TODO
+    if (!this._ready) throw new Error('Cannot add layer to map: Class is not initialized.');
+    if (this._layers.length === 0) throw new Error('Cannot add layer: Class has zero layers.');
+    if (this._layers.length > 1) throw new Error('Class contains multiple layers: use plural `addLayersTo` method instead.');
+
+    const layer = customLayer ?? this._layers[0];
+    if (customLayer) {
+      layer.source = this._layers[0].source;
+      layer['source-layer'] = this._layers[0]['source-layer'];
+    }
+
+    map.addLayer(layer);
+
     this._onAdd(map);
     return this;
   }
@@ -300,10 +365,11 @@ export abstract class HostedLayer {
    * @param map - A maplibre map object
    * @returns
    */
-  addLayersTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add layers to map: Layer is not loaded.');
-    this._map = map;
+  addLayersTo(map: Map, transformLayers?: TransformLayerFunction): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add layers to map: Class is not initialized.');
+
     this._layers.forEach((layer) => {
+      if (transformLayers) layer = transformLayers(layer);
       map.addLayer(layer);
     });
     this._onAdd(map);
