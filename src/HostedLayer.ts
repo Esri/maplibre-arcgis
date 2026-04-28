@@ -285,6 +285,8 @@ export abstract class HostedLayer {
   /**
    * Convenience method that adds all associated Maplibre sources and data layers to a map.
    * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+   * @param options - Optional transform functions for setting properties of sources and layers.
+   * @returns this
    */
   addSourcesAndLayersTo(map: Map, options?: {
     transformSources?: TransformSourceFunction;
@@ -306,7 +308,13 @@ export abstract class HostedLayer {
     return this;
   }
 
-  addSourceTo(map: Map, options?: SupportedSourceOptions): HostedLayer {
+  /**
+   * Adds the maplibre style source to the map. Used when the hosted layer contains a single data source.
+   * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+   * @param sourceOptions - Properties to pass to the added source
+   * @returns this
+   */
+  addSourceTo(map: Map, sourceOptions?: SupportedSourceOptions): HostedLayer {
     if (!this._ready) throw new Error('Cannot add source to map: Class is not initialized.');
 
     const sourceIds = Object.keys(this._sources);
@@ -315,13 +323,13 @@ export abstract class HostedLayer {
 
     let source = this._sources[sourceIds[0]];
 
-    if (options) {
+    if (sourceOptions) {
       // validate protected options
       const protectedProperties = ['type', 'data', 'generateId', 'url', 'tiles', 'scheme', 'encoding'];
       if (protectedProperties.some(property => Object.prototype.hasOwnProperty.call(source, property))) throw new Error('Cannot set protected property of source.');
       source = {
         ...source,
-        ...options,
+        ...sourceOptions,
       };
     }
 
@@ -330,6 +338,12 @@ export abstract class HostedLayer {
     return this;
   }
 
+  /**
+   * Adds maplibre style sources to the map. Used when the hosted layer contains multiple data sources.
+   * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+   * @param transformSources - Transform function to set properties of one or multiple sources
+   * @returns this
+   */
   addSourcesTo(map: Map, transformSources?: TransformSourceFunction): HostedLayer {
     if (!this._ready) throw new Error('Cannot add sources to map: Class is not initialized.');
 
@@ -342,8 +356,13 @@ export abstract class HostedLayer {
     return this;
   }
 
-  addLayerTo(map: Map, customLayer?: LayerSpecification): HostedLayer {
-    // TODO
+  /**
+   * Adds a maplibre style layer to the map. Used when the hosted layer contains a single style layer.
+   * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+   * @param layerOptions - LayerSpecification object to override the default style
+   * @returns this
+   */
+  addLayerTo(map: Map, layerOptions?: LayerSpecification): HostedLayer {
     if (!this._ready) throw new Error('Cannot add layer to map: Class is not initialized.');
     if (this._layers.length === 0) throw new Error('Cannot add layer: Class has zero layers.');
     if (this._layers.length > 1) throw new Error('Class contains multiple layers: use plural `addLayersTo` method instead.');
@@ -361,7 +380,7 @@ export abstract class HostedLayer {
   }
 
   /**
-   * Add layers to a maplibre map.
+   * Adds maplibre style layers to the map. Used when the hosted layer contains multiple style layers.
    * @param map - A maplibre map object
    * @returns
    */

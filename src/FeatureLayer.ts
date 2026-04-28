@@ -210,7 +210,7 @@ export class FeatureLayer extends HostedLayer {
     // const sourceData = await this._fetchFeatures(layerUrl, esriGeometryInfo[layerInfo.geometryType].limit);
 
     // Create maplibre source and layer for the feature layer
-    let sourceId = layerInfo.name;
+    let sourceId = layerInfo.name ?? 'feature-service';
     if (sourceId in this._sources) {
       sourceId += `/${layerInfo.id}`;
     }
