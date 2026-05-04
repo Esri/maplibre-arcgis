@@ -256,6 +256,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         supportsExceedsLimitStatistics: false,
@@ -272,6 +273,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "",
         capabilities: "Query",
         geometryType: 'esriGeometryPoint',
@@ -288,6 +290,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         geometryType: 'notEsriGeometry',
@@ -300,6 +303,7 @@ describe('Feature layer unit tests', () => {
 
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         supportsExceedsLimitStatistics: true,
@@ -315,6 +319,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "",
         geometryType: 'esriGeometryPoint',
@@ -331,6 +336,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         geometryType: 'esriGeometryPoint',
