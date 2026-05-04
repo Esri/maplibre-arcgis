@@ -95,6 +95,10 @@ export interface IQueryOptions {
 
 export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
 
+const isSupportedServiceType = (serviceType: string | null): boolean => {
+  return serviceType === 'FeatureService' || serviceType === 'FeatureLayer' || serviceType === 'MapService';
+};
+
 /**
  * This class allows you to load and display [ArcGIS feature layers](https://developers.arcgis.com/documentation/portal-and-data-services/data-services/feature-services/introduction/) in a MapLibre map.
  *
@@ -171,7 +175,7 @@ export class FeatureLayer extends HostedLayer {
     }
     else if (options.url) {
       const urlType = getServiceType(options.url);
-      if (this.isSupportedServiceType(urlType)) this._inputType = urlType;
+      if (isSupportedServiceType(urlType)) this._inputType = urlType;
       else throw new Error('Argument `url` is not a valid feature service URL.');
     }
     if (options?.query) this.query = options.query;
@@ -327,10 +331,6 @@ export class FeatureLayer extends HostedLayer {
     Object.values(this._featureLayerSourceManagers).forEach(sourceManager => sourceManager.onAdd(map));
   }
 
-  private static isSupportedServiceType(serviceType: string | null): boolean {
-    return serviceType === 'FeatureService' || serviceType === 'FeatureLayer' || serviceType === 'MapService';
-  }
-
   /**
    * Creates a new FeatureLayer instance from a feature service URL.
    * ```javascript
@@ -348,7 +348,7 @@ export class FeatureLayer extends HostedLayer {
    */
   static async fromUrl(serviceUrl: string, options?: IFeatureLayerOptions): Promise<FeatureLayer> {
     const serviceType = getServiceType(serviceUrl);
-    if (!this.isSupportedServiceType(serviceType)) throw new Error('Must provide a valid feature layer URL.');
+    if (!isSupportedServiceType(serviceType)) throw new Error('Must provide a valid feature layer URL.');
 
     const geojsonLayer = new FeatureLayer({
       url: serviceUrl,
