@@ -1,5 +1,5 @@
 //@ts-nocheck
-import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
+import { describe, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest';
 import { BasemapStyle, BasemapSession } from '../src/MaplibreArcGIS';
 import { customTest as test } from './BaseTest';
 import basemapStyleNavigationRaw from './mock/BasemapStyle/ArcGISNavigation.json';
@@ -31,9 +31,9 @@ const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/servi
 describe('BasemapStyle unit tests', () => {
   beforeAll(async () => {
     useMock();
-    return () => {
-      removeMock();
-    }
+  });
+  afterAll(() => {
+    removeMock();
   });
   beforeEach(() => {
     fetchMock.resetMocks();
@@ -324,31 +324,20 @@ describe('BasemapStyle unit tests', () => {
     });
   });
 
-  describe('Works with actual data', () => {
-    beforeAll(()=>{
-      removeMock();
-    });
-    beforeEach(()=>{
-      fetchMock.resetMocks();
-      fetchMock.dontMock();
-    });
-    test('Supports a static `getSelf() operation that makes a `/self` request to the service URL.', async ({apiKey}) => {
-      const serviceResponse = await BasemapStyle.getSelf({
-        token: apiKey
-      });
-
-      expect(serviceResponse.styles).toBeDefined();
-      expect(serviceResponse.languages).toBeDefined();
-      expect(serviceResponse.places).toBeDefined();
-      expect(serviceResponse.worldviews).toBeDefined();
-      expect(serviceResponse.styleFamilies).toBeDefined();
-    });
-
-  });
+  // Live-network basemap tests have been moved to Basemap.live.test.ts.
 });
 
 
 describe('Supports basemap session authentication.', () => {
+  beforeAll(() => {
+    useMock();
+  });
+  afterAll(() => {
+    removeMock();
+  });
+  beforeEach(() => {
+    fetchMock.resetMocks();
+  });
 
   test('Accepts an initialized BasemapSession and uses the session token for authentication.', ({basemapSession}) => {
     const basemap = new BasemapStyle({
@@ -410,27 +399,5 @@ describe('Supports basemap session authentication.', () => {
     expect(style.sprite).toContain(`?token=${basemapSession.parentToken}`);
   });
 
-  test('Updates the token in the map style when the session is refreshed.', async ({setupPage}) => {
-
-    const page = await setupPage('basemap-session.html');
-    await page.waitForFunction(()=>window.map && window.basemapSession && window.basemapStyle);
-
-    const {style, token} = await page.evaluate(async () => {
-
-      await window.basemapSession.refresh();
-
-      return await new Promise(resolve => {
-        window.map.on('styledata', () => {
-          resolve({
-            style: window.map.getStyle(),
-            token: window.basemapSession.token
-          });
-        })
-      });
-    });
-
-    // Expect the source to use the new session key
-    const tileUrl = style.sources[Object.keys(style.sources)[0]].tiles[0];
-    expect(tileUrl.includes(token));
-  });
+  // Live browser/session refresh behavior is covered in Basemap.live.test.ts.
 });

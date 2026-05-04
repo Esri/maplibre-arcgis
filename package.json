@@ -18,6 +18,7 @@
     "start": "node build.js prod watch",
     "start-dev": "node build.js dev watch",
     "test": "vitest",
+    "test:live": "vitest run ./test/**/*.live.test.{ts,js}",
     "format": "eslint . --fix",
     "docs": "typedoc"
   },

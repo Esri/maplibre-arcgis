@@ -16,6 +16,9 @@ export default defineConfig({
     include: [
       './test/**/*.test.{ts,js}'
     ],
+    exclude: [
+      './test/**/*.live.test.{ts,js}'
+    ],
     coverage: {
       enabled: false,
       provider: 'v8',
