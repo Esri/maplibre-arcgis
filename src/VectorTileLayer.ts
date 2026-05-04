@@ -2,7 +2,7 @@ import { getItem, getItemResource, getItemResources } from '@esri/arcgis-rest-po
 import { request } from '@esri/arcgis-rest-request';
 import type { LayerSpecification, StyleSpecification, VectorSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
 import { type IDataServiceInfo, type IHostedLayerOptions, type IItemInfo, HostedLayer } from './HostedLayer';
-import { checkItemId, checkServiceUrlType, cleanUrl, isRelativePath, parseRelativeUrl, toCdnUrl, warn, wrapAccessToken } from './Util';
+import { checkItemId, getServiceType, cleanUrl, isRelativePath, parseRelativeUrl, toCdnUrl, warn, wrapAccessToken } from './Util';
 
 export interface IVectorTileServiceDefinition {
   tiles: string[];
@@ -89,11 +89,11 @@ export class VectorTileLayer extends HostedLayer {
       console.warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
 
     if (options.itemId) {
-      if (checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
+      if (checkItemId(options.itemId)) this._inputType = 'ItemId';
       else throw new Error('Argument `itemId` is not a valid item ID.');
     }
     else if (options.url) {
-      if (checkServiceUrlType(options.url) == 'VectorTileService') this._inputType = 'VectorTileService';
+      if (getServiceType(options.url) == 'VectorTileService') this._inputType = 'VectorTileService';
       else throw new Error('Argument `url` is not a valid vector tile service URL.');
     }
 
@@ -361,7 +361,7 @@ export class VectorTileLayer extends HostedLayer {
    *
    */
   static async fromPortalItem(itemId: string, options?: IVectorTileLayerOptions): Promise<VectorTileLayer> {
-    if (checkItemId(itemId) !== 'ItemId') throw new Error('Input is not a valid ArcGIS item ID.');
+    if (!checkItemId(itemId)) throw new Error('Input is not a valid ArcGIS item ID.');
 
     const vtl = new VectorTileLayer({
       itemId: itemId,
@@ -386,7 +386,7 @@ export class VectorTileLayer extends HostedLayer {
    * @returns A promise that resolves to a VectorTileLayer instance.
    */
   static async fromUrl(serviceUrl: string, options?: IVectorTileLayerOptions): Promise<VectorTileLayer> {
-    if (checkServiceUrlType(serviceUrl) !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.');
+    if (getServiceType(serviceUrl) !== 'VectorTileService') throw new Error('Input is not a valid ArcGIS vector tile service URL.');
 
     const vtl = new VectorTileLayer({
       url: serviceUrl,

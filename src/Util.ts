@@ -1,3 +1,17 @@
+// Copyright 2025 Esri
+//
+// Licensed under the Apache License Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 import { ApiKeyManager, ArcGISIdentityManager, type ApplicationCredentialsManager } from '@esri/arcgis-rest-request';
 
 /**
@@ -6,14 +20,12 @@ import { ApiKeyManager, ArcGISIdentityManager, type ApplicationCredentialsManage
  */
 export type RestJSAuthenticationManager = ApiKeyManager | ArcGISIdentityManager | ApplicationCredentialsManager;
 
-type SupportedServiceType = 'FeatureService' | 'FeatureLayer' | 'VectorTileService' | 'VectorTileLayer';
+type SupportedServiceType = 'FeatureService' | 'FeatureLayer' | 'MapService' | 'VectorTileService' | 'VectorTileLayer';
 
-export const checkItemId = (itemId: string): 'ItemId' | null => {
-  if (itemId.length == 32) return 'ItemId';
-
-  return null;
+export const checkItemId = (itemId: string): boolean => {
+  return itemId && itemId.length === 32 ? true : false;
 };
-export const checkServiceUrlType = (serviceUrl: string): SupportedServiceType | null => {
+export const getServiceType = (serviceUrl: string): SupportedServiceType | null => {
   const httpRegex = /^https?:\/\//;
   // const layerEndpointTest = "(?<layers>[0-9]*\/?)?$";
 
@@ -29,6 +41,13 @@ export const checkServiceUrlType = (serviceUrl: string): SupportedServiceType | 
         return 'FeatureLayer';
       };
       return 'FeatureService';
+    }
+
+    // MapServer urls can be a FeatureLayer endpoint in which case they can be supported
+    // this type will need to be checked during initialization
+    const mapServerTest = /\/MapServer\/?([0-9]*\/?)?$/.exec(serviceUrl);
+    if (mapServerTest) {
+      return 'MapService';
     }
   }
 
@@ -132,16 +151,3 @@ export const getBlankFc = (): GeoJSON.FeatureCollection => {
     features: [],
   };
 };
-// Copyright 2025 Esri
-//
-// Licensed under the Apache License Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.

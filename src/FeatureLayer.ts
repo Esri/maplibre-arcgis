@@ -4,7 +4,7 @@ import { getItem } from '@esri/arcgis-rest-portal';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
 import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
-import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
+import { checkItemId, getServiceType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
 import type { Map } from 'maplibre-gl';
 import { FeatureLayerSourceManager, type FeatureLayerSourceManagerOptions, type LoadingModeOptions } from './FeatureLayerSourceManager';
 // const geoJSONDefaultStyleMap = {
@@ -166,11 +166,11 @@ export class FeatureLayer extends HostedLayer {
       warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
 
     if (options.itemId) {
-      if (checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
+      if (checkItemId(options.itemId)) this._inputType = 'ItemId';
       else throw new Error('Argument `itemId` is not a valid item ID.');
     }
     else if (options.url) {
-      const urlType = checkServiceUrlType(options.url);
+      const urlType = getServiceType(options.url);
       if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
       else throw new Error('Argument `url` is not a valid feature service URL.');
     }
@@ -201,6 +201,7 @@ export class FeatureLayer extends HostedLayer {
       httpMethod: 'GET',
     });
 
+    if (layerInfo.type !== 'Feature Layer') throw new Error('The provided URL does not point to a feature layer.');
     if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
     if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support query operations.');
     if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
@@ -342,7 +343,7 @@ export class FeatureLayer extends HostedLayer {
    * @returns
    */
   static async fromUrl(serviceUrl: string, options?: IFeatureLayerOptions): Promise<FeatureLayer> {
-    const inputType = checkServiceUrlType(serviceUrl);
+    const inputType = getServiceType(serviceUrl);
     if (!inputType || !(inputType === 'FeatureService' || inputType === 'FeatureLayer')) throw new Error('Must provide a valid feature layer URL.');
 
     const geojsonLayer = new FeatureLayer({
@@ -367,7 +368,7 @@ export class FeatureLayer extends HostedLayer {
    *```
    */
   static async fromPortalItem(itemId: string, options?: IFeatureLayerOptions): Promise<FeatureLayer> {
-    if (checkItemId(itemId) !== 'ItemId') throw new Error('Must provide a valid item ID for an ArcGIS hosted feature layer.');
+    if (!checkItemId(itemId)) throw new Error('Must provide a valid item ID for an ArcGIS hosted feature layer.');
 
     const geojsonLayer = new FeatureLayer({
       itemId: itemId,

@@ -270,7 +270,7 @@ export class BasemapStyle {
 
     this.styleId = options.style;
     this._baseUrl = options?.baseUrl || DEFAULT_BASE_URL;
-    this._isItemId = checkItemId(this.styleId) == 'ItemId' ? true : false;
+    this._isItemId = checkItemId(this.styleId);
 
     if (options.attributionControl) this._attributionControlOptions = options.attributionControl;
 
