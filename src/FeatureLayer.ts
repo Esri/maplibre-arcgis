@@ -171,7 +171,7 @@ export class FeatureLayer extends HostedLayer {
     }
     else if (options.url) {
       const urlType = getServiceType(options.url);
-      if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
+      if (this.isSupportedServiceType(urlType)) this._inputType = urlType;
       else throw new Error('Argument `url` is not a valid feature service URL.');
     }
     if (options?.query) this.query = options.query;
@@ -327,6 +327,10 @@ export class FeatureLayer extends HostedLayer {
     Object.values(this._featureLayerSourceManagers).forEach(sourceManager => sourceManager.onAdd(map));
   }
 
+  private static isSupportedServiceType(serviceType: string | null): boolean {
+    return serviceType === 'FeatureService' || serviceType === 'FeatureLayer' || serviceType === 'MapService';
+  }
+
   /**
    * Creates a new FeatureLayer instance from a feature service URL.
    * ```javascript
@@ -343,8 +347,8 @@ export class FeatureLayer extends HostedLayer {
    * @returns
    */
   static async fromUrl(serviceUrl: string, options?: IFeatureLayerOptions): Promise<FeatureLayer> {
-    const inputType = getServiceType(serviceUrl);
-    if (!inputType || !(inputType === 'FeatureService' || inputType === 'FeatureLayer')) throw new Error('Must provide a valid feature layer URL.');
+    const serviceType = getServiceType(serviceUrl);
+    if (!this.isSupportedServiceType(serviceType)) throw new Error('Must provide a valid feature layer URL.');
 
     const geojsonLayer = new FeatureLayer({
       url: serviceUrl,
