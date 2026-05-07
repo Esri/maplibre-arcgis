@@ -131,6 +131,7 @@ const isSupportedServiceType = (serviceType: string | null): boolean => {
 export class FeatureLayer extends HostedLayer {
   declare protected _sources: { [_: string]: GeoJSONSourceSpecification };
   private _featureLayerSourceManagers: { [_: string]: FeatureLayerSourceManager };
+  private readonly _initOptions: IFeatureLayerOptions;
 
   declare protected _layers: LayerSpecification[];
 
@@ -160,10 +161,11 @@ export class FeatureLayer extends HostedLayer {
     super();
 
     if (!options || !(options.itemId || options.url)) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
+    this._initOptions = options;
 
-    if (options?.token) this.token = options.token;
+    if (options.token) this.token = options.token;
 
-    if (options?.attribution) this._customAttribution = options.attribution;
+    if (options.attribution) this._customAttribution = options.attribution;
 
     if (options.itemId && options.url)
       warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
@@ -243,25 +245,27 @@ export class FeatureLayer extends HostedLayer {
     this._featureLayerSourceManagers = {};
     this._layers = [];
 
+    const { itemId, url, portalUrl } = this._initOptions;
+
     // Wrap access token for use with REST JS
     this._authentication = await wrapAccessToken(this.token, this._itemInfo?.portalUrl);
 
     let dataSource: SupportedInputTypes | null = null;
 
-    if (options.itemId) {
-      if (!checkItemId(options.itemId)) throw new Error('Argument `itemId` is not a valid item ID.');
+    if (itemId) {
+      if (!checkItemId(itemId)) throw new Error('Argument `itemId` is not a valid item ID.');
       dataSource = 'ItemId';
       this._itemInfo = {
-        itemId: options.itemId,
-        portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest',
+        itemId,
+        portalUrl: portalUrl ?? 'https://www.arcgis.com/sharing/rest',
       };
     }
-    else if (options.url) {
-      const serviceType = getServiceType(options.url);
+    else if (url) {
+      const serviceType = getServiceType(url);
       if (!isSupportedServiceType(serviceType)) throw new Error('Argument `url` is not a valid feature service URL.');
       dataSource = serviceType as SupportedInputTypes;
       this._serviceInfo = {
-        serviceUrl: cleanUrl(options.url),
+        serviceUrl: cleanUrl(url),
       };
     }
 
