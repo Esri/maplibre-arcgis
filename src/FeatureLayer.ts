@@ -93,10 +93,10 @@ export interface IQueryOptions {
   where?: string;
 }
 
-export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
+export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer' | 'MapServiceFeatureLayer';
 
 const isSupportedServiceType = (serviceType: string | null): boolean => {
-  return serviceType === 'FeatureService' || serviceType === 'FeatureLayer' || serviceType === 'MapService';
+  return serviceType === 'FeatureService' || serviceType === 'FeatureLayer' || serviceType === 'MapServiceFeatureLayer';
 };
 
 /**
@@ -133,7 +133,6 @@ export class FeatureLayer extends HostedLayer {
   private _featureLayerSourceManagers: { [_: string]: FeatureLayerSourceManager };
 
   declare protected _layers: LayerSpecification[];
-  private _inputType: SupportedInputTypes;
 
   query?: IQueryOptions;
   _loadingMode: LoadingModeOptions;
@@ -169,31 +168,9 @@ export class FeatureLayer extends HostedLayer {
     if (options.itemId && options.url)
       warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
 
-    if (options.itemId) {
-      if (checkItemId(options.itemId)) this._inputType = 'ItemId';
-      else throw new Error('Argument `itemId` is not a valid item ID.');
-    }
-    else if (options.url) {
-      const urlType = getServiceType(options.url);
-      if (isSupportedServiceType(urlType)) this._inputType = urlType;
-      else throw new Error('Argument `url` is not a valid feature service URL.');
-    }
-    if (options?.query) this.query = options.query;
+    this.query = options.query;
 
-    // Set up
-    if (this._inputType == 'ItemId') {
-      this._itemInfo = {
-        itemId: options.itemId,
-        portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest',
-      };
-    }
-    else if (this._inputType === 'FeatureLayer' || this._inputType === 'FeatureService') {
-      this._serviceInfo = {
-        serviceUrl: cleanUrl(options.url),
-      };
-    };
-
-    this._loadingMode = options._loadingMode ? options._loadingMode : 'default';
+    this._loadingMode = options._loadingMode ?? 'default';
   }
 
   // Initializes an individual layer of the feature service with a source, source manager, and style layer
@@ -269,7 +246,25 @@ export class FeatureLayer extends HostedLayer {
     // Wrap access token for use with REST JS
     this._authentication = await wrapAccessToken(this.token, this._itemInfo?.portalUrl);
 
-    let dataSource = this._inputType;
+    let dataSource: SupportedInputTypes | null = null;
+
+    if (options.itemId) {
+      if (!checkItemId(options.itemId)) throw new Error('Argument `itemId` is not a valid item ID.');
+      dataSource = 'ItemId';
+      this._itemInfo = {
+        itemId: options.itemId,
+        portalUrl: options?.portalUrl ? options.portalUrl : 'https://www.arcgis.com/sharing/rest',
+      };
+    }
+    else if (options.url) {
+      const serviceType = getServiceType(options.url);
+      if (!isSupportedServiceType(serviceType)) throw new Error('Argument `url` is not a valid feature service URL.');
+      dataSource = serviceType as SupportedInputTypes;
+      this._serviceInfo = {
+        serviceUrl: cleanUrl(options.url),
+      };
+    }
+
     switch (dataSource) {
       case 'ItemId': {
         const itemResponse = await getItem(this._itemInfo.itemId, {

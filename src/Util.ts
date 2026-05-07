@@ -20,12 +20,12 @@ import { ApiKeyManager, ArcGISIdentityManager, type ApplicationCredentialsManage
  */
 export type RestJSAuthenticationManager = ApiKeyManager | ArcGISIdentityManager | ApplicationCredentialsManager;
 
-type SupportedServiceType = 'FeatureService' | 'FeatureLayer' | 'MapService' | 'VectorTileService' | 'VectorTileLayer';
+type ServiceType = 'FeatureService' | 'FeatureLayer' | 'MapService' | 'MapServiceFeatureLayer' | 'VectorTileService' | 'VectorTileLayer';
 
 export const checkItemId = (itemId: string): boolean => {
   return itemId && itemId.length === 32 ? true : false;
 };
-export const getServiceType = (serviceUrl: string): SupportedServiceType | null => {
+export const getServiceType = (serviceUrl: string): ServiceType | null => {
   const httpRegex = /^https?:\/\//;
   // const layerEndpointTest = "(?<layers>[0-9]*\/?)?$";
 
@@ -47,6 +47,9 @@ export const getServiceType = (serviceUrl: string): SupportedServiceType | null 
     // this type will need to be checked during initialization
     const mapServerTest = /\/MapServer\/?([0-9]*\/?)?$/.exec(serviceUrl);
     if (mapServerTest) {
+      if (mapServerTest.length == 2 && mapServerTest[1]) {
+        return 'MapServiceFeatureLayer';
+      };
       return 'MapService';
     }
   }
