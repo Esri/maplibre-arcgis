@@ -200,7 +200,6 @@ export class FeatureLayer extends HostedLayer {
       url: layerUrl,
       httpMethod: 'GET',
     });
-
     if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
     if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support query operations.');
     if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
@@ -228,6 +227,15 @@ export class FeatureLayer extends HostedLayer {
 
     // Create source manager to handle data loading
     this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, layerUrl, layerInfo, options);
+
+    // Initial snapshot mode load
+    if (this._loadingMode === 'default' || this._loadingMode === 'snapshot') {
+      void this._featureLayerSourceManagers[sourceId]._snapshotLoad(
+        (features) => {
+          this._sources[sourceId].data = features;
+        }
+      );
+    }
 
     // Create default style layer for rendering
     const layerType = esriGeometryInfo[layerInfo.geometryType].type;

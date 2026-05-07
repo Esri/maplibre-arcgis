@@ -4,7 +4,7 @@ import { queryFeatures, type ILayerDefinition, type IQueryAllFeaturesOptions, qu
 import { getBlankFc, type RestJSAuthenticationManager, warn } from './Util';
 import { bboxToTile, getChildren, tileToQuadkey, tileToBBOX, type Tile } from '@mapbox/tilebelt';
 import { type IGeometry, type IExtent } from '@esri/arcgis-rest-request';
-import { type BBox } from 'geojson';
+import { type BBox, type FeatureCollection } from 'geojson';
 
 // =====================
 // Types and Interfaces
@@ -57,13 +57,14 @@ export class FeatureLayerSourceManager {
   map: MaplibreMap = undefined as unknown as MaplibreMap;
   maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
+  private _snapshotSucceeded: boolean | undefined;
   private _snapshotResultRecordCount: number;
   private _onDemandResultRecordCount: number;
   private _onDemandSettings!: OnDemandSettings;
   private _maxExtent: BBox = [-Infinity, Infinity, -Infinity, Infinity];
   private _tileIndices: Map<number, TileIndexMap> = new Map();
   private _featureIndices: Map<number, FeatureIdIndexMap> = new Map();
-  private _featureCollections: Map<number, GeoJSON.FeatureCollection> = new Map();
+  private _featureCollections: Map<number, FeatureCollection> = new Map();
   private _options: FeatureLayerSourceManagerOptions;
   private _maxRecordCountFactor: number;
 
@@ -106,6 +107,49 @@ export class FeatureLayerSourceManager {
     void this._load();
   }
 
+  async _snapshotLoad(callback?: (data: FeatureCollection) => void): Promise<void> {
+    if (!this.layerDefinition?.geometryType) {
+      throw new Error('Layer definition with geometry type undefined.');
+    }
+    const geometryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
+    const requestParams: IQueryAllFeaturesOptions = {
+      url: this.layerUrl,
+      authentication: this._options.authentication,
+    };
+    this._snapshotLoading = true;
+    const exceedsLimit = await this._checkIfExceedsLimit(requestParams, geometryLimit);
+    if (!exceedsLimit) {
+      try {
+        // load with snapshot mode
+        const featureCollection = await this._loadFeatureSnapshot();
+        this._snapshotSucceeded = true;
+        this._snapshotLoading = false;
+        if (this.map) this._updateSourceData(this.map, featureCollection);
+        else if (callback) callback(featureCollection);
+
+        return;
+      }
+      catch (err) {
+        // total failure
+        warn('Unable to load using snapshot mode. Pass the map in the layer constructor or use a Maplibre ArcGIS method such as addSourceTo(map) to enable on-demand loading.');
+        // throw new Error(`Unable to load using snapshot mode: ${err}`);
+        this._snapshotSucceeded = false;
+        this._snapshotLoading = false;
+        return;
+      }
+    }
+    else {
+      // if force snapshot mode, fail
+      if (this._options.loadingMode === 'snapshot') {
+        throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
+      }
+      this._snapshotSucceeded = false;
+      this._snapshotLoading = false;
+      // else, fall back to on-demand
+      return;
+    }
+  }
+
   /**
    * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
    */
@@ -114,36 +158,16 @@ export class FeatureLayerSourceManager {
     const defaultOrSnapshot = loadingMode === 'default' || loadingMode === 'snapshot';
     const defaultOrOnDemand = loadingMode === 'default' || loadingMode === 'ondemand';
 
+    if (!this.map) throw new Error('Main loading method requires a map');
+
     // load snapshot mode if specified and under geometry limits
     if (defaultOrSnapshot) {
-      if (!this.layerDefinition?.geometryType) {
-        throw new Error('Layer definition with geometry type undefined.');
-      }
-      const geometryLimit: GeometryLimits = esriGeometryInfo[this.layerDefinition.geometryType].limit;
-      const requestParams: IQueryAllFeaturesOptions = {
-        url: this.layerUrl,
-        authentication: this._options.authentication,
-      };
-      const exceedsLimit = await this._checkIfExceedsLimit(requestParams, geometryLimit);
-      if (!exceedsLimit) {
-        try {
-          // load with snapshot mode
-          const featureCollection = await this._loadFeatureSnapshot();
-          this._updateSourceData(this.map, featureCollection);
-          return;
-        }
-        catch (err) {
-          // total failure
-          throw new Error(`Unable to load using snapshot mode: ${err}`);
-        }
-      }
-      else {
-        // if force snapshot mode, fail
-        if (loadingMode === 'snapshot') {
-          throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
-        }
-        // else, fall back to on-demand
-      }
+      // If snapshot mode succeeded on initialization, don't need anything else
+      if (this._snapshotSucceeded) return;
+
+      if (this._snapshotLoading) await ... // TODO
+      // Do we still need this?
+      if (this._snapshotSucceeded !== false) await this._snapshotLoad();
     }
 
     // fall back to on demand loading
@@ -171,7 +195,7 @@ export class FeatureLayerSourceManager {
    * @param geometryLimit - The geometry limit for this specific layer type, determined via the layer definition
    * @returns - GeoJSON feature collection containing all features in a layer
    */
-  private async _loadFeatureSnapshot() {
+  private async _loadFeatureSnapshot(): Promise<FeatureCollection> {
     const queryParams: IQueryAllFeaturesOptions = {
       url: this.layerUrl,
       authentication: this._options.authentication,
@@ -181,7 +205,7 @@ export class FeatureLayerSourceManager {
     };
 
     const response = await queryAllFeatures(queryParams);
-    const featureCollection = response as unknown as GeoJSON.FeatureCollection;
+    const featureCollection = response as unknown as FeatureCollection;
     if (!featureCollection) {
       throw new Error('Unable to load data.');
     }
@@ -222,8 +246,8 @@ export class FeatureLayerSourceManager {
     tilesToRequest: Tile[],
     tolerance: number,
     featureIdIndex: FeatureIdIndexMap,
-    fc: GeoJSON.FeatureCollection,
-  ): Promise<GeoJSON.FeatureCollection> {
+    fc: FeatureCollection,
+  ): Promise<FeatureCollection> {
     const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance));
     const featureCollections = await Promise.all(tileRequests);
     featureCollections.forEach((tileFc) => {
@@ -282,9 +306,9 @@ export class FeatureLayerSourceManager {
   }
 
   private _addTileFeaturesToFeatureCollection(
-    tileFc: GeoJSON.FeatureCollection,
+    tileFc: FeatureCollection,
     featureIdIndex: FeatureIdIndexMap,
-    fc: GeoJSON.FeatureCollection
+    fc: FeatureCollection
   ) {
     tileFc.features.forEach((feature) => {
       if (!featureIdIndex.has(feature.id)) {
@@ -329,7 +353,7 @@ export class FeatureLayerSourceManager {
       }),
     };
 
-    const res = await queryAllFeatures(queryParams) as unknown as GeoJSON.FeatureCollection;
+    const res = await queryAllFeatures(queryParams) as unknown as FeatureCollection;
     return res;
   }
 
@@ -377,7 +401,7 @@ export class FeatureLayerSourceManager {
     return exceedsLimitResponse.features[0].attributes.exceedslimit === 1;
   }
 
-  private _updateSourceData(map: MaplibreMap, fc: GeoJSON.FeatureCollection): void {
+  private _updateSourceData(map: MaplibreMap, fc: FeatureCollection): void {
     const source: GeoJSONSource | undefined = map.getSource(this.geojsonSourceId);
     if (source) {
       source.setData(fc);

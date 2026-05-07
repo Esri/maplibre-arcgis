@@ -23,6 +23,7 @@ export const checkServiceUrlType = (serviceUrl: string): SupportedServiceType | 
       return 'VectorTileService';
     };
 
+    const mapServiceTest = //.
     const featureServiceTest = /\/FeatureServer\/?([0-9]*\/?)?$/.exec(serviceUrl);
     if (featureServiceTest) {
       if (featureServiceTest.length == 2 && featureServiceTest[1]) {
@@ -110,8 +111,8 @@ export const checkAccessTokenType = (token: string): 'user' | 'app' | 'basemapSe
   // Token type not recognized; default to 'app'
   return 'app';
 };
-export const wrapAccessToken = async (token: string, portalUrl?: string): Promise<ApiKeyManager | ArcGISIdentityManager> => {
-  if (!token || token.length === 0) return null;
+export const wrapAccessToken = async (token?: string, portalUrl?: string): Promise<ApiKeyManager | ArcGISIdentityManager | undefined> => {
+  if (!token || token.length === 0) return undefined;
   const tokenType = checkAccessTokenType(token);
   // User tokens
   if (tokenType === 'user') return await ArcGISIdentityManager.fromToken({

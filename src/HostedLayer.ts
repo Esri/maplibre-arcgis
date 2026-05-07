@@ -47,6 +47,12 @@ type SupportedSourceOptions = Omit<GeoJSONSourceSpecification,
   >;
 
 type TransformSourceFunction = (sourceId: string, source: SupportedSourceSpecification) => SupportedSourceSpecification;
+
+type SupportedLayerOptions = Omit<LayerSpecification,
+  'source'
+  | 'source-layer'
+>;
+
 type TransformLayerFunction = (layer: LayerSpecification) => LayerSpecification;
 
 /**
@@ -326,7 +332,7 @@ export abstract class HostedLayer {
     if (sourceOptions) {
       // validate protected options
       const protectedProperties = ['type', 'data', 'generateId', 'url', 'tiles', 'scheme', 'encoding'];
-      if (protectedProperties.some(property => Object.prototype.hasOwnProperty.call(source, property))) throw new Error('Cannot set protected property of source.');
+      if (protectedProperties.some(property => Object.prototype.hasOwnProperty.call(sourceOptions, property))) throw new Error('Cannot set protected property of source.');
       source = {
         ...source,
         ...sourceOptions,
@@ -362,15 +368,17 @@ export abstract class HostedLayer {
    * @param layerOptions - LayerSpecification object to override the default style
    * @returns this
    */
-  addLayerTo(map: Map, layerOptions?: LayerSpecification): HostedLayer {
+  addLayerTo(map: Map, layerOptions?: SupportedLayerOptions): HostedLayer {
     if (!this._ready) throw new Error('Cannot add layer to map: Class is not initialized.');
     if (this._layers.length === 0) throw new Error('Cannot add layer: Class has zero layers.');
     if (this._layers.length > 1) throw new Error('Class contains multiple layers: use plural `addLayersTo` method instead.');
 
-    const layer = customLayer ?? this._layers[0];
-    if (customLayer) {
-      layer.source = this._layers[0].source;
-      layer['source-layer'] = this._layers[0]['source-layer'];
+    const layer = layerOptions ?? this._layers[0];
+    if (layerOptions) {
+      if (this._layers[0].source) layer.source = this._layers[0].source;
+      if (this._layers[0]['source-layer']) layer['source-layer'] = this._layers[0]['source-layer'];
+
+      if (!layerOptions.id) layerOptions.id = this._layers[0].id;
     }
 
     map.addLayer(layer);
