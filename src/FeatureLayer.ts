@@ -263,7 +263,7 @@ export class FeatureLayer extends HostedLayer {
     else if (url) {
       const serviceType = getServiceType(url);
       if (!isSupportedServiceType(serviceType)) throw new Error('Argument `url` is not a valid feature service URL.');
-      dataSource = serviceType as SupportedInputTypes;
+      dataSource = serviceType as Exclude<SupportedInputTypes, 'ItemId'>;
       this._serviceInfo = {
         serviceUrl: cleanUrl(url),
       };
@@ -290,7 +290,9 @@ export class FeatureLayer extends HostedLayer {
         this._serviceInfo = {
           serviceUrl: itemResponse.url,
         };
-        dataSource = 'FeatureService';
+        const itemServiceType = getServiceType(itemResponse.url);
+        if (!isSupportedServiceType(itemServiceType)) throw new Error('The provided ArcGIS portal item has an unsupported service type.');
+        dataSource = itemServiceType as Exclude<SupportedInputTypes, 'ItemId'>;
         // falls through
       }
       case 'FeatureService': {
@@ -317,6 +319,11 @@ export class FeatureLayer extends HostedLayer {
       case 'FeatureLayer': {
         // Add single layer
         await this._initializeLayer(this._serviceInfo.serviceUrl); // TODO test on a layer with tables
+        break;
+      }
+      case 'MapServiceFeatureLayer': {
+        // Add single layer from MapServer url
+        await this._initializeLayer(this._serviceInfo.serviceUrl);
         break;
       }
     }
