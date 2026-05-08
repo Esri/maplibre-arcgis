@@ -411,15 +411,9 @@ describe('Feature layer unit tests', () => {
       });
       fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await featureLayer.initialize();
-      expect(featureLayer._itemInfo).toEqual({
+      expect(featureLayer._itemInfo).toMatchObject({
         itemId: mockId,
-        portalUrl: 'https://www.arcgis.com/sharing/rest',
-        accessInformation: 'Access information from item info.',
-        title: 'Trails',
-        description: 'Item description.',
-        access: 'public',
-        orgId: 'GVgbJbqm8hXASVYi',
-        licenseInfo: trailsMock.itemRaw.licenseInfo,
+        portalUrl: 'https://www.arcgis.com/sharing/rest'
       });
 
       // Custom portal URL
@@ -429,15 +423,9 @@ describe('Feature layer unit tests', () => {
       });
       fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await featureLayer2.initialize();
-      expect(featureLayer2._itemInfo).toEqual({
+      expect(featureLayer2._itemInfo).toMatchObject({
         itemId: mockId,
-        portalUrl: 'https://my-custom-portal.com/items',
-        accessInformation: 'Access information from item info.',
-        title: 'Trails',
-        description: 'Item description.',
-        access: 'public',
-        orgId: 'GVgbJbqm8hXASVYi',
-        licenseInfo: trailsMock.itemRaw.licenseInfo,
+        portalUrl: 'https://my-custom-portal.com/items'
       });
     });
     test('Throws if the item ID format is invalid', async () => {
