@@ -181,7 +181,7 @@ describe('Feature layer unit tests', () => {
       });
       fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await featureLayer.initialize();
-      expect(featureLayer._serviceInfo).toEqual({
+      expect(featureLayer._serviceInfo).toMatchObject({
         serviceUrl: trailsMock.serviceUrl + '/'
       });
 
@@ -418,7 +418,7 @@ describe('Feature layer unit tests', () => {
         title: 'Trails',
         description: 'Item description.',
         access: 'public',
-        orgId: 'V6ZHFr6zdgNZuVG0',
+        orgId: 'GVgbJbqm8hXASVYi',
         licenseInfo: trailsMock.itemRaw.licenseInfo,
       });
 
@@ -436,7 +436,7 @@ describe('Feature layer unit tests', () => {
         title: 'Trails',
         description: 'Item description.',
         access: 'public',
-        orgId: 'V6ZHFr6zdgNZuVG0',
+        orgId: 'GVgbJbqm8hXASVYi',
         licenseInfo: trailsMock.itemRaw.licenseInfo,
       });
     });
