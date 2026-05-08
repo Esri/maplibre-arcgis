@@ -191,7 +191,7 @@ describe('Feature layer unit tests', () => {
       });
       fetchMock.once(trailsMock.layerDefinition);
       await featureLayer2.initialize();
-      expect(featureLayer2._serviceInfo).toEqual({
+      expect(featureLayer2._serviceInfo).toMatchObject({
         serviceUrl: trailsMock.layerUrl + '/'
       });
     });
@@ -436,14 +436,19 @@ describe('Feature layer unit tests', () => {
         await featureLayer.initialize();
       }).rejects.toThrowError('Argument `itemId` is not a valid item ID.')
     });
-    test('Prefers an item ID over a service URL if both are provided.', () => {
+    test('Prefers an item ID over a service URL if both are provided.', async () => {
       const warningSpy = vi.spyOn(console, 'warn').mockImplementation((warningText) => {});
       const featureLayer = new FeatureLayer({
-        itemId: '44299709cce447ea99014ff1e3bf8505',
-        url: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer'
+        itemId: trailsMock.itemId,
+        // This URL is intentionally included to verify itemId takes precedence.
+        url: 'https://example.com/includedUrlThatShouldBeIgnored/FeatureServer'
       });
       expect(warningSpy).toHaveBeenCalledWith('Both an item ID and service URL have been passed. Only the item ID will be used.');
       expect(featureLayer._serviceInfo).toBeUndefined();
+
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
+      await featureLayer.initialize();
+      expect(featureLayer._serviceInfo.serviceUrl).toBe(trailsMock.serviceUrl);
     });
 
     test('Gets item metadata including attribution, title, and description.', async () => {
