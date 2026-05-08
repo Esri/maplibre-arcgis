@@ -174,12 +174,13 @@ describe('Feature layer unit tests', () => {
   });
 
   describe('Loads feature data from a service URL', ()=>{
-    test('Accepts a feature URL, cleans it, and recognizes if it\'s a single layer or a service.', () => {
+    test('Accepts a feature URL, cleans it, and recognizes if it\'s a single layer or a service.', async () => {
       // Service passed
       const featureLayer = new FeatureLayer({
         url: trailsMock.serviceUrl
       });
-      expect(featureLayer._inputType).toBe('FeatureService');
+      fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
+      await featureLayer.initialize();
       expect(featureLayer._serviceInfo).toEqual({
         serviceUrl: trailsMock.serviceUrl + '/'
       });
@@ -188,22 +189,28 @@ describe('Feature layer unit tests', () => {
       const featureLayer2 = new FeatureLayer({
         url: trailsMock.layerUrl
       });
-      expect(featureLayer2._inputType).toBe('FeatureLayer');
+      fetchMock.once(trailsMock.layerDefinition);
+      await featureLayer2.initialize();
+      expect(featureLayer2._serviceInfo).toEqual({
+        serviceUrl: trailsMock.layerUrl + '/'
+      });
     });
-    test('Throws if the feature service URL is not valid.', () => {
+    test('Throws if the feature service URL is not valid.', async () => {
       // Not a URL
-      expect(() => {
+      await expect(async () => {
         const featureLayer = new FeatureLayer({
           url: '123456789'
         });
-      }).toThrowError('Argument `url` is not a valid feature service URL.');
+        await featureLayer.initialize();
+      }).rejects.toThrowError('Argument `url` is not a valid feature service URL.');
 
       // Not a feature service
-      expect(() => {
+      await expect(async () => {
         const featureLayer = new FeatureLayer({
           url: 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_Mountains_Parcels_VTL/VectorTileServer'
         });
-      }).toThrowError('Argument `url` is not a valid feature service URL.');
+        await featureLayer.initialize();
+      }).rejects.toThrowError('Argument `url` is not a valid feature service URL.');
     });
     test('Accepts generic feature service URLs and fetches the service definition for the generic service.', async () => {
       const { getService } = await import('@esri/arcgis-rest-feature-service');
@@ -396,16 +403,23 @@ describe('Feature layer unit tests', () => {
   });
 
   describe('Supports layer creation using item IDs', () => {
-    test('Accepts an item ID and portal URL in the constructor, and the portal URL defaults to arcgis.com.', () => {
+    test('Accepts an item ID and portal URL in the constructor, and the portal URL defaults to arcgis.com.', async () => {
       const mockId = '44299709cce447ea99014ff1e3bf8505';
       // Default portal URL
       const featureLayer = new FeatureLayer({
         itemId: mockId
       });
-      expect(featureLayer._inputType).toBe('ItemId');
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
+      await featureLayer.initialize();
       expect(featureLayer._itemInfo).toEqual({
         itemId: mockId,
-        portalUrl: 'https://www.arcgis.com/sharing/rest'
+        portalUrl: 'https://www.arcgis.com/sharing/rest',
+        accessInformation: 'Access information from item info.',
+        title: 'Trails',
+        description: 'Item description.',
+        access: 'public',
+        orgId: 'V6ZHFr6zdgNZuVG0',
+        licenseInfo: trailsMock.itemRaw.licenseInfo,
       });
 
       // Custom portal URL
@@ -413,17 +427,26 @@ describe('Feature layer unit tests', () => {
         itemId: mockId,
         portalUrl: 'https://my-custom-portal.com/items'
       });
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
+      await featureLayer2.initialize();
       expect(featureLayer2._itemInfo).toEqual({
         itemId: mockId,
-        portalUrl: 'https://my-custom-portal.com/items'
+        portalUrl: 'https://my-custom-portal.com/items',
+        accessInformation: 'Access information from item info.',
+        title: 'Trails',
+        description: 'Item description.',
+        access: 'public',
+        orgId: 'V6ZHFr6zdgNZuVG0',
+        licenseInfo: trailsMock.itemRaw.licenseInfo,
       });
     });
-    test('Throws if the item ID format is invalid', () => {
-      expect(() => {
+    test('Throws if the item ID format is invalid', async () => {
+      await expect(async () => {
         const featureLayer = new FeatureLayer({
           itemId: 'random junk'
         });
-      }).toThrowError('Argument `itemId` is not a valid item ID.')
+        await featureLayer.initialize();
+      }).rejects.toThrowError('Argument `itemId` is not a valid item ID.')
     });
     test('Prefers an item ID over a service URL if both are provided.', () => {
       const warningSpy = vi.spyOn(console, 'warn').mockImplementation((warningText) => {});
@@ -432,7 +455,6 @@ describe('Feature layer unit tests', () => {
         url: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer'
       });
       expect(warningSpy).toHaveBeenCalledWith('Both an item ID and service URL have been passed. Only the item ID will be used.');
-      expect(featureLayer._inputType).toBe('ItemId');
       expect(featureLayer._serviceInfo).toBeUndefined();
     });
 
