@@ -7,6 +7,7 @@ import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
 import type { Map } from 'maplibre-gl';
 import { FeatureLayerSourceManager, type FeatureLayerSourceManagerOptions, type LoadingModeOptions } from './FeatureLayerSourceManager';
+import { type FeatureCollection } from 'geojson';
 // const geoJSONDefaultStyleMap = {
 //     "Point":"circle",
 //     "MultiPoint":"circle",
@@ -156,11 +157,11 @@ export class FeatureLayer extends HostedLayer {
   constructor(options: IFeatureLayerOptions) {
     super();
 
-    if (!options || !(options.itemId || options.url)) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
-
     if (options?.token) this.token = options.token;
 
     if (options?.attribution) this._customAttribution = options.attribution;
+
+    if (options?.map) this._map = options.map;
 
     if (options.itemId && options.url)
       warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
@@ -173,6 +174,9 @@ export class FeatureLayer extends HostedLayer {
       const urlType = checkServiceUrlType(options.url);
       if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
       else throw new Error('Argument `url` is not a valid feature service URL.');
+    }
+    else {
+      throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
     }
     if (options?.query) this.query = options.query;
 
@@ -223,6 +227,8 @@ export class FeatureLayer extends HostedLayer {
       queryOptions: this.query ?? undefined,
       authentication: this._authentication,
       loadingMode: this._loadingMode,
+      map: this._map ?? undefined,
+      callback: (features) => { this._updateData(sourceId, features); },
     };
 
     // Create source manager to handle data loading
@@ -230,11 +236,10 @@ export class FeatureLayer extends HostedLayer {
 
     // Initial snapshot mode load
     if (this._loadingMode === 'default' || this._loadingMode === 'snapshot') {
-      void this._featureLayerSourceManagers[sourceId]._snapshotLoad(
-        (features) => {
-          this._sources[sourceId].data = features;
-        }
-      );
+      await this._featureLayerSourceManagers[sourceId]._snapshotLoad();
+    }
+    if (this._loadingMode === 'ondemand') {
+      warn('On-demand loading mode is enabled. This layer requires access to the map, either by passing via the constructor or by using a method like addSourcesTo(map). If you are already doing this, you can ignore this message.');
     }
 
     // Create default style layer for rendering
@@ -329,9 +334,15 @@ export class FeatureLayer extends HostedLayer {
     return this;
   }
 
+  private _updateData(sourceId: string, features: FeatureCollection) {
+    this._sources[sourceId].data = features;
+  }
+
   protected _onAdd(map: Map) {
     super._onAdd(map);
-    Object.values(this._featureLayerSourceManagers).forEach(sourceManager => sourceManager.onAdd(map));
+    Object.values(this._featureLayerSourceManagers).forEach((sourceManager) => {
+      sourceManager.onAdd(map);
+    });
   }
 
   /**

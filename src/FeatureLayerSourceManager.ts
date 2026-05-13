@@ -1,4 +1,4 @@
-import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap, MercatorCoordinate, LngLatBounds } from 'maplibre-gl';
+import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap, MercatorCoordinate, LngLatBounds, type MapSourceDataEvent } from 'maplibre-gl';
 import { type GeometryLimits, type IQueryOptions, esriGeometryInfo } from './FeatureLayer';
 import { queryFeatures, type ILayerDefinition, type IQueryAllFeaturesOptions, queryAllFeatures, type IQueryFeaturesResponse } from '@esri/arcgis-rest-feature-service';
 import { getBlankFc, type RestJSAuthenticationManager, warn } from './Util';
@@ -40,10 +40,12 @@ interface GeometryProjectionResponse {
 export type LoadingModeOptions = 'default' | 'snapshot' | 'ondemand';
 
 export interface FeatureLayerSourceManagerOptions {
-  queryOptions: IQueryOptions;
+  queryOptions?: IQueryOptions;
   authentication?: RestJSAuthenticationManager;
   useStaticZoomLevel?: boolean;
   loadingMode?: LoadingModeOptions;
+  map?: MaplibreMap;
+  callback?: (data: FeatureCollection) => void;
 }
 
 type FeatureIdIndexMap = Map<string | number, boolean>;
@@ -57,7 +59,10 @@ export class FeatureLayerSourceManager {
   map: MaplibreMap = undefined as unknown as MaplibreMap;
   maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
-  private _snapshotSucceeded: boolean | undefined;
+  private _setDataCallback?: (data: FeatureCollection) => void;
+  private _onAddEvent?: (e: MapSourceDataEvent) => void;
+  private _pendingSnapshot?: Promise<boolean>;
+  private _onDemandActive?: boolean;
   private _snapshotResultRecordCount: number;
   private _onDemandResultRecordCount: number;
   private _onDemandSettings!: OnDemandSettings;
@@ -93,21 +98,21 @@ export class FeatureLayerSourceManager {
       useStaticZoomLevel: options.useStaticZoomLevel ?? false,
       loadingMode: options.loadingMode ?? 'default',
     };
+
+    if (options?.map) {
+      this.map = options.map;
+      this._onAddEvent = e => this._triggerOnAdd(e, this.geojsonSourceId);
+      this.map.on('sourcedataloading', this._onAddEvent);
+    }
+
+    if (options?.callback) this._setDataCallback = options.callback;
   }
 
   // =====================
   // Main entry points
   // =====================
 
-  /**
-   * Called by Maplibre when the source is added to the map.
-   */
-  public onAdd(map: MaplibreMap) {
-    this.map = map;
-    void this._load();
-  }
-
-  async _snapshotLoad(callback?: (data: FeatureCollection) => void): Promise<void> {
+  async _snapshotLoad(): Promise<void> {
     if (!this.layerDefinition?.geometryType) {
       throw new Error('Layer definition with geometry type undefined.');
     }
@@ -116,75 +121,79 @@ export class FeatureLayerSourceManager {
       url: this.layerUrl,
       authentication: this._options.authentication,
     };
-    this._snapshotLoading = true;
-    const exceedsLimit = await this._checkIfExceedsLimit(requestParams, geometryLimit);
-    if (!exceedsLimit) {
-      try {
-        // load with snapshot mode
-        const featureCollection = await this._loadFeatureSnapshot();
-        this._snapshotSucceeded = true;
-        this._snapshotLoading = false;
-        if (this.map) this._updateSourceData(this.map, featureCollection);
-        else if (callback) callback(featureCollection);
+    this._pendingSnapshot = new Promise((resolve) => {
+      const failMsg = 'Unable to load feature service using snapshot mode. Pass the map in the layer constructor or use a method such as addSourceTo(map) to enable on-demand loading. If you are already doing this, you can ignore this message.';
+      this._checkIfExceedsLimit(requestParams, geometryLimit).then((exceedsLimit) => {
+        if (!exceedsLimit) {
+          // load with snapshot mode
+          this._loadFeatureSnapshot().then((featureCollection) => {
+            this._updateSourceData(featureCollection, this.map);
 
+            resolve(true);
+            return;
+          }).catch((err) => {
+            // total failure
+            warn(`${err}`);
+            resolve(false);
+            return;
+          });
+        }
+        else {
+          // if force snapshot mode, fail
+          if (this._options.loadingMode === 'snapshot') {
+            throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
+          }
+          warn(failMsg);
+          resolve(false);
+          return;
+        }
+      }).catch((e) => {
+        warn(failMsg);
+        resolve(false);
         return;
-      }
-      catch (err) {
-        // total failure
-        warn('Unable to load using snapshot mode. Pass the map in the layer constructor or use a Maplibre ArcGIS method such as addSourceTo(map) to enable on-demand loading.');
-        // throw new Error(`Unable to load using snapshot mode: ${err}`);
-        this._snapshotSucceeded = false;
-        this._snapshotLoading = false;
-        return;
-      }
+      });
+    });
+    await this._pendingSnapshot; // awaiting results here for backwards compatibility
+    return;
+  }
+
+  private _triggerOnAdd(event: MapSourceDataEvent, sourceId: string) {
+    if (event.sourceId === sourceId) {
+      console.log('Adding this source ID to map via trigger:', event.sourceId);
+      this.onAdd(this.map);
     }
-    else {
-      // if force snapshot mode, fail
-      if (this._options.loadingMode === 'snapshot') {
-        throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
-      }
-      this._snapshotSucceeded = false;
-      this._snapshotLoading = false;
-      // else, fall back to on-demand
-      return;
-    }
+  }
+
+  /**
+   * Called by Maplibre when the source is added to the map.
+   */
+  public onAdd(map: MaplibreMap) {
+    this.map = map;
+    void this.load();
+
+    if (this._onAddEvent) this.map.off('sourcedataloading', this._onAddEvent);
   }
 
   /**
    * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
    */
-  private async _load() {
+  public async load() {
     const loadingMode = this._options.loadingMode;
     const defaultOrSnapshot = loadingMode === 'default' || loadingMode === 'snapshot';
     const defaultOrOnDemand = loadingMode === 'default' || loadingMode === 'ondemand';
 
-    if (!this.map) throw new Error('Main loading method requires a map');
+    if (!this.map) throw new Error('Feature service loading requires a map.');
 
     // load snapshot mode if specified and under geometry limits
     if (defaultOrSnapshot) {
       // If snapshot mode succeeded on initialization, don't need anything else
-      if (this._snapshotSucceeded) return;
-
-      // if (this._snapshotLoading) await ... // TODO
-      // Do we still need this?
-      if (this._snapshotSucceeded !== false) await this._snapshotLoad();
+      const snapshotSucceeded = await Promise.resolve(this._pendingSnapshot);
+      if (snapshotSucceeded) return;
     }
 
     // fall back to on demand loading
     if (defaultOrOnDemand) {
-      this._onDemandSettings = {
-        maxTolerance: 156543, // meters per pixel at zoom level 0
-        staticZoomLevel: 7,
-        minZoom: 0,
-        maxZoom: 23,
-      };
-
-      // Use service bounds
-      this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
-      if (this.layerDefinition?.extent) this._setMaxExtentFromLayerExtent(this.layerDefinition.extent);
-      this._bindLoadFeaturesToMoveEndEvent();
-      this._clearTiles();
-      void this._loadFeaturesOnDemand();
+      this._startOnDemand();
       return;
     }
     throw new Error('Fatal error: unable to load features.');
@@ -212,6 +221,27 @@ export class FeatureLayerSourceManager {
     return featureCollection;
   }
 
+  private _startOnDemand() {
+    if (this._onDemandActive) return;
+
+    this._onDemandActive = true; // Don't run on-demand again if loading has already started
+
+    this._onDemandSettings = {
+      maxTolerance: 156543, // meters per pixel at zoom level 0
+      staticZoomLevel: 7,
+      minZoom: 0,
+      maxZoom: 23,
+    };
+
+    // Use service bounds
+    this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
+    if (this.layerDefinition?.extent) this._setMaxExtentFromLayerExtent(this.layerDefinition.extent);
+    this._bindLoadFeaturesToMoveEndEvent();
+    this._clearTiles();
+    void this._loadFeaturesOnDemand();
+    return;
+  }
+
   /**
    * Loads features on demand for visible tiles.
    */
@@ -230,13 +260,13 @@ export class FeatureLayerSourceManager {
     this._filterRequestedTiles(tilesToRequestAtZoomLevel, tileIndexAtZoomLevel);
 
     if (tilesToRequestAtZoomLevel.length === 0) {
-      this._updateSourceData(this.map, featureCollectionAtZoomLevel);
+      this._updateSourceData(featureCollectionAtZoomLevel, this.map);
       return;
     }
 
     const tolerance = this._calculateTolerance(zoomLevel);
     await this._loadTiles(tilesToRequestAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel);
-    this._updateSourceData(this.map, featureCollectionAtZoomLevel);
+    this._updateSourceData(featureCollectionAtZoomLevel, this.map);
   }
 
   /**
@@ -401,12 +431,18 @@ export class FeatureLayerSourceManager {
     return exceedsLimitResponse.features[0].attributes.exceedslimit === 1;
   }
 
-  private _updateSourceData(map: MaplibreMap, fc: FeatureCollection): void {
-    const source: GeoJSONSource | undefined = map.getSource(this.geojsonSourceId);
-    if (source) {
-      source.setData(fc);
-      return;
+  private _updateSourceData(fc: FeatureCollection, map?: MaplibreMap): void {
+    if (map) {
+      const source: GeoJSONSource | undefined = this.map.getSource(this.geojsonSourceId);
+      if (source) {
+        source.setData(fc);
+      }
     }
+    if (this._setDataCallback) {
+      this._setDataCallback(fc);
+    }
+    return;
+    // TODO update internal _source value as well -- move this to map
   }
 
   // =====================

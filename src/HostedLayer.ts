@@ -68,6 +68,8 @@ export interface IHostedLayerOptions {
    */
   portalUrl?: string;
   attribution?: string;
+
+  map?: Map;
 }
 
 /**
