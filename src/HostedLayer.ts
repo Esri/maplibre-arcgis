@@ -160,21 +160,21 @@ export abstract class HostedLayer {
   /**
    * Retrieves the sources for the hosted layer.
    */
-  get sources(): Readonly<{ [_: string]: SupportedSourceSpecification }> {
+  public get sources(): Readonly<{ [_: string]: SupportedSourceSpecification }> {
     return Object.freeze(this._sources);
   }
 
   /**
    * Sets the sources for the hosted layer.
    */
-  set sources(value: { [_: string]: SupportedSourceSpecification }) {
+  public set sources(value: { [_: string]: SupportedSourceSpecification }) {
     throwReadOnlyError('sources');
   }
 
   /**
    * Retrieves the source for the hosted layer.
    */
-  get source(): Readonly<SupportedSourceSpecification> | undefined {
+  public get source(): Readonly<SupportedSourceSpecification> | undefined {
     const sourceIds = Object.keys(this._sources);
     if (sourceIds.length !== 1) return undefined;
 
@@ -184,14 +184,14 @@ export abstract class HostedLayer {
   /**
    * Sets the source for the hosted layer.
    */
-  set source(_) {
+  public set source(_) {
     throwReadOnlyError('source');
   }
 
   /**
    * Retrieves the source ID for the hosted layer.
    */
-  get sourceId(): Readonly<string> | undefined {
+  public get sourceId(): Readonly<string> | undefined {
     const sourceIds = Object.keys(this._sources);
     if (sourceIds.length !== 1) return undefined;
 
@@ -201,34 +201,34 @@ export abstract class HostedLayer {
   /**
    * Sets the source ID for the hosted layer.
    */
-  set sourceId(_) {
+  public set sourceId(_) {
     throwReadOnlyError('sourceId');
   }
 
   /**
    * Retrieves the layers for the hosted layer.
    */
-  get layers(): Readonly<LayerSpecification[]> {
+  public get layers(): Readonly<LayerSpecification[]> {
     return Object.freeze(this._layers);
   }
 
   /**
    * Sets the layers for the hosted layer.
    */
-  set layers(_) {
+  public set layers(_) {
     throwReadOnlyError('layers');
   }
 
   /**
    * Retrieves the layer for the hosted layer.
    */
-  get layer(): Readonly<LayerSpecification> | undefined {
+  public get layer(): Readonly<LayerSpecification> | undefined {
     if (this._layers.length !== 1) return undefined;
 
     return Object.freeze(this._layers[0]);
   }
 
-  set layer(_) {
+  public set layer(_) {
     throwReadOnlyError('layer');
   }
 
@@ -245,7 +245,7 @@ export abstract class HostedLayer {
    * @param oldId - The source ID to be changed.
    * @param newId - The new source ID.
    */
-  setSourceId(oldId: string, newId: string): void {
+  public setSourceId(oldId: string, newId: string): void {
     // Update ID of source
     const newSources = structuredClone(this._sources);
     newSources[newId] = newSources[oldId];
@@ -264,7 +264,7 @@ export abstract class HostedLayer {
    * @param sourceId - The ID of the maplibre style source.
    * @param attribution - Custom attribution text.
    */
-  setAttribution(sourceId: string, attribution: string): void {
+  public setAttribution(sourceId: string, attribution: string): void {
     if (!sourceId || !attribution) throw new Error('Must provide a source ID and attribution');
     const newSources = structuredClone(this._sources);
     newSources[sourceId].attribution = attribution;
@@ -275,7 +275,7 @@ export abstract class HostedLayer {
    * Returns a mutable copy of the specified source.
    * @param sourceId - The ID of the maplibre style source to copy.
    */
-  copySource(sourceId: string): SupportedSourceSpecification {
+  public copySource(sourceId: string): SupportedSourceSpecification {
     return structuredClone(this._sources[sourceId]);
   }
 
@@ -283,7 +283,7 @@ export abstract class HostedLayer {
    * Returns a mutable copy of the specified layer
    * @param layerId - The ID of the maplibre style layer to copy
    */
-  copyLayer(layerId: string): LayerSpecification {
+  public copyLayer(layerId: string): LayerSpecification {
     for (let i = 0; i < this._layers.length; i++) {
       if (this._layers[i].id == layerId) return structuredClone(this._layers[i]);
     }
@@ -296,7 +296,7 @@ export abstract class HostedLayer {
    * @param options - Optional transform functions for setting properties of sources and layers.
    * @returns this
    */
-  addSourcesAndLayersTo(map: Map, options?: {
+  public addSourcesAndLayersTo(map: Map, options?: {
     transformSources?: TransformSourceFunction;
     transformLayers?: TransformLayerFunction;
   }): HostedLayer {
@@ -322,7 +322,7 @@ export abstract class HostedLayer {
    * @param sourceOptions - Properties to pass to the added source
    * @returns this
    */
-  addSourceTo(map: Map, sourceOptions?: SupportedSourceOptions): HostedLayer {
+  public addSourceTo(map: Map, sourceOptions?: SupportedSourceOptions): HostedLayer {
     if (!this._ready) throw new Error('Cannot add source to map: Class is not initialized.');
 
     const sourceIds = Object.keys(this._sources);
@@ -352,7 +352,7 @@ export abstract class HostedLayer {
    * @param transformSources - Transform function to set properties of one or multiple sources
    * @returns this
    */
-  addSourcesTo(map: Map, transformSources?: TransformSourceFunction): HostedLayer {
+  public addSourcesTo(map: Map, transformSources?: TransformSourceFunction): HostedLayer {
     if (!this._ready) throw new Error('Cannot add sources to map: Class is not initialized.');
 
     Object.keys(this._sources).forEach((sourceId) => {
@@ -370,7 +370,7 @@ export abstract class HostedLayer {
    * @param layerOptions - LayerSpecification object to override the default style
    * @returns this
    */
-  addLayerTo(map: Map, layerOptions?: SupportedLayerOptions): HostedLayer {
+  public addLayerTo(map: Map, layerOptions?: SupportedLayerOptions): HostedLayer {
     if (!this._ready) throw new Error('Cannot add layer to map: Class is not initialized.');
     if (this._layers.length === 0) throw new Error('Cannot add layer: Class has zero layers.');
     if (this._layers.length > 1) throw new Error('Class contains multiple layers: use plural `addLayersTo` method instead.');
@@ -394,7 +394,7 @@ export abstract class HostedLayer {
    * @param map - A maplibre map object
    * @returns
    */
-  addLayersTo(map: Map, transformLayers?: TransformLayerFunction): HostedLayer {
+  public addLayersTo(map: Map, transformLayers?: TransformLayerFunction): HostedLayer {
     if (!this._ready) throw new Error('Cannot add layers to map: Class is not initialized.');
 
     this._layers.forEach((layer) => {
