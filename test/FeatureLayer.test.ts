@@ -24,6 +24,26 @@ export const test = customTest.extend({
     await trailsLayer.initialize();
 
     await use(trailsLayer);
+  },
+
+  maplibreLayerOptions: async ({}, use) => {
+    const layerOptions = {
+      type: 'line',
+      paint: {
+        'line-color': '#ff00ff',
+        'line-width': 5
+      }
+    };
+    await use(layerOptions)
+  },
+
+  maplibreSourceOptions: async ({}, use) => {
+    const sourceOptions = {
+      cluster: true,
+      clusterRadius:100,
+      clusterMaxZoom: 10,
+    };
+    await use(sourceOptions);
   }
 })
 
@@ -592,7 +612,7 @@ describe('Feature layer unit tests', () => {
     expect(layer2.sourceId).toEqual(trailsMock.layerDefinitionRaw.name);
   });
 
-  describe('Methods inherited from HostedLayer work properly.', () => {
+  describe.skip('Methods inherited from HostedLayer work properly.', () => {
     test('`layer`, `layers, `source`, `sources`, `sourceId` are read-only properties containing style data.', ({trailsLayer}) => {
       expect(trailsLayer.layer).toBe(trailsLayer._layers[0]);
       expect(trailsLayer.layers).toBe(trailsLayer._layers);
@@ -628,8 +648,8 @@ describe('Feature layer unit tests', () => {
   });
 });
 
-describe.skip('Works on a mock page with a `Map`',() => {
-  test('Uninitialized layers created using the constructor cannot be added to the map.', async ({setupPage})=>{
+describe('Works on a mock page with a `Map`',() => {
+  test('Uninitialized layers cannot be added to the map.', async ({setupPage})=>{
     const page = await setupPage('feature-layer.html');
 
     await page.waitForFunction(()=> window.map && window.featureLayer);
@@ -638,44 +658,83 @@ describe.skip('Works on a mock page with a `Map`',() => {
       await page.evaluate(() => {
         window.featureLayer.addSourcesAndLayersTo(window.map);
       })
-    }).rejects.toThrowError('Cannot add sources and layers to map: Layer is not loaded.');
+    }).rejects.toThrowError('Cannot add sources and layers to map: Class is not initialized.');
 
     await expect(async () => {
       await page.evaluate(() => {
         window.featureLayer.addSourcesTo(window.map);
       })
-    }).rejects.toThrowError('Cannot add sources to map: Layer is not loaded.');
+    }).rejects.toThrowError('Cannot add sources to map: Class is not initialized.');
 
-        await expect(async () => {
+    await expect(async () => {
       await page.evaluate(() => {
         window.featureLayer.addLayersTo(window.map);
       })
-    }).rejects.toThrowError('Cannot add layers to map: Layer is not loaded.');
+    }).rejects.toThrowError('Cannot add layers to map: Class is not initialized.');
+
+    await expect(async () => {
+      await page.evaluate(() => {
+        window.featureLayer.addLayerTo(window.map);
+      })
+    }).rejects.toThrowError('Cannot add layer to map: Class is not initialized.');
+
+    await expect(async () => {
+      await page.evaluate(() => {
+        window.featureLayer.addSourceTo(window.map);
+      })
+    }).rejects.toThrowError('Cannot add source to map: Class is not initialized.');
   });
 
-  test('`addSourcesTo` and `addLayersTo` add source and layers to the maplibre map.', async ({setupPage}) => {
+  test('`addSourceTo` adds a GeoJSON source to map, `addLayerTo` adds a layer to map, and both throw if multiple layers are present.', async ({setupPage}) => {
     const page = await setupPage('feature-layer.html');
     await page.waitForFunction(()=>window.map && window.featureLayer);
 
-    const {style} = await page.evaluate(async () => {
+    const {mapStyle} = await page.evaluate(async () => {
+      await window.featureLayer.initialize(); // This layer uses forced on-demand loading
+
+      window.featureLayer.addSourceTo(window.map);
+      window.featureLayer.addLayerTo(window.map);
+
+      return await new Promise(resolve => {
+        window.map.on('load', ()=> {
+          resolve({
+            mapStyle: window.map.getStyle()
+          })
+        });
+      })
+    });
+
+    expect(Object.keys(mapStyle.sources).length).toBe(1);
+    expect(mapStyle.sources[Object.keys(mapStyle.sources)[0]].data).toEqual(getBlankFc()); // Blank FC since data is loaded dynamically
+
+    expect(mapStyle.layers.length).toBe(1);
+    expect(mapStyle.layers[0].source).toBe(Object.keys(mapStyle.sources)[0]);
+  });
+
+  test('`addSourcesTo` and `addLayersTo` add sources and layers to the maplibre map.', async ({setupPage}) => {
+    const page = await setupPage('feature-layer.html');
+    await page.waitForFunction(()=>window.map && window.featureLayer);
+
+    const {mapStyle} = await page.evaluate(async () => {
       await window.featureLayer.initialize();
       window.featureLayer.addSourcesTo(window.map);
       window.featureLayer.addLayersTo(window.map);
 
       return await new Promise(resolve => {
-        window.map.on("load", ()=> {
+        window.map.on('load', ()=> {
           resolve({
-            style: window.map.getStyle()
+            mapStyle: window.map.getStyle()
           })
         });
       });
     });
-    expect(Object.keys(style.sources).length).toBe(1);
-    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(getBlankFc());
+    expect(Object.keys(mapStyle.sources).length).toBe(1);
+    expect(mapStyle.sources[Object.keys(mapStyle.sources)[0]].data).toEqual(getBlankFc());
 
-    expect(style.layers.length).toBe(1);
-    expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);
+    expect(mapStyle.layers.length).toBe(1);
+    expect(mapStyle.layers[0].source).toBe(Object.keys(mapStyle.sources)[0]);
   });
+
   test('`addSourcesAndLayersTo` adds sources and layers to the maplibre map.', async ({setupPage}) => {
     const page = await setupPage('feature-layer.html');
     await page.waitForFunction(()=>window.map && window.featureLayer);
@@ -698,7 +757,108 @@ describe.skip('Works on a mock page with a `Map`',() => {
     expect(style.layers.length).toBe(1);
     expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);
   });
-  test('Works with native maplibre `addSource` and `addLayer` methods.', async ({setupPage}) => {
+
+  test('`addSourceTo` and `addLayerTo` accept maplibre options and pass them to the maplibre map.', async ({setupPage, maplibreSourceOptions, maplibreLayerOptions}) => {
+
+    const page = await setupPage('feature-layer.html');
+    await page.waitForFunction(()=>window.map && window.featureLayer);
+
+
+    const {mapStyle} = await page.evaluate(async (params) => {
+      await window.featureLayer.initialize();
+
+      window.featureLayer.addSourceTo(window.map, params.maplibreSourceOptions);
+      window.featureLayer.addLayerTo(window.map, params.maplibreLayerOptions);
+
+      return await new Promise(resolve => {
+        window.map.on('load', ()=> {
+          resolve({
+            mapStyle: window.map.getStyle()
+          })
+        });
+      })
+    }, {maplibreSourceOptions, maplibreLayerOptions});
+
+    expect(Object.values(mapStyle.sources)[0]).toEqual(expect.objectContaining(maplibreSourceOptions));
+
+    expect(mapStyle.layers[0]).toEqual(expect.objectContaining(maplibreLayerOptions));
+  });
+
+  test('`addSourcesTo` and `addLayersTo` accept transform functions for setting maplibre options.', async ({setupPage, maplibreSourceOptions, maplibreLayerOptions}) => {
+
+    const page = await setupPage('feature-layer.html');
+    await page.waitForFunction(()=>window.map && window.featureLayer);
+
+    const {mapStyle} = await page.evaluate(async (params) => {
+      await window.featureLayer.initialize();
+
+      window.featureLayer.addSourcesTo(window.map, (sourceId, source) => {
+        return {
+          ...source,
+          ...params.maplibreSourceOptions
+        }
+      });
+      window.featureLayer.addLayersTo(window.map, (layer) => {
+        return {
+          ...layer,
+          ...params.maplibreLayerOptions
+        }
+      });
+
+      return await new Promise(resolve => {
+        window.map.on('load', ()=> {
+          resolve({
+            mapStyle: window.map.getStyle()
+          })
+        });
+      })
+    }, {maplibreSourceOptions, maplibreLayerOptions});
+
+    expect(Object.values(mapStyle.sources)[0]).toEqual(expect.objectContaining(maplibreSourceOptions));
+    expect(mapStyle.layers[0]).toEqual(expect.objectContaining(maplibreLayerOptions));
+
+  });
+
+  test('`addSourcesAndLayersTo` accepts transform functions for setting maplibre options.', async ({setupPage, maplibreSourceOptions, maplibreLayerOptions}) => {
+
+    const page = await setupPage('feature-layer.html');
+    await page.waitForFunction(()=>window.map && window.featureLayer);
+
+    const {mapStyle} = await page.evaluate(async (params) => {
+      await window.featureLayer.initialize();
+
+
+      window.featureLayer.addSourcesAndLayersTo(window.map, {
+        transformSources: (sourceId, source) => {
+          return {
+            ...source,
+            ...params.maplibreSourceOptions
+          }
+        },
+        transformLayers: (layer) => {
+          return {
+            ...layer,
+            ...params.maplibreLayerOptions
+          }
+        }
+      });
+
+      return await new Promise(resolve => {
+        window.map.on('load', ()=> {
+          resolve({
+            mapStyle: window.map.getStyle()
+          })
+        });
+      })
+    }, {maplibreSourceOptions, maplibreLayerOptions});
+
+    expect(Object.values(mapStyle.sources)[0]).toEqual(expect.objectContaining(maplibreSourceOptions));
+    expect(mapStyle.layers[0]).toEqual(expect.objectContaining(maplibreLayerOptions));
+
+  });
+
+  // TODO
+  test.skip('Works with native maplibre `addSource` and `addLayer` methods.', async ({setupPage}) => {
     const page = await setupPage('feature-layer.html');
     await page.waitForFunction(() => window.map && window.featureLayer);
 

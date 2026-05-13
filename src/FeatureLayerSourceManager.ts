@@ -165,7 +165,7 @@ export class FeatureLayerSourceManager {
       // If snapshot mode succeeded on initialization, don't need anything else
       if (this._snapshotSucceeded) return;
 
-      if (this._snapshotLoading) await ... // TODO
+      // if (this._snapshotLoading) await ... // TODO
       // Do we still need this?
       if (this._snapshotSucceeded !== false) await this._snapshotLoad();
     }

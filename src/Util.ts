@@ -23,7 +23,6 @@ export const checkServiceUrlType = (serviceUrl: string): SupportedServiceType | 
       return 'VectorTileService';
     };
 
-    const mapServiceTest = //.
     const featureServiceTest = /\/FeatureServer\/?([0-9]*\/?)?$/.exec(serviceUrl);
     if (featureServiceTest) {
       if (featureServiceTest.length == 2 && featureServiceTest[1]) {

@@ -373,12 +373,12 @@ export abstract class HostedLayer {
     if (this._layers.length === 0) throw new Error('Cannot add layer: Class has zero layers.');
     if (this._layers.length > 1) throw new Error('Class contains multiple layers: use plural `addLayersTo` method instead.');
 
-    const layer = layerOptions ?? this._layers[0];
+    let layer = this._layers[0];
     if (layerOptions) {
-      if (this._layers[0].source) layer.source = this._layers[0].source;
-      if (this._layers[0]['source-layer']) layer['source-layer'] = this._layers[0]['source-layer'];
-
-      if (!layerOptions.id) layerOptions.id = this._layers[0].id;
+      layer = {
+        ...layer,
+        ...layerOptions,
+      };
     }
 
     map.addLayer(layer);
@@ -402,6 +402,31 @@ export abstract class HostedLayer {
     this._onAdd(map);
     return this;
   }
+
+  // TODO - decide if we want this
+  // /**
+  //  * Removes a source from the maplibre map
+  //  * @param map A maplibre map
+  //  * @param sourceId The source ID to remove. Optional if the service only contains a single source.
+  //  */
+  // removeSourceFrom(map: Map, sourceId?: string);
+  // /**
+  //  * Removes all sources from the maplibre map
+  //  * @param map A maplibre map
+  //  */
+  // removeSourcesFrom(map: Map);
+
+  // /**
+  //  * Removes a layer from the maplibre map
+  //  * @param map A maplibre map
+  //  * @param layerId The layer ID to remove. Optional if the service only contains a single layer.
+  //  */
+  // removeLayerFrom(map: Map, layerId: string);
+  // /**
+  //  * Removes all associated layers from the maplibre map
+  //  * @param map A maplibre map
+  //  */
+  // removeLayersFrom(map: Map);
 
   /**
    * Initializes the layer with data from ArcGIS. Called to instantiate a class.
