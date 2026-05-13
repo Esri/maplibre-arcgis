@@ -158,6 +158,13 @@ export abstract class HostedLayer {
   protected _map?: Map;
 
   /**
+   * Sets the maplibre map associated with the hosted layer.
+   */
+  public setMap(map: Map) {
+    this._map = map;
+  }
+
+  /**
    * Retrieves the sources for the hosted layer.
    */
   public get sources(): Readonly<{ [_: string]: SupportedSourceSpecification }> {
