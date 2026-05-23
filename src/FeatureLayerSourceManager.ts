@@ -1,9 +1,9 @@
-import { type MapLibreEvent, type GeoJSONSource, type Map as MaplibreMap, MercatorCoordinate, LngLatBounds, type MapSourceDataEvent } from 'maplibre-gl';
+import { type GeoJSONSource, type Map as MaplibreMap, MercatorCoordinate, LngLatBounds, type MapSourceDataEvent } from 'maplibre-gl';
 import { type GeometryLimits, type IQueryOptions, esriGeometryInfo } from './FeatureLayer';
 import { queryFeatures, type ILayerDefinition, type IQueryAllFeaturesOptions, queryAllFeatures, type IQueryFeaturesResponse } from '@esri/arcgis-rest-feature-service';
 import { getBlankFc, type RestJSAuthenticationManager, warn } from './Util';
 import { bboxToTile, getChildren, tileToQuadkey, tileToBBOX, type Tile } from '@mapbox/tilebelt';
-import { type IGeometry, type IExtent } from '@esri/arcgis-rest-request';
+import { type IExtent } from '@esri/arcgis-rest-request';
 import { type BBox, type FeatureCollection } from 'geojson';
 
 // =====================
@@ -19,24 +19,6 @@ interface OnDemandSettings {
   maxZoom: number;
 }
 
-/** Envelope geometry for bounding box operations. */
-interface IEnvelope extends IGeometry {
-  xmin: number;
-  ymin: number;
-  xmax: number;
-  ymax: number;
-  zmin?: number;
-  zmax?: number;
-  mmin?: number;
-  mmax?: number;
-  idmin?: number;
-  idmax?: number;
-}
-
-interface GeometryProjectionResponse {
-  geometries: IGeometry[];
-}
-
 export type LoadingModeOptions = 'default' | 'snapshot' | 'ondemand';
 
 export interface FeatureLayerSourceManagerOptions {
@@ -45,7 +27,6 @@ export interface FeatureLayerSourceManagerOptions {
   useStaticZoomLevel?: boolean;
   loadingMode?: LoadingModeOptions;
   map?: MaplibreMap;
-  callback?: (data: FeatureCollection) => void;
 }
 
 type FeatureIdIndexMap = Map<string | number, boolean>;
@@ -59,7 +40,7 @@ export class FeatureLayerSourceManager {
   map: MaplibreMap = undefined as unknown as MaplibreMap;
   maplibreSource: GeoJSONSource = undefined as unknown as GeoJSONSource;
   token?: string;
-  private _setDataCallback?: (data: FeatureCollection) => void;
+  data: GeoJSON.GeoJSON;
   private _onAddEvent?: (e: MapSourceDataEvent) => void;
   private _pendingSnapshot?: Promise<boolean>;
   private _onDemandActive?: boolean;
@@ -85,6 +66,8 @@ export class FeatureLayerSourceManager {
     this.layerUrl = layerUrl;
     this.layerDefinition = layerDefinition;
 
+    this.data = getBlankFc();
+
     // @ts-expect-error - supportsMaxRecordCountFactor is not included in ILayerDefinition yet
     this._maxRecordCountFactor = this.layerDefinition.advancedQueryCapabilities?.supportsMaxRecordCountFactor ? 4 : 1;
 
@@ -104,8 +87,6 @@ export class FeatureLayerSourceManager {
       this._onAddEvent = e => this._triggerOnAdd(e, this.geojsonSourceId);
       this.map.on('sourcedataloading', this._onAddEvent);
     }
-
-    if (options?.callback) this._setDataCallback = options.callback;
   }
 
   // =====================
@@ -438,9 +419,7 @@ export class FeatureLayerSourceManager {
         source.setData(fc);
       }
     }
-    if (this._setDataCallback) {
-      this._setDataCallback(fc);
-    }
+    this.data = fc;
     return;
   }
 
