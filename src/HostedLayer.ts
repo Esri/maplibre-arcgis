@@ -53,7 +53,7 @@ type SupportedLayerOptions = Omit<LayerSpecification,
   | 'source-layer'
 >;
 
-type TransformLayerFunction = (layer: LayerSpecification) => LayerSpecification;
+type TransformLayerFunction = (layer: LayerSpecification) => SupportedLayerOptions;
 
 /**
  * Options accepted by all instances of HostedLayer.
@@ -168,7 +168,7 @@ export abstract class HostedLayer {
    * Retrieves the sources for the hosted layer.
    */
   public get sources(): Readonly<{ [_: string]: SupportedSourceSpecification }> {
-    return Object.freeze(this._sources);
+    return Object.freeze(structuredClone(this._sources));
   }
 
   /**
@@ -185,7 +185,7 @@ export abstract class HostedLayer {
     const sourceIds = Object.keys(this._sources);
     if (sourceIds.length !== 1) return undefined;
 
-    return Object.freeze(this._sources[sourceIds[0]]);
+    return Object.freeze(structuredClone(this._sources[sourceIds[0]]));
   }
 
   /**
@@ -202,7 +202,7 @@ export abstract class HostedLayer {
     const sourceIds = Object.keys(this._sources);
     if (sourceIds.length !== 1) return undefined;
 
-    return Object.freeze(sourceIds[0]);
+    return Object.freeze(structuredClone(sourceIds[0]));
   }
 
   /**
@@ -216,7 +216,7 @@ export abstract class HostedLayer {
    * Retrieves the layers for the hosted layer.
    */
   public get layers(): Readonly<LayerSpecification[]> {
-    return Object.freeze(this._layers);
+    return Object.freeze(structuredClone(this._layers));
   }
 
   /**
@@ -232,7 +232,7 @@ export abstract class HostedLayer {
   public get layer(): Readonly<LayerSpecification> | undefined {
     if (this._layers.length !== 1) return undefined;
 
-    return Object.freeze(this._layers[0]);
+    return Object.freeze(structuredClone(this._layers[0]));
   }
 
   public set layer(_) {
@@ -411,31 +411,6 @@ export abstract class HostedLayer {
     this._onAdd(map);
     return this;
   }
-
-  // TODO - decide if we want this
-  // /**
-  //  * Removes a source from the maplibre map
-  //  * @param map A maplibre map
-  //  * @param sourceId The source ID to remove. Optional if the service only contains a single source.
-  //  */
-  // removeSourceFrom(map: Map, sourceId?: string);
-  // /**
-  //  * Removes all sources from the maplibre map
-  //  * @param map A maplibre map
-  //  */
-  // removeSourcesFrom(map: Map);
-
-  // /**
-  //  * Removes a layer from the maplibre map
-  //  * @param map A maplibre map
-  //  * @param layerId The layer ID to remove. Optional if the service only contains a single layer.
-  //  */
-  // removeLayerFrom(map: Map, layerId: string);
-  // /**
-  //  * Removes all associated layers from the maplibre map
-  //  * @param map A maplibre map
-  //  */
-  // removeLayersFrom(map: Map);
 
   /**
    * Initializes the layer with data from ArcGIS. Called to instantiate a class.

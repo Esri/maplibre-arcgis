@@ -75,7 +75,7 @@ export interface IFeatureLayerOptions extends IHostedLayerOptions {
   itemId?: string;
   url?: string;
   query?: IQueryOptions;
-  _loadingMode?: LoadingModeOptions;
+  loadingMode?: LoadingModeOptions;
 }
 
 /**
@@ -133,7 +133,7 @@ export class FeatureLayer extends HostedLayer {
   private _inputType: SupportedInputTypes;
 
   query?: IQueryOptions;
-  _loadingMode: LoadingModeOptions;
+  loadingMode: LoadingModeOptions;
 
   /**
    * Creates a new FeatureLayer instance. You must provide either an ArcGIS item ID or a feature service URL. If both are provided, the item ID will be used and the URL ignored. Query parameters are only supported when constructing with a feature layer URL.
@@ -193,7 +193,7 @@ export class FeatureLayer extends HostedLayer {
       };
     };
 
-    this._loadingMode = options._loadingMode ? options._loadingMode : 'default';
+    this.loadingMode = options.loadingMode ? options.loadingMode : 'default';
   }
 
   // Initializes an individual layer of the feature service with a source, source manager, and style layer
@@ -226,7 +226,7 @@ export class FeatureLayer extends HostedLayer {
     const options: FeatureLayerSourceManagerOptions = {
       queryOptions: this.query ?? undefined,
       authentication: this._authentication,
-      loadingMode: this._loadingMode,
+      loadingMode: this.loadingMode,
       map: this._map ?? undefined,
       callback: (features) => { this._updateData(sourceId, features); },
     };
@@ -235,10 +235,10 @@ export class FeatureLayer extends HostedLayer {
     this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, layerUrl, layerInfo, options);
 
     // Initial snapshot mode load
-    if (this._loadingMode === 'default' || this._loadingMode === 'snapshot') {
+    if (this.loadingMode === 'default' || this.loadingMode === 'snapshot') {
       await this._featureLayerSourceManagers[sourceId]._snapshotLoad();
     }
-    if (this._loadingMode === 'ondemand') {
+    if (this.loadingMode === 'ondemand' && !this._map) {
       warn('On-demand loading mode is enabled. This layer requires access to the map, either by passing via the constructor or by using a method like addSourcesTo(map). If you are already doing this, you can ignore this message.');
     }
 

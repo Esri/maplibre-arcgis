@@ -612,7 +612,7 @@ describe('Feature layer unit tests', () => {
     expect(layer2.sourceId).toEqual(trailsMock.layerDefinitionRaw.name);
   });
 
-  describe.skip('Methods inherited from HostedLayer work properly.', () => {
+  describe('Methods inherited from HostedLayer work properly.', () => {
     test('`layer`, `layers, `source`, `sources`, `sourceId` are read-only properties containing style data.', ({trailsLayer}) => {
       expect(trailsLayer.layer).toBe(trailsLayer._layers[0]);
       expect(trailsLayer.layers).toBe(trailsLayer._layers);
@@ -858,7 +858,7 @@ describe('Works on a mock page with a `Map`',() => {
   });
 
   // TODO
-  test.skip('Works with native maplibre `addSource` and `addLayer` methods.', async ({setupPage}) => {
+  test('Works with native maplibre `addSource` and `addLayer` methods.', async ({setupPage}) => {
     const page = await setupPage('feature-layer.html');
     await page.waitForFunction(() => window.map && window.featureLayer);
 

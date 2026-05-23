@@ -159,7 +159,6 @@ export class FeatureLayerSourceManager {
 
   private _triggerOnAdd(event: MapSourceDataEvent, sourceId: string) {
     if (event.sourceId === sourceId) {
-      console.log('Adding this source ID to map via trigger:', event.sourceId);
       this.onAdd(this.map);
     }
   }
@@ -442,7 +441,6 @@ export class FeatureLayerSourceManager {
       this._setDataCallback(fc);
     }
     return;
-    // TODO update internal _source value as well -- move this to map
   }
 
   // =====================
