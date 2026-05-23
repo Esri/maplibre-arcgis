@@ -113,6 +113,12 @@ export class FeatureLayerSourceManager {
   // =====================
 
   async _snapshotLoad(): Promise<void> {
+    this._pendingSnapshot = this._attemptSnapshotLoad();
+    await this._pendingSnapshot; // awaiting results here for backwards compatibility
+    return;
+  }
+
+  private async _attemptSnapshotLoad(): Promise<boolean> {
     if (!this.layerDefinition?.geometryType) {
       throw new Error('Layer definition with geometry type undefined.');
     }
@@ -121,40 +127,35 @@ export class FeatureLayerSourceManager {
       url: this.layerUrl,
       authentication: this._options.authentication,
     };
-    this._pendingSnapshot = new Promise((resolve) => {
-      const failMsg = 'Unable to load feature service using snapshot mode. Pass the map in the layer constructor or use a method such as addSourceTo(map) to enable on-demand loading. If you are already doing this, you can ignore this message.';
-      this._checkIfExceedsLimit(requestParams, geometryLimit).then((exceedsLimit) => {
-        if (!exceedsLimit) {
-          // load with snapshot mode
-          this._loadFeatureSnapshot().then((featureCollection) => {
-            this._updateSourceData(featureCollection, this.map);
+    const failMsg = 'Unable to load feature service using snapshot mode. Pass the map in the layer constructor or use a method such as addSourceTo(map) to enable on-demand loading. If you are already doing this, you can ignore this message.';
 
-            resolve(true);
-            return;
-          }).catch((err) => {
-            // total failure
-            warn(`${err}`);
-            resolve(false);
-            return;
-          });
+    try {
+      const exceedsLimit = await this._checkIfExceedsLimit(requestParams, geometryLimit);
+
+      if (exceedsLimit) {
+        // if force snapshot mode, fail
+        if (this._options.loadingMode === 'snapshot') {
+          throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
         }
-        else {
-          // if force snapshot mode, fail
-          if (this._options.loadingMode === 'snapshot') {
-            throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
-          }
-          warn(failMsg);
-          resolve(false);
-          return;
-        }
-      }).catch((e) => {
         warn(failMsg);
-        resolve(false);
-        return;
-      });
-    });
-    await this._pendingSnapshot; // awaiting results here for backwards compatibility
-    return;
+        return false;
+      }
+
+      try {
+        const featureCollection = await this._loadFeatureSnapshot();
+        this._updateSourceData(featureCollection, this.map);
+        return true;
+      }
+      catch (err) {
+        // total failure
+        warn(`${err}`);
+        return false;
+      }
+    }
+    catch (err) {
+      warn(failMsg);
+      return false;
+    }
   }
 
   private _triggerOnAdd(event: MapSourceDataEvent, sourceId: string) {
@@ -186,7 +187,7 @@ export class FeatureLayerSourceManager {
     // load snapshot mode if specified and under geometry limits
     if (defaultOrSnapshot) {
       // If snapshot mode succeeded on initialization, don't need anything else
-      const snapshotSucceeded = await Promise.resolve(this._pendingSnapshot);
+      const snapshotSucceeded = await (this._pendingSnapshot ?? false);
       if (snapshotSucceeded) return;
     }
 
@@ -340,6 +341,7 @@ export class FeatureLayerSourceManager {
     fc: FeatureCollection
   ) {
     tileFc.features.forEach((feature) => {
+      if (!feature.id) return;
       if (!featureIdIndex.has(feature.id)) {
         fc.features.push(feature);
         featureIdIndex.set(feature.id, true);
@@ -414,7 +416,6 @@ export class FeatureLayerSourceManager {
       ...params,
       outStatistics: [
         {
-
           onStatisticField: null, // Required by REST JS but not used
           statisticType: 'exceedslimit',
           outStatisticFieldName: 'exceedslimit',
