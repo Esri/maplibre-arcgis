@@ -125,12 +125,9 @@ export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
  * parks.addSourcesAndLayersTo(map);
  * ```
  */
-export type InternalSourceSpecification = Omit<GeoJSONSourceSpecification, 'data'> & {
-  data: () => GeoJSON.GeoJSON;
-};
 
 export class FeatureLayer extends HostedLayer {
-  declare protected _sources: { [_: string]: InternalSourceSpecification };
+  declare protected _sources: { [_: string]: GeoJSONSourceSpecification };
   private _featureLayerSourceManagers: { [_: string]: FeatureLayerSourceManager };
 
   declare protected _layers: LayerSpecification[];
@@ -212,9 +209,9 @@ export class FeatureLayer extends HostedLayer {
       url: layerUrl,
       httpMethod: 'GET',
     });
-    if (!layerInfo.supportedQueryFormats?.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
-    if (!layerInfo.capabilities?.includes('Query')) throw new Error('This feature service does not support query operations.');
-    if (!layerInfo.advancedQueryCapabilities?.supportsPagination) throw new Error('This feature service does not support query pagination.');
+    if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
+    if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support query operations.');
+    if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
     if (!layerInfo.supportsExceedsLimitStatistics) throw new Error('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5');
     if (!layerInfo.geometryType || !Object.keys(esriGeometryInfo).includes(layerInfo.geometryType)) throw new Error('This feature service contains an unsupported geometry type.');
 
@@ -225,22 +222,22 @@ export class FeatureLayer extends HostedLayer {
     if (sourceId in this._sources) {
       sourceId += `/${layerInfo.id}`;
     }
+    this._sources[sourceId] = {
+      type: 'geojson',
+      attribution: this._setupAttribution(layerInfo),
+      data: getBlankFc(),
+    };
 
     const options: FeatureLayerSourceManagerOptions = {
       queryOptions: this.query ?? undefined,
       authentication: this._authentication,
       loadingMode: this.loadingMode,
       map: this._map ?? undefined,
+      callback: (features) => { this._updateData(sourceId, features); },
     };
 
     // Create source manager to handle data loading
     this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, layerUrl, layerInfo, options);
-
-    this._sources[sourceId] = {
-      type: 'geojson',
-      attribution: this._setupAttribution(layerInfo),
-      data: () => this._featureLayerSourceManagers[sourceId].data,
-    };
 
     // Initial snapshot mode load
     if (this.loadingMode === 'default' || this.loadingMode === 'snapshot') {
@@ -336,6 +333,10 @@ export class FeatureLayer extends HostedLayer {
 
     this._ready = true;
     return this;
+  }
+
+  private _updateData(sourceId: string, features: FeatureCollection) {
+    this._sources[sourceId].data = features;
   }
 
   protected _onAdd(map: Map) {
