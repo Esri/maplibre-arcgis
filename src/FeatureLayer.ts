@@ -2,7 +2,7 @@ import type { GeometryType, IGeometry, ILayerDefinition, ISpatialReference, Spat
 import { getLayer, getService } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
 import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
-import type { IHostedLayerOptions, SupportedSourceSpecification } from './HostedLayer';
+import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
 import type { Map } from 'maplibre-gl';
@@ -158,6 +158,7 @@ export class FeatureLayer extends HostedLayer {
   constructor(options: IFeatureLayerOptions) {
     super();
 
+    if (!options) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
     if (options?.token) this.token = options.token;
 
     if (options?.attribution) this._customAttribution = options.attribution;
@@ -344,27 +345,6 @@ export class FeatureLayer extends HostedLayer {
     Object.values(this._featureLayerSourceManagers).forEach((sourceManager) => {
       sourceManager.onAdd(map);
     });
-  }
-
-  public get source(): Readonly<GeoJSONSourceSpecification> | undefined {
-    const sourceIds = Object.keys(this._sources);
-    if (sourceIds.length !== 1) return undefined;
-
-    return Object.freeze(structuredClone(this.getSource(sourceIds[0])));
-  }
-
-  public get sources(): Readonly<{ [_: string]: SupportedSourceSpecification }> {
-    const sources = Object.fromEntries(
-      Object.entries(this._sources).map(([sourceId, source]) => [sourceId, this.getSource(sourceId)])
-    );
-    return Object.freeze(structuredClone(sources));
-  }
-
-  getSource(sourceId: string): GeoJSONSourceSpecification {
-    return {
-      ...this._sources[sourceId],
-      data: this._sources[sourceId].data(),
-    };
   }
 
   /**

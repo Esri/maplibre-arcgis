@@ -169,7 +169,7 @@ export class FeatureLayerSourceManager {
     // load snapshot mode if specified and under geometry limits
     if (defaultOrSnapshot) {
       // If snapshot mode succeeded on initialization, don't need anything else
-      const snapshotSucceeded = await (this._pendingSnapshot ?? false);
+      const snapshotSucceeded = await (this._pendingSnapshot !== undefined ? this._pendingSnapshot : this._attemptSnapshotLoad());
       if (snapshotSucceeded) return;
     }
 
