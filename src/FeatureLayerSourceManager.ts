@@ -109,33 +109,26 @@ export class FeatureLayerSourceManager {
       url: this.layerUrl,
       authentication: this._options.authentication,
     };
-    const failMsg = 'Unable to load feature service using snapshot mode. Pass the map in the layer constructor or use a method such as addSourceTo(map) to enable on-demand loading. If you are already doing this, you can ignore this message.';
 
     try {
       const exceedsLimit = await this._checkIfExceedsLimit(requestParams, geometryLimit);
 
-      if (exceedsLimit) {
-        // if force snapshot mode, fail
-        if (this._options.loadingMode === 'snapshot') {
-          throw new Error('Unable to load using snapshot mode: geometry limit exceeded.');
-        }
-        warn(failMsg);
-        return false;
-      }
+      if (exceedsLimit) throw new Error('Geometry limit exceeded.');
 
-      try {
-        const featureCollection = await this._loadFeatureSnapshot();
-        this._updateSourceData(featureCollection, this.map);
-        return true;
-      }
-      catch (err) {
-        // total failure
-        warn(`${err}`);
-        return false;
-      }
+      const featureCollection = await this._loadFeatureSnapshot();
+      this._updateSourceData(featureCollection, this.map);
+      return true;
     }
     catch (err) {
-      warn(failMsg);
+      if (!(err instanceof Error)) throw err;
+      // if force snapshot mode, fail
+      const msg = `Unable to load feature service using snapshot mode: ${err.message}`;
+      if (this._options.loadingMode === 'snapshot') {
+        throw new Error(msg);
+      }
+      else if (!this.map) {
+        warn(`${msg}\n To enable on-demand loading, pass the MapLibre map in the constructor or use a method such as layer.addSourceTo(map). If you are already doing this, you can ignore this message.`);
+      }
       return false;
     }
   }
