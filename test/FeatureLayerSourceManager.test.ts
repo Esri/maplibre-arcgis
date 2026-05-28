@@ -100,11 +100,46 @@ describe('Feature layer data source tests', () => {
     manager.onAdd(map);
     expect(loadSpy).toHaveBeenCalled();
   });
-  // TODO
-  test('Adds a maplibre event listener that triggers loading when the correct source ID is added to map', async () => {
+  test('Adds a maplibre event listener that triggers loading when the correct source ID is added to map', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      map:mockMap
+    });
 
+    const onAddSpy = vi.spyOn(manager, 'onAdd').mockImplementation(vi.fn());
+
+    expect(mockMap.on).toHaveBeenCalledWith('sourcedataloading', manager._onAddEvent);
+
+    // mock trigger event from maplibre map
+    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+
+    expect(onAddSpy).toHaveBeenCalled();
   });
-  test('onAdd event removes the maplibre event listener trigger', async () => {});
+  test('onAdd event removes the maplibre event listener trigger', async ({mockMap}) => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      map:mockMap
+    });
+
+    const onAddSpy = vi.spyOn(manager, 'onAdd');
+    const loadSpy = vi.spyOn(manager, 'load').mockImplementation(vi.fn());
+
+    // mock trigger event from maplibre map
+    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+
+    expect(onAddSpy).toHaveBeenCalled();
+
+    expect(mockMap.off).toHaveBeenCalledWith('sourcedataloading', manager._onAddEvent);
+  });
+
+  test('Throws if load is called directly without providing a map.', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
+
+    try {
+      await manager.load();
+    }
+    catch (err) {
+      expect(err.message).toBe('Feature service loading requires a map.')
+    }
+  });
 
   test('Accepts a layer definition in the constructor', async () => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
@@ -207,20 +242,38 @@ describe('Feature layer data source tests', () => {
     expect(loadFeaturesOnDemandSpy).toHaveBeenCalled();
   });
 
-  // TODO
-  describe('General loading tests', async () => {
 
-    test('If a map is provided in constructor, triggers loading from an event listener when sourcedataloading event fires.', async () => {});
-    test('If a map is not provided in constructor, triggers loading when onAdd is called.', async () => {});
+  test('_updateSourceData sets the data of the parent feature layer internally.', async ({mockMap}) => {
+    const setDataCallback = vi.fn();
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      loadingMode: 'snapshot',
+      map: mockMap,
+      callback: setDataCallback
+    });
 
-    test('Throws if load is called directly without providing a map.', async () => {});
+    expect(manager._setDataCallback).toBe(setDataCallback);
 
+    const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => false);
+    const loadFeatureSnapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {});
 
+    await manager.load();
+    expect(setDataCallback).toHaveBeenCalled();
 
-    test('_updateSourceData sets the data of the source internally.', async () => {});
-    test('_updateSourceData sets the data of the source on the associated map.', async () => {});
-    test('')
-  })
+  });
+  test('_updateSourceData sets the data of the source on the associated map.', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      loadingMode: 'snapshot',
+      map: mockMap,
+    });
+
+    const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => false);
+    const loadFeatureSnapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {return {}});
+    const updateSpy = vi.spyOn(manager, '_updateSourceData');
+
+    await manager.load();
+    expect(updateSpy).toHaveBeenCalledWith({}, mockMap);
+    expect(mockMap.getSource).toHaveBeenCalledWith(manager.geojsonSourceId);
+  });
 
   describe('Snapshot mode loading tests', async () => {
     const importedQueryFeatures = queryFeatures;

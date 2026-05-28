@@ -119,9 +119,19 @@ describe('Feature layer unit tests', () => {
     });
   });
 
-  // TODO
-  test('Accepts a loadingMode parameter that sets the loading mode to snapshot or on-demand,', async () => {});
-  test('Warns the user if on-demand loading mode is set without a map provided.', async () => {});
+  test('Warns the user if on-demand loading mode is set without a map provided.', async () => {
+
+    const warnSpy = vi.spyOn(console,'warn')
+    const featureLayer = new FeatureLayer({
+      url: trailsMock.layerUrl,
+      loadingMode: 'ondemand'
+    });
+
+    fetchMock.once(trailsMock.layerDefinition)
+    await featureLayer.initialize();
+
+    expect(warnSpy).toHaveBeenCalledWith('On-demand loading mode is enabled. This layer requires access to the map, either by passing via the constructor or by using a method like addSourcesTo(map). If you are already doing this, you can ignore this message.');
+  });
 
   describe('Supports a `query` parameter.', () => {
     test('Accepts a `query` parameter.', async () => {
