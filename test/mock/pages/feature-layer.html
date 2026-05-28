@@ -29,7 +29,7 @@
     const layerUrlTrails = 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/0';
     const featureLayer = new maplibreArcGIS.FeatureLayer({
       url:layerUrlTrails,
-      _loadingMode:'ondemand'
+      loadingMode:'ondemand'
     });
 
     window.map = map;
