@@ -24,6 +24,16 @@ const { multiLayerMock, trailsMock } = featureMocks;
 
 const test = customTest.extend({
 
+  mockMap: async ({}, use) => {
+    const mockMap = {
+      getSource: vi.fn(() => ({
+        setData: vi.fn()
+      })),
+      on: vi.fn(),
+      off: vi.fn(),
+    };
+    await use(mockMap);
+  }
   // mockMap: async ({}, use) => {
   //   const mapDiv = document.createElement('div');
 
@@ -85,10 +95,50 @@ describe('Feature layer data source tests', () => {
   test('onAdd event triggers the load function.', async ({ map }) => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
 
-    const loadSpy = vi.spyOn(manager, '_load');
+    const loadSpy = vi.spyOn(manager, 'load').mockImplementation(vi.fn());
 
     manager.onAdd(map);
     expect(loadSpy).toHaveBeenCalled();
+  });
+  test('Adds a maplibre event listener that triggers loading when the correct source ID is added to map', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      map:mockMap
+    });
+
+    const onAddSpy = vi.spyOn(manager, 'onAdd').mockImplementation(vi.fn());
+
+    expect(mockMap.on).toHaveBeenCalledWith('sourcedataloading', manager._onAddEvent);
+
+    // mock trigger event from maplibre map
+    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+
+    expect(onAddSpy).toHaveBeenCalled();
+  });
+  test('onAdd event removes the maplibre event listener trigger', async ({mockMap}) => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      map:mockMap
+    });
+
+    const onAddSpy = vi.spyOn(manager, 'onAdd');
+    const loadSpy = vi.spyOn(manager, 'load').mockImplementation(vi.fn());
+
+    // mock trigger event from maplibre map
+    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+
+    expect(onAddSpy).toHaveBeenCalled();
+
+    expect(mockMap.off).toHaveBeenCalledWith('sourcedataloading', manager._onAddEvent);
+  });
+
+  test('Throws if load is called directly without providing a map.', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
+
+    try {
+      await manager.load();
+    }
+    catch (err) {
+      expect(err.message).toBe('Feature service loading requires a map.')
+    }
   });
 
   test('Accepts a layer definition in the constructor', async () => {
@@ -97,20 +147,22 @@ describe('Feature layer data source tests', () => {
     expect(manager.layerDefinition).toBe(trailsMock.layerDefinitionRaw);
   });
 
-  test('Load function tries to load via snapshot mode initially', async () => {
-    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
+  test('Load function tries to load via snapshot mode initially', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      map: mockMap
+    });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => false);
     const snapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => getBlankFc());
     const bindEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent');
     const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => true);
-    await manager._load();
+    await manager.load();
 
     expect(snapshotSpy).toHaveBeenCalled();
     expect(bindEventSpy).not.toHaveBeenCalled();
   });
 
-  test('Snapshot mode performs an initial exceedsLimit request using hardcoded values specific to each geometry type.', async () => {
+  test('Snapshot mode performs an initial exceedsLimit request using limit values specific to each geometry type.', async () => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
       loadingMode: 'snapshot'
     });
@@ -120,26 +172,30 @@ describe('Feature layer data source tests', () => {
     const loadFeatureSnapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {});
     const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => null);
 
-    await manager._load();
+    await manager.load();
     // check if exceeds limit was called with both args with the hardcoded geometry limits for the trails layer (polygon)
     expect(exceedsLimitSpy).toHaveBeenCalledWith(expect.objectContaining({}), { maxVertexCount:250000, maxRecordCount:8000 });
     expect(loadFeatureSnapshotSpy).toHaveBeenCalled();
     expect(updateMapSpy).toHaveBeenCalled();
   });
 
-  test('Load function falls back to on-demand loading if the snapshot limit is exceeded.', async () => {
-    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
+  test('Load function falls back to on-demand loading if the snapshot limit is exceeded.', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      map: mockMap
+    });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
     vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => {});
     const onDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => {return true});
 
-    await manager._load();
+    await manager.load();
     expect(onDemandSpy).toHaveBeenCalled();
   });
 
-  test('Load function falls back to on-demand loading if snapshot mode throws.', async () => {
-    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {});
+  test('Load function falls back to on-demand loading if snapshot mode throws.', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      map: mockMap
+    });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
     const setMaxExtentFromLayerExtentSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
@@ -147,28 +203,30 @@ describe('Feature layer data source tests', () => {
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
 
-    await manager._load();
+    await manager.load();
     expect(setMaxExtentFromLayerExtentSpy).toHaveBeenCalled();
     expect(bindLoadFeaturesToMoveEndEventSpy).toHaveBeenCalled();
     expect(clearTilesSpy).toHaveBeenCalled();
     expect(loadFeaturesOnDemandSpy).toHaveBeenCalled();
   });
 
-  test('If loadingMode parameter is set to snapshot, only tries snapshot mode and throws if limits are exceeded.', async () => {
+  test('If loadingMode parameter is set to snapshot, only tries snapshot mode and throws if limits are exceeded.', async ({mockMap}) => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
-      loadingMode: 'snapshot'
+      loadingMode: 'snapshot',
+      map: mockMap
     });
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
     try {
-      await manager._load();
+      await manager.load();
     } catch (err) {
-      expect(err.message).toBe('Unable to load using snapshot mode: geometry limit exceeded.');
+      expect(err.message).toBe('Unable to load feature service using snapshot mode: Geometry limit exceeded.');
     }
   });
 
-  test('If loadingMode parameter is set to ondemand, only tries on-demand mode.', async () => {
+  test('If loadingMode parameter is set to ondemand, only tries on-demand mode.', async ({mockMap}) => {
     const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
-      loadingMode: 'ondemand'
+      loadingMode: 'ondemand',
+      map: mockMap
     });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
@@ -177,11 +235,44 @@ describe('Feature layer data source tests', () => {
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
 
-    await manager._load();
+    await manager.load();
     expect(useServiceBoundsSpy).toHaveBeenCalled();
     expect(bindLoadFeaturesToMoveEndEventSpy).toHaveBeenCalled();
     expect(clearTilesSpy).toHaveBeenCalled();
     expect(loadFeaturesOnDemandSpy).toHaveBeenCalled();
+  });
+
+
+  test('_updateSourceData sets the data of the parent feature layer internally.', async ({mockMap}) => {
+    const setDataCallback = vi.fn();
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      loadingMode: 'snapshot',
+      map: mockMap,
+      callback: setDataCallback
+    });
+
+    expect(manager._setDataCallback).toBe(setDataCallback);
+
+    const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => false);
+    const loadFeatureSnapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {});
+
+    await manager.load();
+    expect(setDataCallback).toHaveBeenCalled();
+
+  });
+  test('_updateSourceData sets the data of the source on the associated map.', async ({mockMap}) => {
+    const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+      loadingMode: 'snapshot',
+      map: mockMap,
+    });
+
+    const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => false);
+    const loadFeatureSnapshotSpy = vi.spyOn(manager, '_loadFeatureSnapshot').mockImplementation(() => {return {}});
+    const updateSpy = vi.spyOn(manager, '_updateSourceData');
+
+    await manager.load();
+    expect(updateSpy).toHaveBeenCalledWith({}, mockMap);
+    expect(mockMap.getSource).toHaveBeenCalledWith(manager.geojsonSourceId);
   });
 
   describe('Snapshot mode loading tests', async () => {
@@ -191,12 +282,8 @@ describe('Feature layer data source tests', () => {
       queryAllFeatures = importedQueryAllFeatures;
       queryFeatures = importedQueryFeatures;
     });
-    test('Loads data from a layer and uses it to update a MapLibre geojson source.', async () => {
-      const mockMap = {
-        getSource: vi.fn(() => ({
-          setData: vi.fn()
-        }))
-      };
+    test('Loads data from a layer and uses it to update a MapLibre geojson source.', async ({mockMap}) => {
+
       queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
       queryFeatures = vi.fn().mockResolvedValue(trailsMock.exceedsLimitResponseRaw);
       const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
@@ -204,14 +291,14 @@ describe('Feature layer data source tests', () => {
       });
       manager.map = mockMap;
 
-      const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
+      const updateDataSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
 
-      await manager._load();
+      await manager.load();
 
-      expect(updateMapSpy).toHaveBeenCalledWith(mockMap, trailsMock.geoJSONSmallRaw);
+      expect(updateDataSpy).toHaveBeenCalledWith(trailsMock.geoJSONSmallRaw, mockMap);
     });
 
-    test('Passes authentication to all snapshot mode REST JS requests.', async () => {
+    test('Passes authentication to all snapshot mode REST JS requests.', async ({mockMap}) => {
       queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
       queryFeatures = vi.fn().mockResolvedValue(trailsMock.exceedsLimitResponseRaw);
       const apiKey = "fake-api-key";
@@ -219,18 +306,19 @@ describe('Feature layer data source tests', () => {
       const apiKeyManager = { getToken: () => apiKey };
       const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
         authentication: apiKeyManager,
-        loadingMode: 'snapshot'
+        loadingMode: 'snapshot',
+        map: mockMap
       });
 
       const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
 
-      await manager._load();
+      await manager.load();
 
       expect(queryFeatures).toHaveBeenCalledWith(expect.objectContaining({authentication:apiKeyManager}));
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({authentication:apiKeyManager}));
     });
 
-    test('Passes the `query` parameter to snapshot REST JS requests.', async () => {
+    test('Passes the `query` parameter to snapshot REST JS requests.', async ({mockMap}) => {
       queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
       queryFeatures = vi.fn().mockResolvedValue(trailsMock.exceedsLimitResponseRaw);
 
@@ -240,13 +328,14 @@ describe('Feature layer data source tests', () => {
       }
 
       const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
-        queryOptions: trailQuery
+        queryOptions: trailQuery,
+        map: mockMap
       });
 
       expect(manager._options.queryOptions).toEqual(trailQuery);
 
       const updateMapSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => {return true});
-      await manager._load();
+      await manager.load();
 
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining(trailQuery));
     });
