@@ -259,6 +259,30 @@ describe('Feature layer unit tests', () => {
       expect(getService).toHaveBeenCalled();
       expect(Object.keys(featureService._sources).length).toBe(1);
     });
+    test('Accepts a map service URL when a single layer with type `Feature layer` is specified.', async () => {
+      const mapServiceLayerUrl = trailsMock.layerUrl.replace('/FeatureServer/', '/MapServer/');
+      const featureLayer = new FeatureLayer({
+        url: mapServiceLayerUrl
+      });
+
+      fetchMock.once(trailsMock.layerDefinition);
+      await featureLayer.initialize();
+
+      expect(featureLayer._serviceInfo).toMatchObject({
+        serviceUrl: mapServiceLayerUrl + '/'
+      });
+      expect(Object.keys(featureLayer._sources).length).toBe(1);
+    });
+    test('Throws on map service URLs when a layer is not specified in the URL.', async () => {
+      const mapServiceUrl = trailsMock.serviceUrl.replace('/FeatureServer', '/MapServer');
+
+      await expect(async () => {
+        const featureLayer = new FeatureLayer({
+          url: mapServiceUrl
+        });
+        await featureLayer.initialize();
+      }).rejects.toThrowError('Argument `url` is not a valid feature service URL.');
+    });
     test('Fetches the service definition for each individual layer.', async () => {
       const { getLayer } = await import('@esri/arcgis-rest-feature-service');
 
