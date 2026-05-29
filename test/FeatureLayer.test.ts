@@ -520,11 +520,11 @@ describe('Feature layer unit tests', () => {
         // This URL is intentionally included to verify itemId takes precedence.
         url: 'https://example.com/includedUrlThatShouldBeIgnored/FeatureServer'
       });
-      expect(warningSpy).toHaveBeenCalledWith('Both an item ID and service URL have been passed. Only the item ID will be used.');
       expect(featureLayer._serviceInfo).toBeUndefined();
 
       fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await featureLayer.initialize();
+      expect(warningSpy).toHaveBeenCalledWith('Both an item ID and service URL have been passed. Only the item ID will be used.');
       expect(featureLayer._serviceInfo.serviceUrl).toBe(trailsMock.serviceUrl);
     });
 
