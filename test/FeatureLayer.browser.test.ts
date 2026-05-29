@@ -84,9 +84,6 @@ describe('FeatureLayer browser tests', () => {
       window.featureLayer.addSourceTo(window.map);
       window.featureLayer.addLayerTo(window.map);
 
-      if (!window.map.loaded()) {
-        await new Promise(resolve => window.map.once('load', resolve));
-      }
       return {
         mapStyle: window.map.getStyle()
       };
@@ -108,9 +105,6 @@ describe('FeatureLayer browser tests', () => {
       window.featureLayer.addSourcesTo(window.map);
       window.featureLayer.addLayersTo(window.map);
 
-      if (!window.map.loaded()) {
-        await new Promise(resolve => window.map.once('load', resolve));
-      }
       return {
         mapStyle: window.map.getStyle()
       };
@@ -130,9 +124,6 @@ describe('FeatureLayer browser tests', () => {
       await window.featureLayer.initialize();
       window.featureLayer.addSourcesAndLayersTo(window.map);
 
-      if (!window.map.loaded()) {
-        await new Promise(resolve => window.map.once('load', resolve));
-      }
       return {
         style: window.map.getStyle()
       };
@@ -154,9 +145,6 @@ describe('FeatureLayer browser tests', () => {
       window.featureLayer.addSourceTo(window.map, params.maplibreSourceOptions);
       window.featureLayer.addLayerTo(window.map, params.maplibreLayerOptions);
 
-      if (!window.map.loaded()) {
-        await new Promise(resolve => window.map.once('load', resolve));
-      }
       return {
         mapStyle: window.map.getStyle()
       };
@@ -188,9 +176,6 @@ describe('FeatureLayer browser tests', () => {
         };
       });
 
-      if (!window.map.loaded()) {
-        await new Promise(resolve => window.map.once('load', resolve));
-      }
       return {
         mapStyle: window.map.getStyle()
       };
@@ -224,9 +209,6 @@ describe('FeatureLayer browser tests', () => {
         }
       });
 
-      if (!window.map.loaded()) {
-        await new Promise(resolve => window.map.once('load', resolve));
-      }
       return {
         mapStyle: window.map.getStyle()
       };
@@ -248,9 +230,6 @@ describe('FeatureLayer browser tests', () => {
       window.map.addSource(window.featureLayer.sourceId, window.featureLayer.source);
       window.map.addLayer(window.featureLayer.layer);
 
-      if (!window.map.loaded()) {
-        await new Promise(resolve => window.map.once('load', resolve));
-      }
       return {
         style: window.map.getStyle()
       };
