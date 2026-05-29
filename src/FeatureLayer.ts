@@ -158,21 +158,20 @@ export class FeatureLayer extends HostedLayer {
   constructor(options: IFeatureLayerOptions) {
     super();
 
-    if (!options) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
     if (options?.token) this.token = options.token;
 
     if (options?.attribution) this._customAttribution = options.attribution;
 
     if (options?.map) this._map = options.map;
 
-    if (options.itemId && options.url)
+    if (options?.itemId && options?.url)
       warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
 
-    if (options.itemId) {
+    if (options?.itemId) {
       if (checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
       else throw new Error('Argument `itemId` is not a valid item ID.');
     }
-    else if (options.url) {
+    else if (options?.url) {
       const urlType = checkServiceUrlType(options.url);
       if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
       else throw new Error('Argument `url` is not a valid feature service URL.');
