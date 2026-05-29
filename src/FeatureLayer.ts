@@ -272,6 +272,28 @@ export class FeatureLayer extends HostedLayer {
         itemId,
         portalUrl: portalUrl ?? 'https://www.arcgis.com/sharing/rest',
       };
+      const itemResponse = await getItem(this._itemInfo.itemId, {
+        authentication: this._authentication,
+      });
+
+      if (!itemResponse.url) throw new Error('The provided ArcGIS portal item has no associated service URL.');
+      // in feature collections, there is still data at the /data endpoint ...... just a heads up
+      this._itemInfo = {
+        ...this._itemInfo,
+        accessInformation: itemResponse.accessInformation,
+        title: itemResponse.title,
+        description: itemResponse.description,
+        access: itemResponse.access,
+        orgId: itemResponse.orgId,
+        licenseInfo: itemResponse.licenseInfo,
+      };
+      this._serviceInfo = {
+        serviceUrl: itemResponse.url,
+      };
+      const itemServiceType = getServiceType(itemResponse.url);
+      if (!isSupportedServiceType(itemServiceType)) throw new Error('The provided ArcGIS portal item has an unsupported service type.');
+      // reassign data source type to be the type of service the item is pointing to, this will determine how the layer is initialized
+      dataSource = itemServiceType as Exclude<SupportedInputTypes, 'ItemId'>;
     }
     else if (url) {
       const serviceType = getServiceType(url);
@@ -286,31 +308,6 @@ export class FeatureLayer extends HostedLayer {
     }
 
     switch (dataSource) {
-      case 'ItemId': {
-        const itemResponse = await getItem(this._itemInfo.itemId, {
-          authentication: this._authentication,
-        });
-
-        if (!itemResponse.url) throw new Error('The provided ArcGIS portal item has no associated service URL.');
-        // in feature collections, there is still data at the /data endpoint ...... just a heads up
-
-        this._itemInfo = {
-          ...this._itemInfo,
-          accessInformation: itemResponse.accessInformation,
-          title: itemResponse.title,
-          description: itemResponse.description,
-          access: itemResponse.access,
-          orgId: itemResponse.orgId,
-          licenseInfo: itemResponse.licenseInfo,
-        };
-        this._serviceInfo = {
-          serviceUrl: itemResponse.url,
-        };
-        const itemServiceType = getServiceType(itemResponse.url);
-        if (!isSupportedServiceType(itemServiceType)) throw new Error('The provided ArcGIS portal item has an unsupported service type.');
-        dataSource = itemServiceType as Exclude<SupportedInputTypes, 'ItemId'>;
-        // falls through
-      }
       case 'FeatureService': {
         const serviceInfo = await getService({
           url: this._serviceInfo.serviceUrl,
