@@ -164,15 +164,11 @@ export class FeatureLayer extends HostedLayer {
 
     if (!options || !(options.itemId || options.url)) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
     this._initOptions = options;
-
-    if (options.token) this.token = options.token;
+    if (options?.token) this.token = options.token;
 
     if (options.attribution) this._customAttribution = options.attribution;
 
     if (options?.map) this._map = options.map;
-
-    if (options.itemId && options.url)
-      warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
 
     this.query = options.query;
 
@@ -266,6 +262,9 @@ export class FeatureLayer extends HostedLayer {
 
     let dataSource: SupportedInputTypes | null = null;
 
+    if (itemId && url)
+      warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
+
     if (itemId) {
       if (!checkItemId(itemId)) throw new Error('Argument `itemId` is not a valid item ID.');
       dataSource = 'ItemId';
@@ -281,6 +280,9 @@ export class FeatureLayer extends HostedLayer {
       this._serviceInfo = {
         serviceUrl: cleanUrl(url),
       };
+    }
+    else {
+      throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
     }
 
     switch (dataSource) {

@@ -416,7 +416,6 @@ export class FeatureLayerSourceManager {
     if (this._setDataCallback) {
       this._setDataCallback(fc);
     }
-    return;
   }
 
   // =====================

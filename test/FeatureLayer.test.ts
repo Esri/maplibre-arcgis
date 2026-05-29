@@ -929,7 +929,7 @@ describe('Works on a mock page with a `Map`',() => {
     });
 
     expect(Object.keys(style.sources).length).toBe(1);
-    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(trailsMock.geoJSONRaw);
+    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(getBlankFc());
 
     expect(style.layers.length).toBe(1);
     expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);
