@@ -162,7 +162,7 @@ export class FeatureLayer extends HostedLayer {
   constructor(options: IFeatureLayerOptions) {
     super();
 
-    if (!options || !(options.itemId || options.url)) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
+    if (!(options?.itemId || options?.url)) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
     this._initOptions = options;
     if (options?.token) this.token = options.token;
 
