@@ -237,7 +237,7 @@ describe('Feature layer unit tests', () => {
           url: '123456789'
         });
         await featureLayer.initialize();
-      }).rejects.toThrowError('Argument `url` is not a valid feature service URL.');
+      }).rejects.toThrowError('The provided URL does not represent a valid feature service or feature layer.');
 
       // Not a feature service
       await expect(async () => {
@@ -245,7 +245,7 @@ describe('Feature layer unit tests', () => {
           url: 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_Mountains_Parcels_VTL/VectorTileServer'
         });
         await featureLayer.initialize();
-      }).rejects.toThrowError('Argument `url` is not a valid feature service URL.');
+      }).rejects.toThrowError('The provided URL does not represent a valid feature service or feature layer.');
     });
     test('Accepts generic feature service URLs and fetches the service definition for the generic service.', async () => {
       const { getService } = await import('@esri/arcgis-rest-feature-service');
@@ -281,7 +281,7 @@ describe('Feature layer unit tests', () => {
           url: mapServiceUrl
         });
         await featureLayer.initialize();
-      }).rejects.toThrowError('Argument `url` is not a valid feature service URL.');
+      }).rejects.toThrowError('The provided URL does not represent a valid feature service or feature layer.');
     });
     test('Fetches the service definition for each individual layer.', async () => {
       const { getLayer } = await import('@esri/arcgis-rest-feature-service');
@@ -525,7 +525,7 @@ describe('Feature layer unit tests', () => {
       fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
       await featureLayer.initialize();
       expect(warningSpy).toHaveBeenCalledWith('Both an item ID and service URL have been passed. Only the item ID will be used.');
-      expect(featureLayer._serviceInfo.serviceUrl).toBe(trailsMock.serviceUrl);
+      expect(featureLayer._serviceInfo.serviceUrl).toBe(cleanUrl(trailsMock.serviceUrl));
     });
 
     test('Gets item metadata including attribution, title, and description.', async () => {
@@ -551,7 +551,7 @@ describe('Feature layer unit tests', () => {
 
       await featureLayer.initialize();
 
-      expect(featureLayer._serviceInfo.serviceUrl).toBe(trailsMock.serviceUrl);
+      expect(featureLayer._serviceInfo.serviceUrl).toBe(cleanUrl(trailsMock.serviceUrl));
       expect(featureLayer._sources['Trails_0'].data).toEqual(getBlankFc());
     });
   });

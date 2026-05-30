@@ -184,10 +184,9 @@ export class FeatureLayer extends HostedLayer {
       httpMethod: 'GET',
     });
 
-    if (layerInfo.type !== 'Feature Layer') throw new Error('The provided URL does not point to a feature layer.');
-    if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
-    if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support query operations.');
-    if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
+    if (!layerInfo.supportedQueryFormats?.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
+    if (!layerInfo.capabilities?.includes('Query')) throw new Error('This feature service does not support query operations.');
+    if (!layerInfo.advancedQueryCapabilities?.supportsPagination) throw new Error('This feature service does not support query pagination.');
     if (!layerInfo.supportsExceedsLimitStatistics) throw new Error('Feature layers hosted in old versions of ArcGIS Enterprise are not supported by this plugin. https://github.com/Esri/maplibre-arcgis/issues/5');
     if (!layerInfo.geometryType || !Object.keys(esriGeometryInfo).includes(layerInfo.geometryType)) throw new Error('This feature service contains an unsupported geometry type.');
 
@@ -268,18 +267,17 @@ export class FeatureLayer extends HostedLayer {
     if (itemId) {
       if (!checkItemId(itemId)) throw new Error('Argument `itemId` is not a valid item ID.');
       dataSource = 'ItemId';
-      this._itemInfo = {
-        itemId,
-        portalUrl: portalUrl ?? 'https://www.arcgis.com/sharing/rest',
-      };
-      const itemResponse = await getItem(this._itemInfo.itemId, {
+      const portal = portalUrl ?? 'https://www.arcgis.com/sharing/rest';
+      const itemResponse = await getItem(itemId, {
         authentication: this._authentication,
+        portal,
       });
 
       if (!itemResponse.url) throw new Error('The provided ArcGIS portal item has no associated service URL.');
       // in feature collections, there is still data at the /data endpoint ...... just a heads up
       this._itemInfo = {
-        ...this._itemInfo,
+        itemId,
+        portalUrl: portal,
         accessInformation: itemResponse.accessInformation,
         title: itemResponse.title,
         description: itemResponse.description,
@@ -288,20 +286,19 @@ export class FeatureLayer extends HostedLayer {
         licenseInfo: itemResponse.licenseInfo,
       };
       this._serviceInfo = {
-        serviceUrl: itemResponse.url,
+        serviceUrl: cleanUrl(itemResponse.url),
       };
-      const itemServiceType = getServiceType(itemResponse.url);
-      if (!isSupportedServiceType(itemServiceType)) throw new Error('The provided ArcGIS portal item has an unsupported service type.');
-      // reassign data source type to be the type of service the item is pointing to, this will determine how the layer is initialized
-      dataSource = itemServiceType as Exclude<SupportedInputTypes, 'ItemId'>;
+      const serviceType = getServiceType(this._serviceInfo.serviceUrl);
+      if (!isSupportedServiceType(serviceType)) throw new Error('The provided item does not represent a valid feature service.');
+      dataSource = serviceType as Exclude<SupportedInputTypes, 'ItemId'>;
     }
     else if (url) {
-      const serviceType = getServiceType(url);
-      if (!isSupportedServiceType(serviceType)) throw new Error('Argument `url` is not a valid feature service URL.');
-      dataSource = serviceType as Exclude<SupportedInputTypes, 'ItemId'>;
       this._serviceInfo = {
         serviceUrl: cleanUrl(url),
       };
+      const serviceType = getServiceType(this._serviceInfo.serviceUrl);
+      if (!isSupportedServiceType(serviceType)) throw new Error('The provided URL does not represent a valid feature service or feature layer.');
+      dataSource = serviceType as Exclude<SupportedInputTypes, 'ItemId'>;
     }
     else {
       throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
@@ -331,7 +328,7 @@ export class FeatureLayer extends HostedLayer {
       }
       case 'FeatureLayer': {
         // Add single layer
-        await this._initializeLayer(this._serviceInfo.serviceUrl); // TODO test on a layer with tables
+        await this._initializeLayer(this._serviceInfo.serviceUrl);
         break;
       }
       case 'MapServiceFeatureLayer': {
