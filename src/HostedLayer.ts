@@ -34,6 +34,27 @@ import type { RestJSAuthenticationManager } from './Util';
  */
 export type SupportedSourceSpecification = VectorSourceSpecification | GeoJSONSourceSpecification;
 
+type SupportedSourceOptions = Omit<GeoJSONSourceSpecification,
+  'type'
+  | 'data'
+  | 'generateId'> // GeoJSON data is immutable
+  & Omit<VectorSourceSpecification,
+  'type'
+  | 'url'
+  | 'tiles'
+  | 'scheme'
+  | 'encoding'
+  >;
+
+type TransformSourceFunction = (sourceId: string, source: SupportedSourceSpecification) => SupportedSourceSpecification;
+
+type SupportedLayerOptions = Omit<LayerSpecification,
+  'source'
+  | 'source-layer'
+>;
+
+type TransformLayerFunction = (layer: LayerSpecification) => SupportedLayerOptions;
+
 /**
  * Options accepted by all instances of HostedLayer.
  */
@@ -47,6 +68,8 @@ export interface IHostedLayerOptions {
    */
   portalUrl?: string;
   attribution?: string;
+
+  map?: Map;
 }
 
 /**
@@ -90,7 +113,7 @@ export abstract class HostedLayer {
   /**
    * An ArcGIS access token is required for accessing secure data layers. To get a token, go to the [Security and Authentication Guide](https://developers.arcgis.com/documentation/security-and-authentication/get-started/).
    */
-  token: string;
+  token?: string;
 
   protected _authentication?: RestJSAuthenticationManager;
 
@@ -106,7 +129,7 @@ export abstract class HostedLayer {
   /**
    * Stores custom attribution text for the hosted layer
    */
-  protected _customAttribution: string;
+  protected _customAttribution?: string;
 
   /**
    * Retrieves information about the associated hosted data service in ArcGIS.
@@ -135,77 +158,84 @@ export abstract class HostedLayer {
   protected _map?: Map;
 
   /**
+   * Sets the maplibre map associated with the hosted layer.
+   */
+  public setMap(map: Map) {
+    this._map = map;
+  }
+
+  /**
    * Retrieves the sources for the hosted layer.
    */
-  get sources(): Readonly<{ [_: string]: SupportedSourceSpecification }> {
-    return Object.freeze(this._sources);
+  public get sources(): Readonly<{ [_: string]: SupportedSourceSpecification }> {
+    return Object.freeze(structuredClone(this._sources));
   }
 
   /**
    * Sets the sources for the hosted layer.
    */
-  set sources(value: { [_: string]: SupportedSourceSpecification }) {
+  public set sources(value: { [_: string]: SupportedSourceSpecification }) {
     throwReadOnlyError('sources');
   }
 
   /**
    * Retrieves the source for the hosted layer.
    */
-  get source(): Readonly<SupportedSourceSpecification> | undefined {
+  public get source(): Readonly<SupportedSourceSpecification> | undefined {
     const sourceIds = Object.keys(this._sources);
     if (sourceIds.length !== 1) return undefined;
 
-    return Object.freeze(this._sources[sourceIds[0]]);
+    return Object.freeze(structuredClone(this._sources[sourceIds[0]]));
   }
 
   /**
    * Sets the source for the hosted layer.
    */
-  set source(_) {
+  public set source(_) {
     throwReadOnlyError('source');
   }
 
   /**
    * Retrieves the source ID for the hosted layer.
    */
-  get sourceId(): Readonly<string> | undefined {
+  public get sourceId(): Readonly<string> | undefined {
     const sourceIds = Object.keys(this._sources);
     if (sourceIds.length !== 1) return undefined;
 
-    return Object.freeze(sourceIds[0]);
+    return Object.freeze(structuredClone(sourceIds[0]));
   }
 
   /**
    * Sets the source ID for the hosted layer.
    */
-  set sourceId(_) {
+  public set sourceId(_) {
     throwReadOnlyError('sourceId');
   }
 
   /**
    * Retrieves the layers for the hosted layer.
    */
-  get layers(): Readonly<LayerSpecification[]> {
-    return Object.freeze(this._layers);
+  public get layers(): Readonly<LayerSpecification[]> {
+    return Object.freeze(structuredClone(this._layers));
   }
 
   /**
    * Sets the layers for the hosted layer.
    */
-  set layers(_) {
+  public set layers(_) {
     throwReadOnlyError('layers');
   }
 
   /**
    * Retrieves the layer for the hosted layer.
    */
-  get layer(): Readonly<LayerSpecification> | undefined {
+  public get layer(): Readonly<LayerSpecification> | undefined {
     if (this._layers.length !== 1) return undefined;
 
-    return Object.freeze(this._layers[0]);
+    return Object.freeze(structuredClone(this._layers[0]));
   }
 
-  set layer(_) {
+  public set layer(_) {
     throwReadOnlyError('layer');
   }
 
@@ -222,7 +252,7 @@ export abstract class HostedLayer {
    * @param oldId - The source ID to be changed.
    * @param newId - The new source ID.
    */
-  setSourceId(oldId: string, newId: string): void {
+  public setSourceId(oldId: string, newId: string): void {
     // Update ID of source
     const newSources = structuredClone(this._sources);
     newSources[newId] = newSources[oldId];
@@ -241,7 +271,7 @@ export abstract class HostedLayer {
    * @param sourceId - The ID of the maplibre style source.
    * @param attribution - Custom attribution text.
    */
-  setAttribution(sourceId: string, attribution: string): void {
+  public setAttribution(sourceId: string, attribution: string): void {
     if (!sourceId || !attribution) throw new Error('Must provide a source ID and attribution');
     const newSources = structuredClone(this._sources);
     newSources[sourceId].attribution = attribution;
@@ -252,7 +282,7 @@ export abstract class HostedLayer {
    * Returns a mutable copy of the specified source.
    * @param sourceId - The ID of the maplibre style source to copy.
    */
-  copySource(sourceId: string): SupportedSourceSpecification {
+  public copySource(sourceId: string): SupportedSourceSpecification {
     return structuredClone(this._sources[sourceId]);
   }
 
@@ -260,7 +290,7 @@ export abstract class HostedLayer {
    * Returns a mutable copy of the specified layer
    * @param layerId - The ID of the maplibre style layer to copy
    */
-  copyLayer(layerId: string): LayerSpecification {
+  public copyLayer(layerId: string): LayerSpecification {
     for (let i = 0; i < this._layers.length; i++) {
       if (this._layers[i].id == layerId) return structuredClone(this._layers[i]);
     }
@@ -270,40 +300,112 @@ export abstract class HostedLayer {
   /**
    * Convenience method that adds all associated Maplibre sources and data layers to a map.
    * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+   * @param options - Optional transform functions for setting properties of sources and layers.
+   * @returns this
    */
-  addSourcesAndLayersTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add sources and layers to map: Layer is not loaded.');
+  public addSourcesAndLayersTo(map: Map, options?: {
+    transformSources?: TransformSourceFunction;
+    transformLayers?: TransformLayerFunction;
+  }): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add sources and layers to map: Class is not initialized.');
     this._map = map;
 
     Object.keys(this._sources).forEach((sourceId) => {
-      map.addSource(sourceId, this._sources[sourceId]);
+      let source = this._sources[sourceId];
+      if (options?.transformSources) source = options.transformSources(sourceId, source);
+      map.addSource(sourceId, source);
     });
     this._layers.forEach((layer) => {
+      if (options?.transformLayers) layer = options.transformLayers(layer);
       map.addLayer(layer);
     });
     this._onAdd(map);
     return this;
   }
 
-  addSourcesTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add sources to map: Layer is not loaded.');
-    this._map = map;
+  /**
+   * Adds the maplibre style source to the map. Used when the hosted layer contains a single data source.
+   * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+   * @param sourceOptions - Properties to pass to the added source
+   * @returns this
+   */
+  public addSourceTo(map: Map, sourceOptions?: SupportedSourceOptions): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add source to map: Class is not initialized.');
+
+    const sourceIds = Object.keys(this._sources);
+    if (sourceIds.length === 0) throw new Error('Cannot add 0 sources to map.');
+    if (sourceIds.length > 1) throw new Error('Hosted layer class contains more than one source. Use `addSources` function to add all to map.');
+
+    let source = this._sources[sourceIds[0]];
+
+    if (sourceOptions) {
+      // validate protected options
+      const protectedProperties = ['type', 'data', 'generateId', 'url', 'tiles', 'scheme', 'encoding'];
+      if (protectedProperties.some(property => Object.prototype.hasOwnProperty.call(sourceOptions, property))) throw new Error('Cannot set protected property of source.');
+      source = {
+        ...source,
+        ...sourceOptions,
+      };
+    }
+
+    map.addSource(sourceIds[0], source);
+    this._onAdd(map);
+    return this;
+  }
+
+  /**
+   * Adds maplibre style sources to the map. Used when the hosted layer contains multiple data sources.
+   * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+   * @param transformSources - Transform function to set properties of one or multiple sources
+   * @returns this
+   */
+  public addSourcesTo(map: Map, transformSources?: TransformSourceFunction): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add sources to map: Class is not initialized.');
+
     Object.keys(this._sources).forEach((sourceId) => {
-      map.addSource(sourceId, this._sources[sourceId]);
+      let source = this._sources[sourceId];
+      if (transformSources) source = transformSources(sourceId, source);
+      map.addSource(sourceId, source);
     });
     this._onAdd(map);
     return this;
   }
 
   /**
-   * Add layers to a maplibre map.
+   * Adds a maplibre style layer to the map. Used when the hosted layer contains a single style layer.
+   * @param map - A [MapLibre GL JS map](https://maplibre.org/maplibre-gl-js/docs/API/classes/Map/)
+   * @param layerOptions - LayerSpecification object to override the default style
+   * @returns this
+   */
+  public addLayerTo(map: Map, layerOptions?: SupportedLayerOptions): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add layer to map: Class is not initialized.');
+    if (this._layers.length === 0) throw new Error('Cannot add layer: Class has zero layers.');
+    if (this._layers.length > 1) throw new Error('Class contains multiple layers: use plural `addLayersTo` method instead.');
+
+    let layer = this._layers[0];
+    if (layerOptions) {
+      layer = {
+        ...layer,
+        ...layerOptions,
+      };
+    }
+
+    map.addLayer(layer);
+
+    this._onAdd(map);
+    return this;
+  }
+
+  /**
+   * Adds maplibre style layers to the map. Used when the hosted layer contains multiple style layers.
    * @param map - A maplibre map object
    * @returns
    */
-  addLayersTo(map: Map): HostedLayer {
-    if (!this._ready) throw new Error('Cannot add layers to map: Layer is not loaded.');
-    this._map = map;
+  public addLayersTo(map: Map, transformLayers?: TransformLayerFunction): HostedLayer {
+    if (!this._ready) throw new Error('Cannot add layers to map: Class is not initialized.');
+
     this._layers.forEach((layer) => {
+      if (transformLayers) layer = transformLayers(layer);
       map.addLayer(layer);
     });
     this._onAdd(map);

@@ -7,6 +7,7 @@ import { HostedLayer } from './HostedLayer';
 import { checkItemId, checkServiceUrlType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
 import type { Map } from 'maplibre-gl';
 import { FeatureLayerSourceManager, type FeatureLayerSourceManagerOptions, type LoadingModeOptions } from './FeatureLayerSourceManager';
+import { type FeatureCollection } from 'geojson';
 // const geoJSONDefaultStyleMap = {
 //     "Point":"circle",
 //     "MultiPoint":"circle",
@@ -74,7 +75,7 @@ export interface IFeatureLayerOptions extends IHostedLayerOptions {
   itemId?: string;
   url?: string;
   query?: IQueryOptions;
-  _loadingMode?: LoadingModeOptions;
+  loadingMode?: LoadingModeOptions;
 }
 
 /**
@@ -124,6 +125,7 @@ export type SupportedInputTypes = 'ItemId' | 'FeatureService' | 'FeatureLayer';
  * parks.addSourcesAndLayersTo(map);
  * ```
  */
+
 export class FeatureLayer extends HostedLayer {
   declare protected _sources: { [_: string]: GeoJSONSourceSpecification };
   private _featureLayerSourceManagers: { [_: string]: FeatureLayerSourceManager };
@@ -132,7 +134,7 @@ export class FeatureLayer extends HostedLayer {
   private _inputType: SupportedInputTypes;
 
   query?: IQueryOptions;
-  _loadingMode: LoadingModeOptions;
+  loadingMode: LoadingModeOptions;
 
   /**
    * Creates a new FeatureLayer instance. You must provide either an ArcGIS item ID or a feature service URL. If both are provided, the item ID will be used and the URL ignored. Query parameters are only supported when constructing with a feature layer URL.
@@ -156,23 +158,26 @@ export class FeatureLayer extends HostedLayer {
   constructor(options: IFeatureLayerOptions) {
     super();
 
-    if (!options || !(options.itemId || options.url)) throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
-
     if (options?.token) this.token = options.token;
 
     if (options?.attribution) this._customAttribution = options.attribution;
 
-    if (options.itemId && options.url)
+    if (options?.map) this._map = options.map;
+
+    if (options?.itemId && options?.url)
       warn('Both an item ID and service URL have been passed. Only the item ID will be used.');
 
-    if (options.itemId) {
+    if (options?.itemId) {
       if (checkItemId(options.itemId) == 'ItemId') this._inputType = 'ItemId';
       else throw new Error('Argument `itemId` is not a valid item ID.');
     }
-    else if (options.url) {
+    else if (options?.url) {
       const urlType = checkServiceUrlType(options.url);
       if (urlType && (urlType == 'FeatureLayer' || urlType == 'FeatureService')) this._inputType = urlType;
       else throw new Error('Argument `url` is not a valid feature service URL.');
+    }
+    else {
+      throw new Error('Feature layer requires either an \'itemId\' or \'url\'.');
     }
     if (options?.query) this.query = options.query;
 
@@ -189,7 +194,11 @@ export class FeatureLayer extends HostedLayer {
       };
     };
 
-    this._loadingMode = options._loadingMode ? options._loadingMode : 'default';
+    this.loadingMode = options.loadingMode ? options.loadingMode : 'default';
+
+    this._sources = {};
+    this._featureLayerSourceManagers = {};
+    this._layers = [];
   }
 
   // Initializes an individual layer of the feature service with a source, source manager, and style layer
@@ -200,7 +209,6 @@ export class FeatureLayer extends HostedLayer {
       url: layerUrl,
       httpMethod: 'GET',
     });
-
     if (!layerInfo.supportedQueryFormats.includes('geoJSON')) throw new Error('This feature service does not support GeoJSON format.');
     if (!layerInfo.capabilities.includes('Query')) throw new Error('This feature service does not support query operations.');
     if (!layerInfo.advancedQueryCapabilities.supportsPagination) throw new Error('This feature service does not support query pagination.');
@@ -210,7 +218,7 @@ export class FeatureLayer extends HostedLayer {
     // const sourceData = await this._fetchFeatures(layerUrl, esriGeometryInfo[layerInfo.geometryType].limit);
 
     // Create maplibre source and layer for the feature layer
-    let sourceId = layerInfo.name;
+    let sourceId = layerInfo.name ?? 'feature-service';
     if (sourceId in this._sources) {
       sourceId += `/${layerInfo.id}`;
     }
@@ -223,11 +231,21 @@ export class FeatureLayer extends HostedLayer {
     const options: FeatureLayerSourceManagerOptions = {
       queryOptions: this.query ?? undefined,
       authentication: this._authentication,
-      loadingMode: this._loadingMode,
+      loadingMode: this.loadingMode,
+      map: this._map ?? undefined,
+      callback: (features) => { this._updateData(sourceId, features); },
     };
 
     // Create source manager to handle data loading
     this._featureLayerSourceManagers[sourceId] = new FeatureLayerSourceManager(sourceId, layerUrl, layerInfo, options);
+
+    // Initial snapshot mode load
+    if (this.loadingMode === 'default' || this.loadingMode === 'snapshot') {
+      await this._featureLayerSourceManagers[sourceId]._snapshotLoad();
+    }
+    if (this.loadingMode === 'ondemand' && !this._map) {
+      warn('On-demand loading mode is enabled. This layer requires access to the map, either by passing via the constructor or by using a method like addSourcesTo(map). If you are already doing this, you can ignore this message.');
+    }
 
     // Create default style layer for rendering
     const layerType = esriGeometryInfo[layerInfo.geometryType].type;
@@ -257,10 +275,6 @@ export class FeatureLayer extends HostedLayer {
   }
 
   async initialize(): Promise<FeatureLayer> {
-    this._sources = {};
-    this._featureLayerSourceManagers = {};
-    this._layers = [];
-
     // Wrap access token for use with REST JS
     this._authentication = await wrapAccessToken(this.token, this._itemInfo?.portalUrl);
 
@@ -321,9 +335,15 @@ export class FeatureLayer extends HostedLayer {
     return this;
   }
 
+  private _updateData(sourceId: string, features: FeatureCollection) {
+    this._sources[sourceId].data = features;
+  }
+
   protected _onAdd(map: Map) {
     super._onAdd(map);
-    Object.values(this._featureLayerSourceManagers).forEach(sourceManager => sourceManager.onAdd(map));
+    Object.values(this._featureLayerSourceManagers).forEach((sourceManager) => {
+      sourceManager.onAdd(map);
+    });
   }
 
   /**

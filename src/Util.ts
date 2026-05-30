@@ -110,8 +110,8 @@ export const checkAccessTokenType = (token: string): 'user' | 'app' | 'basemapSe
   // Token type not recognized; default to 'app'
   return 'app';
 };
-export const wrapAccessToken = async (token: string, portalUrl?: string): Promise<ApiKeyManager | ArcGISIdentityManager> => {
-  if (!token || token.length === 0) return null;
+export const wrapAccessToken = async (token?: string, portalUrl?: string): Promise<ApiKeyManager | ArcGISIdentityManager | undefined> => {
+  if (!token || token.length === 0) return undefined;
   const tokenType = checkAccessTokenType(token);
   // User tokens
   if (tokenType === 'user') return await ArcGISIdentityManager.fromToken({
