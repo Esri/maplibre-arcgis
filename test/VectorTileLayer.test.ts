@@ -124,28 +124,34 @@ describe('Vector tile layer tests', () => {
   });
 
   describe('Loads data from a service URL', () => {
-    test('Accepts a service URL in the constructor and cleans the URL.', () => {
+    test('Accepts a service URL and cleans the URL during initialization.', async () => {
       const vtl = new VectorTileLayer({
         url: serviceUrlParcels
       });
+
+      fetchMock.once(usaServiceInfo).once(usaServiceStyle);
+      await vtl.initialize();
+
       expect(vtl._inputType).toBe('VectorTileService');
-      expect(vtl._serviceInfo).toEqual({
+      expect(vtl._serviceInfo).toEqual(expect.objectContaining({
         serviceUrl: serviceUrlParcels + '/'
-      })
+      }))
     });
-    test('Throws if the URL is not the URL of a vector tile service.', () => {
+    test('Throws if the URL is not the URL of a vector tile service.', async () => {
       // Not a URL
-      expect(() => {
+      await expect(async () => {
         const vtl = new VectorTileLayer({
           url: itemIdUSA
         });
-      }).toThrowError('Argument `url` is not a valid vector tile service URL.');
+        await vtl.initialize();
+      }).rejects.toThrowError('Argument `url` is not a valid vector tile service URL.');
       // Not a vector tile service
-      expect(() => {
+      await expect(async () => {
         const vtl = new VectorTileLayer({
           url: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer/'
         });
-      }).toThrowError('Argument `url` is not a valid vector tile service URL.');
+        await vtl.initialize();
+      }).rejects.toThrowError('Argument `url` is not a valid vector tile service URL.');
     });
 
     test('Fetches the style from the service URL.', async () => {
@@ -167,42 +173,55 @@ describe('Vector tile layer tests', () => {
   });
 
   describe('Loads styles from an item ID', () => {
-    test('Accepts an item ID and portal URL in the constructor, and the portal URL defaults to arcgis.com.', () => {
+    test('Accepts an item ID and portal URL, and the portal URL defaults to arcgis.com.', async () => {
       const vtl = new VectorTileLayer({
         itemId: itemIdUSA
       });
+
+      fetchMock.once(usaItemInfo).once(usaItemStyle);
+      await vtl.initialize();
+
       expect(vtl._inputType).toBe('ItemId');
-      expect(vtl._itemInfo).toEqual({
+      expect(vtl._itemInfo).toEqual(expect.objectContaining({
         itemId: itemIdUSA,
         portalUrl: 'https://www.arcgis.com/sharing/rest'
-      });
+      }));
 
       // Custom portal URL
       const vtl2 = new VectorTileLayer({
         itemId: itemIdUSA,
         portalUrl: 'https://my-evil-portal.com/items'
       });
-      expect(vtl2._itemInfo).toEqual({
+
+      fetchMock.once(usaItemInfo).once(usaItemStyle);
+      await vtl2.initialize();
+
+      expect(vtl2._itemInfo).toEqual(expect.objectContaining({
         itemId: itemIdUSA,
         portalUrl: 'https://my-evil-portal.com/items'
-      });
+      }));
     });
-    test('Throws if the item ID format is invalid', () => {
-      expect(() => {
+    test('Throws if the item ID format is invalid', async () => {
+      await expect(async () => {
         const vtl = new VectorTileLayer({
           itemId: 'random junk'
         });
-      }).toThrowError('Argument `itemId` is not a valid item ID.')
+        await vtl.initialize();
+      }).rejects.toThrowError('Argument `itemId` is not a valid item ID.')
     });
-    test('Prefers an item ID over a service URL if both are provided.', () => {
-      const warningSpy = vi.spyOn(console, 'warn');
+    test('Prefers an item ID over a service URL if both are provided.', async () => {
+      const warningSpy = vi.spyOn(console, 'warn').mockImplementation((warningText) => {});
       const vtl = new VectorTileLayer({
         itemId: itemIdUSA,
         url: serviceUrlParcels
       });
+
+      fetchMock.once(usaItemInfo).once(usaItemStyle);
+      await vtl.initialize();
+
       expect(warningSpy).toHaveBeenCalledWith('Both an item ID and service URL have been passed. Only the item ID will be used.');
       expect(vtl._inputType).toBe('ItemId');
-      expect(vtl._serviceInfo).toBeUndefined();
+      expect(vtl._serviceInfo.serviceUrl).toBe(serviceUrlUSA + '/');
     });
 
     test('Fetches the style of an item ID from the item resources.', async () => {

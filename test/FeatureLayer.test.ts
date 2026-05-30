@@ -209,13 +209,14 @@ describe('Feature layer unit tests', () => {
   });
 
   describe('Loads feature data from a service URL', ()=>{
-    test('Accepts a feature URL, cleans it, and recognizes if it\'s a single layer or a service.', () => {
+    test('Accepts a feature URL, cleans it, and recognizes if it\'s a single layer or a service.', async () => {
       // Service passed
       const featureLayer = new FeatureLayer({
         url: trailsMock.serviceUrl
       });
-      expect(featureLayer._inputType).toBe('FeatureService');
-      expect(featureLayer._serviceInfo).toEqual({
+      fetchMock.once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
+      await featureLayer.initialize();
+      expect(featureLayer._serviceInfo).toMatchObject({
         serviceUrl: trailsMock.serviceUrl + '/'
       });
 
@@ -223,22 +224,28 @@ describe('Feature layer unit tests', () => {
       const featureLayer2 = new FeatureLayer({
         url: trailsMock.layerUrl
       });
-      expect(featureLayer2._inputType).toBe('FeatureLayer');
+      fetchMock.once(trailsMock.layerDefinition);
+      await featureLayer2.initialize();
+      expect(featureLayer2._serviceInfo).toMatchObject({
+        serviceUrl: trailsMock.layerUrl + '/'
+      });
     });
-    test('Throws if the feature service URL is not valid.', () => {
+    test('Throws if the feature service URL is not valid.', async () => {
       // Not a URL
-      expect(() => {
+      await expect(async () => {
         const featureLayer = new FeatureLayer({
           url: '123456789'
         });
-      }).toThrowError('Argument `url` is not a valid feature service URL.');
+        await featureLayer.initialize();
+      }).rejects.toThrowError('The provided URL does not represent a valid feature service or feature layer.');
 
       // Not a feature service
-      expect(() => {
+      await expect(async () => {
         const featureLayer = new FeatureLayer({
           url: 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_Mountains_Parcels_VTL/VectorTileServer'
         });
-      }).toThrowError('Argument `url` is not a valid feature service URL.');
+        await featureLayer.initialize();
+      }).rejects.toThrowError('The provided URL does not represent a valid feature service or feature layer.');
     });
     test('Accepts generic feature service URLs and fetches the service definition for the generic service.', async () => {
       const { getService } = await import('@esri/arcgis-rest-feature-service');
@@ -251,6 +258,30 @@ describe('Feature layer unit tests', () => {
       await featureService.initialize();
       expect(getService).toHaveBeenCalled();
       expect(Object.keys(featureService._sources).length).toBe(1);
+    });
+    test('Accepts a map service URL when a single layer with type `Feature layer` is specified.', async () => {
+      const mapServiceLayerUrl = trailsMock.layerUrl.replace('/FeatureServer/', '/MapServer/');
+      const featureLayer = new FeatureLayer({
+        url: mapServiceLayerUrl
+      });
+
+      fetchMock.once(trailsMock.layerDefinition);
+      await featureLayer.initialize();
+
+      expect(featureLayer._serviceInfo).toMatchObject({
+        serviceUrl: mapServiceLayerUrl + '/'
+      });
+      expect(Object.keys(featureLayer._sources).length).toBe(1);
+    });
+    test('Throws on map service URLs when a layer is not specified in the URL.', async () => {
+      const mapServiceUrl = trailsMock.serviceUrl.replace('/FeatureServer', '/MapServer');
+
+      await expect(async () => {
+        const featureLayer = new FeatureLayer({
+          url: mapServiceUrl
+        });
+        await featureLayer.initialize();
+      }).rejects.toThrowError('The provided URL does not represent a valid feature service or feature layer.');
     });
     test('Fetches the service definition for each individual layer.', async () => {
       const { getLayer } = await import('@esri/arcgis-rest-feature-service');
@@ -294,6 +325,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         supportsExceedsLimitStatistics: false,
@@ -310,6 +342,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "",
         capabilities: "Query",
         geometryType: 'esriGeometryPoint',
@@ -326,6 +359,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         geometryType: 'notEsriGeometry',
@@ -338,6 +372,7 @@ describe('Feature layer unit tests', () => {
 
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         supportsExceedsLimitStatistics: true,
@@ -353,6 +388,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "",
         geometryType: 'esriGeometryPoint',
@@ -369,6 +405,7 @@ describe('Feature layer unit tests', () => {
       });
 
       fetchMock.once(JSON.stringify({
+        type: 'Feature Layer',
         supportedQueryFormats: "JSON, geoJSON, PBF",
         capabilities: "Query",
         geometryType: 'esriGeometryPoint',
@@ -443,14 +480,15 @@ describe('Feature layer unit tests', () => {
   });
 
   describe('Supports layer creation using item IDs', () => {
-    test('Accepts an item ID and portal URL in the constructor, and the portal URL defaults to arcgis.com.', () => {
+    test('Accepts an item ID and portal URL in the constructor, and the portal URL defaults to arcgis.com.', async () => {
       const mockId = '44299709cce447ea99014ff1e3bf8505';
       // Default portal URL
       const featureLayer = new FeatureLayer({
         itemId: mockId
       });
-      expect(featureLayer._inputType).toBe('ItemId');
-      expect(featureLayer._itemInfo).toEqual({
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
+      await featureLayer.initialize();
+      expect(featureLayer._itemInfo).toMatchObject({
         itemId: mockId,
         portalUrl: 'https://www.arcgis.com/sharing/rest'
       });
@@ -460,27 +498,34 @@ describe('Feature layer unit tests', () => {
         itemId: mockId,
         portalUrl: 'https://my-custom-portal.com/items'
       });
-      expect(featureLayer2._itemInfo).toEqual({
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
+      await featureLayer2.initialize();
+      expect(featureLayer2._itemInfo).toMatchObject({
         itemId: mockId,
         portalUrl: 'https://my-custom-portal.com/items'
       });
     });
-    test('Throws if the item ID format is invalid', () => {
-      expect(() => {
+    test('Throws if the item ID format is invalid', async () => {
+      await expect(async () => {
         const featureLayer = new FeatureLayer({
           itemId: 'random junk'
         });
-      }).toThrowError('Argument `itemId` is not a valid item ID.')
+        await featureLayer.initialize();
+      }).rejects.toThrowError('Argument `itemId` is not a valid item ID.')
     });
-    test('Prefers an item ID over a service URL if both are provided.', () => {
+    test('Prefers an item ID over a service URL if both are provided.', async () => {
       const warningSpy = vi.spyOn(console, 'warn').mockImplementation((warningText) => {});
       const featureLayer = new FeatureLayer({
-        itemId: '44299709cce447ea99014ff1e3bf8505',
-        url: 'https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Trails/FeatureServer'
+        itemId: trailsMock.itemId,
+        // This URL is intentionally included to verify itemId takes precedence.
+        url: 'https://example.com/includedUrlThatShouldBeIgnored/FeatureServer'
       });
-      expect(warningSpy).toHaveBeenCalledWith('Both an item ID and service URL have been passed. Only the item ID will be used.');
-      expect(featureLayer._inputType).toBe('ItemId');
       expect(featureLayer._serviceInfo).toBeUndefined();
+
+      fetchMock.once(trailsMock.item).once(trailsMock.serviceDefinition).once(trailsMock.layerDefinition);
+      await featureLayer.initialize();
+      expect(warningSpy).toHaveBeenCalledWith('Both an item ID and service URL have been passed. Only the item ID will be used.');
+      expect(featureLayer._serviceInfo.serviceUrl).toBe(cleanUrl(trailsMock.serviceUrl));
     });
 
     test('Gets item metadata including attribution, title, and description.', async () => {
@@ -506,7 +551,7 @@ describe('Feature layer unit tests', () => {
 
       await featureLayer.initialize();
 
-      expect(featureLayer._serviceInfo.serviceUrl).toBe(trailsMock.serviceUrl);
+      expect(featureLayer._serviceInfo.serviceUrl).toBe(cleanUrl(trailsMock.serviceUrl));
       expect(featureLayer._sources['Trails_0'].data).toEqual(getBlankFc());
     });
   });
@@ -682,259 +727,4 @@ describe('Feature layer unit tests', () => {
       expect(trailsLayer.source.attribution).toBe(customAttribution);
     });
   });
-});
-
-describe('Works on a mock page with a `Map`',() => {
-  test('Uninitialized layers cannot be added to the map.', async ({setupPage})=>{
-    const page = await setupPage('feature-layer.html');
-
-    await page.waitForFunction(()=> window.map && window.featureLayer);
-
-    await expect(async () => {
-      await page.evaluate(() => {
-        window.featureLayer.addSourcesAndLayersTo(window.map);
-      })
-    }).rejects.toThrowError('Cannot add sources and layers to map: Class is not initialized.');
-
-    await expect(async () => {
-      await page.evaluate(() => {
-        window.featureLayer.addSourcesTo(window.map);
-      })
-    }).rejects.toThrowError('Cannot add sources to map: Class is not initialized.');
-
-    await expect(async () => {
-      await page.evaluate(() => {
-        window.featureLayer.addLayersTo(window.map);
-      })
-    }).rejects.toThrowError('Cannot add layers to map: Class is not initialized.');
-
-    await expect(async () => {
-      await page.evaluate(() => {
-        window.featureLayer.addLayerTo(window.map);
-      })
-    }).rejects.toThrowError('Cannot add layer to map: Class is not initialized.');
-
-    await expect(async () => {
-      await page.evaluate(() => {
-        window.featureLayer.addSourceTo(window.map);
-      })
-    }).rejects.toThrowError('Cannot add source to map: Class is not initialized.');
-  });
-
-  test('`addSourceTo` adds a GeoJSON source to map, `addLayerTo` adds a layer to map, and both throw if multiple layers are present.', async ({setupPage}) => {
-    const page = await setupPage('feature-layer.html');
-    await page.waitForFunction(()=>window.map && window.featureLayer);
-
-    const {mapStyle} = await page.evaluate(async () => {
-      await window.featureLayer.initialize(); // This layer uses forced on-demand loading
-
-      window.featureLayer.addSourceTo(window.map);
-      window.featureLayer.addLayerTo(window.map);
-
-      return await new Promise(resolve => {
-        window.map.on('load', ()=> {
-          resolve({
-            mapStyle: window.map.getStyle()
-          })
-        });
-      })
-    });
-
-    expect(Object.keys(mapStyle.sources).length).toBe(1);
-    expect(mapStyle.layers.length).toBe(1);
-    expect(mapStyle.layers[0].source).toEqual(Object.keys(mapStyle.sources)[0]); // Source ID set properly
-  });
-
-  test('`addSourcesTo` and `addLayersTo` add sources and layers to the maplibre map.', async ({setupPage}) => {
-    const page = await setupPage('feature-layer.html');
-    await page.waitForFunction(()=>window.map && window.featureLayer);
-
-    const {mapStyle} = await page.evaluate(async () => {
-      await window.featureLayer.initialize();
-      window.featureLayer.addSourcesTo(window.map);
-      window.featureLayer.addLayersTo(window.map);
-
-      return await new Promise(resolve => {
-        window.map.on('load', ()=> {
-          resolve({
-            mapStyle: window.map.getStyle()
-          })
-        });
-      });
-    });
-    expect(Object.keys(mapStyle.sources).length).toBe(1);
-    expect(mapStyle.layers.length).toBe(1);
-    expect(mapStyle.layers[0].source).toBe(Object.keys(mapStyle.sources)[0]);
-  });
-
-  test('`addSourcesAndLayersTo` adds sources and layers to the maplibre map.', async ({setupPage}) => {
-    const page = await setupPage('feature-layer.html');
-    await page.waitForFunction(()=>window.map && window.featureLayer);
-
-    const {style} = await page.evaluate(async () => {
-      await window.featureLayer.initialize();
-      window.featureLayer.addSourcesAndLayersTo(window.map);
-
-      return await new Promise(resolve => {
-        window.map.on("load", ()=> {
-          resolve({
-            style: window.map.getStyle()
-          });
-        });
-      });
-    });
-    expect(Object.keys(style.sources).length).toBe(1);
-    expect(style.layers.length).toBe(1);
-    expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);
-  });
-
-  test('`addSourceTo` and `addLayerTo` accept maplibre options and pass them to the maplibre map.', async ({setupPage, maplibreSourceOptions, maplibreLayerOptions}) => {
-
-    const page = await setupPage('feature-layer.html');
-    await page.waitForFunction(()=>window.map && window.featureLayer);
-
-
-    const {mapStyle} = await page.evaluate(async (params) => {
-      await window.featureLayer.initialize();
-
-      window.featureLayer.addSourceTo(window.map, params.maplibreSourceOptions);
-      window.featureLayer.addLayerTo(window.map, params.maplibreLayerOptions);
-
-      return await new Promise(resolve => {
-        window.map.on('load', ()=> {
-          resolve({
-            mapStyle: window.map.getStyle()
-          })
-        });
-      })
-    }, {maplibreSourceOptions, maplibreLayerOptions});
-
-    expect(Object.values(mapStyle.sources)[0]).toEqual(expect.objectContaining(maplibreSourceOptions));
-
-    expect(mapStyle.layers[0]).toEqual(expect.objectContaining(maplibreLayerOptions));
-  });
-
-  test('`addSourcesTo` and `addLayersTo` accept transform functions for setting maplibre options.', async ({setupPage, maplibreSourceOptions, maplibreLayerOptions}) => {
-
-    const page = await setupPage('feature-layer.html');
-    await page.waitForFunction(()=>window.map && window.featureLayer);
-
-    const {mapStyle} = await page.evaluate(async (params) => {
-      await window.featureLayer.initialize();
-
-      window.featureLayer.addSourcesTo(window.map, (sourceId, source) => {
-        return {
-          ...source,
-          ...params.maplibreSourceOptions
-        }
-      });
-      window.featureLayer.addLayersTo(window.map, (layer) => {
-        return {
-          ...layer,
-          ...params.maplibreLayerOptions
-        }
-      });
-
-      return await new Promise(resolve => {
-        window.map.on('load', ()=> {
-          resolve({
-            mapStyle: window.map.getStyle()
-          })
-        });
-      })
-    }, {maplibreSourceOptions, maplibreLayerOptions});
-
-    expect(Object.values(mapStyle.sources)[0]).toEqual(expect.objectContaining(maplibreSourceOptions));
-    expect(mapStyle.layers[0]).toEqual(expect.objectContaining(maplibreLayerOptions));
-
-  });
-
-  test('`addSourcesAndLayersTo` accepts transform functions for setting maplibre options.', async ({setupPage, maplibreSourceOptions, maplibreLayerOptions}) => {
-
-    const page = await setupPage('feature-layer.html');
-    await page.waitForFunction(()=>window.map && window.featureLayer);
-
-    const {mapStyle} = await page.evaluate(async (params) => {
-      await window.featureLayer.initialize();
-
-
-      window.featureLayer.addSourcesAndLayersTo(window.map, {
-        transformSources: (sourceId, source) => {
-          return {
-            ...source,
-            ...params.maplibreSourceOptions
-          }
-        },
-        transformLayers: (layer) => {
-          return {
-            ...layer,
-            ...params.maplibreLayerOptions
-          }
-        }
-      });
-
-      return await new Promise(resolve => {
-        window.map.on('load', ()=> {
-          resolve({
-            mapStyle: window.map.getStyle()
-          })
-        });
-      })
-    }, {maplibreSourceOptions, maplibreLayerOptions});
-
-    expect(Object.values(mapStyle.sources)[0]).toEqual(expect.objectContaining(maplibreSourceOptions));
-    expect(mapStyle.layers[0]).toEqual(expect.objectContaining(maplibreLayerOptions));
-
-  });
-
-  // TODO
-  test('Works with native maplibre `addSource` and `addLayer` methods if map is set.', async ({setupPage}) => {
-    const page = await setupPage('feature-layer.html');
-    await page.waitForFunction(() => window.map && window.featureLayer);
-
-    const {style} = await page.evaluate(async () => {
-      await window.featureLayer.initialize();
-
-      window.map.addSource(window.featureLayer.sourceId, window.featureLayer.source);
-      window.map.addLayer(window.featureLayer.layer);
-
-      return new Promise(resolve => {
-        window.map.on('load',()=>{
-          resolve({
-            style: window.map.getStyle()
-          });
-        });
-      });
-    });
-
-    expect(Object.keys(style.sources).length).toBe(1);
-    expect(style.sources[Object.keys(style.sources)[0]].data).toEqual(getBlankFc());
-
-    expect(style.layers.length).toBe(1);
-    expect(style.layers[0].source).toBe(Object.keys(style.sources)[0]);
-  });
-
-  // TODO fix this test
-  /*
-  test('Creates an Esri `AttributionControl when added to the map.', async ({setupPage, esriAttributionString}) => {
-    const page = await setupPage('feature-layer.html');
-    await page.waitForFunction(()=> window.map && window.featureLayer);
-
-    vi.doMock('../src/AttributionControl',{spy:true});
-    const {AttributionControl} = await import('../src/AttributionControl');
-
-    await page.evaluate(async () => {
-      await window.featureLayer.initialize();
-      window.featureLayer.addSourcesAndLayersTo(window.map);
-      return new Promise(resolve => {
-        window.map.on("load", (e)=> {
-          resolve()
-        });
-      });
-    });
-    expect(AttributionControl).toHaveBeenCalled();
-  });
-  test('Does not add the Esri `AttributionControl` if Esri attribution is already present', () => {});
-  test('Renders properly on a maplibre map.', () => {}); //
-  */
 });
