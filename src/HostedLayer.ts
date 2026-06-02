@@ -316,7 +316,7 @@ export abstract class HostedLayer {
       map.addSource(sourceId, source);
     });
     this._layers.forEach((layer) => {
-      if (options?.transformLayers) layer = options.transformLayers(layer);
+      if (options?.transformLayers) layer = options.transformLayers(layer) as LayerSpecification;
       map.addLayer(layer);
     });
     this._onAdd(map);
@@ -387,9 +387,8 @@ export abstract class HostedLayer {
       layer = {
         ...layer,
         ...layerOptions,
-      };
+      } as LayerSpecification;
     }
-
     map.addLayer(layer);
 
     this._onAdd(map);
@@ -405,7 +404,7 @@ export abstract class HostedLayer {
     if (!this._ready) throw new Error('Cannot add layers to map: Class is not initialized.');
 
     this._layers.forEach((layer) => {
-      if (transformLayers) layer = transformLayers(layer);
+      if (transformLayers) layer = transformLayers(layer) as LayerSpecification;
       map.addLayer(layer);
     });
     this._onAdd(map);
