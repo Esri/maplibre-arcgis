@@ -3,7 +3,7 @@ import {
   type Map,
   type AttributionControlOptions as MaplibreAttributionControlOptions,
 } from 'maplibre-gl';
-import maplibregl from 'maplibre-gl';
+import { AttributionControl as MapLibreAttributionControl } from 'maplibre-gl';
 
 type MapLibreMap = Map;
 
@@ -37,7 +37,7 @@ export const EsriAttribution: MaplibreAttributionControlOptions = {
 /**
  * The attribution control adds attribution information for ArcGIS Data services in a MapLibre GL JS Map.
  */
-export class AttributionControl extends maplibregl.AttributionControl {
+export class AttributionControl extends MapLibreAttributionControl {
   /** @internal */
   private _closed?: boolean;
   private attributionOptions: MaplibreAttributionControlOptions;
@@ -57,7 +57,7 @@ export class AttributionControl extends maplibregl.AttributionControl {
     // Incompatible options - 'closed' overrides 'compact'
     if ((!options?.compact) && options?.collapsed) options.compact = true;
 
-    const attributions = [];
+    const attributions: string[] = [];
 
     if (options.customAttribution) {
       // Append user-provided custom attribution
@@ -122,12 +122,12 @@ export class AttributionControl extends maplibregl.AttributionControl {
       map._controls.forEach((control: IControl) => {
         // Error if any other attribution control is present
         if ('_toggleAttribution' in control) {
-          const attributionControl = control as maplibregl.AttributionControl;
+          const attributionControl = control as MapLibreAttributionControl;
           if (attributionControl.options.customAttribution === defaultMaplibreAttributionString) {
             map.removeControl(attributionControl);
             // console.warn('Map attribution is handled by ArcGIS BasemapStyle. The default attribution control was overwritten.');
           }
-          else if (attributionControl.options.customAttribution.includes(esriAttributionString)) {
+          else if (attributionControl.options.customAttribution?.includes(esriAttributionString)) {
             // Esri string already exists,
             attributionExists = true;
           }

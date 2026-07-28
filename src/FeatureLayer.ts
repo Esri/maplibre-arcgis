@@ -1,11 +1,10 @@
 import type { GeometryType, IGeometry, ILayerDefinition, ISpatialReference, SpatialRelationship } from '@esri/arcgis-rest-feature-service';
 import { getLayer, getService } from '@esri/arcgis-rest-feature-service';
 import { getItem } from '@esri/arcgis-rest-portal';
-import type { GeoJSONSourceSpecification, LayerSpecification } from 'maplibre-gl';
+import type { GeoJSONSourceSpecification, LayerSpecification, Map } from 'maplibre-gl';
 import type { IHostedLayerOptions } from './HostedLayer';
 import { HostedLayer } from './HostedLayer';
 import { checkItemId, getServiceType, cleanUrl, getBlankFc, warn, wrapAccessToken } from './Util';
-import type { Map } from 'maplibre-gl';
 import { FeatureLayerSourceManager, type FeatureLayerSourceManagerOptions, type LoadingModeOptions } from './FeatureLayerSourceManager';
 import { type FeatureCollection } from 'geojson';
 // const geoJSONDefaultStyleMap = {
