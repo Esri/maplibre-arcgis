@@ -7,7 +7,7 @@ import basemapStyleStreetsRaw from './mock/BasemapStyle/OpenStreets.json';
 import customStyleRaw from './mock/BasemapStyle/CustomArcGisStyle.json';
 import sessionResponseRaw from './mock/BasemapSession/valid-session.json';
 import { tokenError } from './mock/authentication/invalidTokenError';
-import { Map } from 'maplibre-gl';
+import { AttributionControl, Map } from 'maplibre-gl';
 import { useMock, removeMock } from './setupUnit';
 import * as arcgisRestRequest from '@esri/arcgis-rest-request';
 
@@ -234,12 +234,12 @@ describe('BasemapStyle unit tests', () => {
         container: mapDiv,
         zoom: 5, // starting zoom
         center: [138.2529, 36.2048], // starting location
-        attributionControl: {
-          customAttribution: customAttributionString
-        }
+        attributionControl: true
       });
 
-      fetchMock.mockResponse(JSON.stringify({}));
+      map.addControl(new AttributionControl({
+        customAttribution: customAttributionString
+      }));
       expect(() => {
         loadedBasemap.applyTo(map);
       }).toThrow('Unable to load Esri attribution');

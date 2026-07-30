@@ -3,7 +3,7 @@ import {
   type Map,
   type AttributionControlOptions as MaplibreAttributionControlOptions,
 } from 'maplibre-gl';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 type MapLibreMap = Map;
 

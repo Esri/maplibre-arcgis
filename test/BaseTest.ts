@@ -1,5 +1,5 @@
 //@ts-nocheck
-import { vi, expect, test as testBase, describe } from "vitest";
+import { vi, expect, test as testBase, describe, afterAll } from "vitest";
 import puppeteer from 'puppeteer';
 
 import { BasemapSession, BasemapStyle } from '../src/MaplibreArcGIS.js';
@@ -8,6 +8,7 @@ import { Map } from 'maplibre-gl';
 import {MOCK_API_KEY} from './mock/authentication/basemapApiKey.js';
 import basemapStyleNavigation from './mock/BasemapStyle/ArcGISNavigation.json';
 import sessionResponseRaw from './mock/BasemapSession/valid-session.json';
+import { setupStaticServer, closeStaticServer } from './staticServer';
 
 // Mock service containing multiple feature layers (12 layers)
 import multiLayerServiceDefinitionRaw from './mock/FeatureLayer/multiLayer-service-info.json';
@@ -52,6 +53,15 @@ export const featureMocks = {
 };
 
 let browser;
+
+afterAll(async () => {
+  if (browser) {
+    await browser.close();
+    browser = undefined;
+  }
+  await closeStaticServer();
+});
+
 async function setupBrowser() {
   if (browser) {
     return browser
@@ -118,10 +128,12 @@ export const customTest = testBase.extend({
     await use(basemap);
   },
   setupPage : async ({}, use) => {
-    async function loadPage (mockPageFile) {
-      //setup the browser if it isn't already
-      const browser = await setupBrowser();
+    //setup the browser if it isn't already
+    const browser = await setupBrowser();
+    const staticServerPort = await setupStaticServer();
+    const baseUrl = process.env.TEST_BASE_URL || `http://127.0.0.1:${staticServerPort}`;
 
+    const loadPage = async (mockPageFile) => {
       // Create a new page
       const page = await browser.newPage();
 
@@ -134,7 +146,7 @@ export const customTest = testBase.extend({
       }, { apiKey: process.env.PRODUCTION_KEY_ALP });
 
       // Navigate to the mock page
-      await page.goto(`file://${process.cwd()}/test/mock/pages/${mockPageFile}`, {});
+      await page.goto(`${baseUrl}/test/mock/pages/${mockPageFile}`, {});
       // Return the page object to the test
       return page;
     }
