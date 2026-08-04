@@ -1,7 +1,6 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
-import { customTest } from './BaseTest'
-import featureMocks from './mock/FeatureLayer/router';
+import { customTest, featureMocks } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { FeatureLayer } from '../src/FeatureLayer';
 import { cleanUrl, getBlankFc } from '../src/Util';

@@ -1,7 +1,6 @@
 //@ts-nocheck
 import { describe, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
-import { customTest } from './BaseTest'
-import { featureMocks } from './mock/FeatureLayer/router';
+import { customTest, featureMocks } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { FeatureLayerSourceManager } from '../src/FeatureLayerSourceManager';
 import { queryFeatures, queryAllFeatures } from '@esri/arcgis-rest-feature-service';
