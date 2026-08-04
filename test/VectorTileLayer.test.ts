@@ -3,44 +3,29 @@ import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { customTest } from './BaseTest'
 import { useMock, removeMock } from './setupUnit';
 import { VectorTileLayer } from '../src/VectorTileLayer';
-
-import customResourcesRaw from './mock/VectorTileLayer/custom-style-resource.json'
-
-import usaServiceInfoRaw from './mock/VectorTileLayer/usa/service-info.json';
-import usaServiceItemInfoRaw from './mock/VectorTileLayer/usa/service-item-info.json';
-import usaServiceStyleRaw from './mock/VectorTileLayer/usa/service-resource-style.json';
-
-import usaItemInfoRaw from './mock/VectorTileLayer/usa/styled-item-info.json';
-import usaItemResourcesRaw from './mock/VectorTileLayer/usa/styled-item-resources.json';
-import usaItemStyleRaw from './mock/VectorTileLayer/usa/styled-item-resource-style.json';
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
+import vectorTileLayerMocks from './mock/VectorTileLayer/router';
 
-const customResources = JSON.stringify(customResourcesRaw);
-
-const usaServiceInfo = JSON.stringify(usaServiceInfoRaw);
-const usaServiceStyle = JSON.stringify(usaServiceStyleRaw);
-const usaServiceItemInfo = JSON.stringify(usaServiceItemInfoRaw);
-
-const usaItemInfo = JSON.stringify(usaItemInfoRaw);
-const usaItemStyle = JSON.stringify(usaItemStyleRaw);
-const usaItemResources = JSON.stringify(usaItemResourcesRaw);
-
-const emptyResources = JSON.stringify({
-  "total": 0,
-  "start": 1,
-  "num": 0,
-  "nextStart": -1,
-  "resources": []
-});
-
-// USA population layer
-const itemIdUSA = '31eb749371c441e0b3ac5db4f60ecba9';
-const serviceItemIdUSA = '7945dd44c5cd41329984d7ce6e641976';
-const serviceUrlUSA = 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/USA_States_Population_Vector_Tiles/VectorTileServer';
-
-// Santa Monica Mountains Parcels
-const serviceUrlParcels = 'https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_Mountains_Parcels_VTL/VectorTileServer';
-const serviceItemId = 'f0298e881b5b4743bbdf2c7d378acc84';
+const { customResourceFiles, usaPopulationLayer, santaMonicaParcelsLayer } = vectorTileLayerMocks;
+const { customResources } = customResourceFiles;
+const {
+  itemId: itemIdUSA,
+  serviceItemId: serviceItemIdUSA,
+  serviceUrl: serviceUrlUSA,
+  usaServiceInfoRaw,
+  usaServiceItemInfo,
+  usaServiceStyleRaw,
+  usaServiceInfo,
+  usaServiceStyle,
+  usaItemStyleRaw,
+  usaItemInfo,
+  usaItemStyle,
+  emptyResources
+} = usaPopulationLayer;
+const {
+  serviceUrl: serviceUrlParcels,
+  serviceItemId: serviceItemId
+} = santaMonicaParcelsLayer;
 
 const test = customTest.extend({
   statesLayer: async ({}, use) => {

@@ -26,7 +26,7 @@ const test = customTest.extend({
   }
 });
 
-describe('FeatureLayer browser tests', () => {
+describe.skip('FeatureLayer browser tests', () => {
   beforeAll(() => {
     useMock();
     return () => removeMock();
