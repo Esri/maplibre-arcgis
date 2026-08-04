@@ -2,7 +2,7 @@
 import { describe, expect, beforeAll, beforeEach } from 'vitest';
 import { BasemapStyle } from '../src/MaplibreArcGIS';
 import { customTest as test } from './BaseTest';
-import { removeMock } from './fetchMockHelpers';
+import { removeMock } from './setupUnit';
 
 // Live tests intentionally use real network/auth and are excluded from default `npm run test`.
 describe('Basemap live tests', () => {

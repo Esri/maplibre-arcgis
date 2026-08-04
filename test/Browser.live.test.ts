@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { describe, expect } from 'vitest';
 import { customTest as test } from './BaseTest';
-import { removeMock } from './fetchMockHelpers';
+import { removeMock } from './setupUnit';
 
 // Live browser tests intentionally use real network/auth and are excluded from default `npm run test`.
 describe('Browser live tests', () => {

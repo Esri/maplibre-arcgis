@@ -1,5 +1,5 @@
 //@ts-nocheck
-import { describe, expect, vi } from 'vitest';
+import { describe, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest';
 import { BasemapStyle, BasemapSession } from '../src/MaplibreArcGIS';
 import { customTest as test } from './BaseTest';
 import basemapStyleNavigationRaw from './mock/BasemapStyle/ArcGISNavigation.json';
@@ -8,6 +8,7 @@ import customStyleRaw from './mock/BasemapStyle/CustomArcGisStyle.json';
 import sessionResponseRaw from './mock/BasemapSession/valid-session.json';
 import { tokenError } from './mock/authentication/invalidTokenError';
 import { Map } from 'maplibre-gl';
+import { useMock, removeMock } from './setupUnit';
 import * as arcgisRestRequest from '@esri/arcgis-rest-request';
 
 const basemapStyleNavigation = JSON.stringify(basemapStyleNavigationRaw);
@@ -28,6 +29,16 @@ const DEFAULT_BASE_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/servi
  * Tests
  */
 describe('BasemapStyle unit tests', () => {
+  beforeAll(async () => {
+    useMock();
+  });
+  afterAll(() => {
+    removeMock();
+  });
+  beforeEach(() => {
+    fetchMock.resetMocks();
+  });
+
   test('Accepts a \'style\' parameter and saves it internally.', ({apiKey}) => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,
@@ -318,6 +329,16 @@ describe('BasemapStyle unit tests', () => {
 
 
 describe('Supports basemap session authentication.', () => {
+  beforeAll(() => {
+    useMock();
+  });
+  afterAll(() => {
+    removeMock();
+  });
+  beforeEach(() => {
+    fetchMock.resetMocks();
+  });
+
   test('Accepts an initialized BasemapSession and uses the session token for authentication.', ({basemapSession}) => {
     const basemap = new BasemapStyle({
       style: arcgisStyle,

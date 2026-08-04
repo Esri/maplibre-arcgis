@@ -24,4 +24,4 @@ Tests are written using `vitest`, with the environment defined in [`vitest.confi
 
 A custom test was written in order to access convenience objects and methods in every test. To add a new object to the test suite, modify [`BaseTest.ts](./BaseTest.ts) or extend the base test in another file.
 
-The [`setupUnitMocks.ts`](./setupUnitMocks.ts) script runs on initial unit test setup. To execute code before all tests run, modify that file.
+The [`setupUnit.js`](./setupUnit.ts) script runs on initial test setup. To execute code before all tests run, modify that file.

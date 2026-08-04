@@ -1,6 +1,7 @@
 //@ts-nocheck
-import { describe, expect, vi } from 'vitest';
+import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { customTest } from './BaseTest'
+import { useMock, removeMock } from './setupUnit';
 import { VectorTileLayer } from '../src/VectorTileLayer';
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
 import vectorTileLayerMocks from './mock/VectorTileLayer/router';
@@ -39,6 +40,14 @@ const test = customTest.extend({
 })
 
 describe('Vector tile layer tests', () => {
+  beforeAll(() => {
+    useMock();
+    return () => removeMock();
+  });
+  beforeEach(()=> {
+    fetchMock.resetMocks();
+  });
+
   test('Throws if neither an item ID nor service URL are provided.', () => {
     // Empty options
     expect(() => {

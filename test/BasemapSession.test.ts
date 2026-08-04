@@ -1,8 +1,9 @@
 //@ts-nocheck
-import { describe, expect, vi } from 'vitest';
+import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { customTest } from './BaseTest'
 import { BasemapSession } from '../src/BasemapSession';
 import { BasemapStyleSession } from '@esri/arcgis-rest-basemap-sessions';
+import { useMock, removeMock } from './setupUnit';
 import sessionResponseRaw from './mock/BasemapSession/valid-session.json';
 import expiredSessionResponseRaw from './mock/BasemapSession/expired-session.json';
 import { ApiKeyManager } from '@esri/arcgis-rest-request';
@@ -32,6 +33,16 @@ const test = customTest.extend({
   }
 })
 describe('Basemap session unit tests', () => {
+  beforeAll(async () => {
+    useMock();
+    return () => {
+      removeMock();
+    }
+  });
+  beforeEach(() => {
+    fetchMock.resetMocks();
+  });
+
   test('Uses ArcGIS REST JS to start a basemap session.', async ({apiKey}) => {
     fetchMock.once(sessionResponse);
 

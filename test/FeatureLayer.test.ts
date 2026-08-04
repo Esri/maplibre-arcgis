@@ -1,7 +1,8 @@
 //@ts-nocheck
-import { describe, expect, vi, afterEach, afterAll } from 'vitest';
+import { describe, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
 import { customTest } from './BaseTest'
 import featureMocks from './mock/FeatureLayer/router';
+import { useMock, removeMock } from './setupUnit';
 import { FeatureLayer } from '../src/FeatureLayer';
 import { cleanUrl, getBlankFc } from '../src/Util';
 import { getItem } from '@esri/arcgis-rest-portal';
@@ -49,6 +50,14 @@ export const test = customTest.extend({
 })
 
 describe('Feature layer unit tests', () => {
+  beforeAll(() => {
+    useMock();
+    return () => removeMock();
+  });
+  beforeEach(()=> {
+    fetchMock.resetMocks();
+  });
+
   test('Throws if neither an item ID nor a url are provided.', () => {
     expect(() => {
       const featureLayer = new FeatureLayer({});
