@@ -1,8 +1,8 @@
 //@ts-nocheck
-import { describe, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, expect } from 'vitest';
 import { customTest } from './BaseTest';
-import { useMock, removeMock } from './setupUnit';
 import { getBlankFc } from '../src/Util';
+import { removeMock } from './fetchMockHelpers';
 
 const test = customTest.extend({
   maplibreLayerOptions: async ({}, use) => {
@@ -28,14 +28,8 @@ const test = customTest.extend({
 
 describe.skip('FeatureLayer browser tests', () => {
   beforeAll(() => {
-    useMock();
-    return () => removeMock();
-  });
-
-  beforeEach(() => {
-    fetchMock.resetMocks();
-  });
-
+    removeMock();
+  })
   test('Uninitialized layers cannot be added to the map.', async ({setupPage}) => {
     const page = await setupPage('feature-layer.html');
 

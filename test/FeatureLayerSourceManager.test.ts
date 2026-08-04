@@ -1,8 +1,7 @@
 //@ts-nocheck
-import { describe, expect, vi, beforeAll, beforeEach, afterEach, afterAll } from 'vitest';
+import { describe, expect, vi, afterEach, afterAll } from 'vitest';
 import { customTest } from './BaseTest'
 import { featureMocks } from './mock/FeatureLayer/router';
-import { useMock, removeMock } from './setupUnit';
 import { FeatureLayerSourceManager } from '../src/FeatureLayerSourceManager';
 import { queryFeatures, queryAllFeatures } from '@esri/arcgis-rest-feature-service';
 import { Map, LngLatBounds, GeoJSONSource } from 'maplibre-gl';
@@ -62,16 +61,6 @@ const test = customTest.extend({
 const sourceId = 'geojson-source';
 
 describe('Feature layer data source tests', () => {
-  beforeAll(async () => {
-    useMock();
-    return () => {
-      removeMock();
-    }
-  });
-  beforeEach(()=> {
-    fetchMock.resetMocks();
-  });
-
   test('Requires a GeoJSONSource ID and a feature layer URL.', () => {
     expect(() => {
       const featureManager = new FeatureLayerSourceManager()

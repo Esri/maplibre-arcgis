@@ -1,7 +1,6 @@
 //@ts-nocheck
-import { describe, expect, vi, beforeAll, beforeEach } from 'vitest';
+import { describe } from 'vitest';
 import { customTest as test } from './BaseTest'
-import { useMock, removeMock } from './setupUnit';
 import { AttributionControl } from '../src/AttributionControl';
 
 const esriAttributionString = 'Powered by \<a href=\"https:\/\/www.esri.com\/\"\>Esri\<\/a\>';
@@ -9,14 +8,6 @@ const maplibreAttributionString = '\<a href=\"https:\/\/maplibre.org\/\"\>MapLib
 const defaultMaplibreAttributionString = '\<a href=\"https:\/\/maplibre.org\/\" target=\"_blank\"\>MapLibre\<\/a\>';
 
 describe('Attribution control unit tests', () => {
-  beforeAll(() => {
-    useMock();
-    return () => removeMock();
-  });
-  beforeEach(()=> {
-    fetchMock.resetMocks();
-  });
-
   test('Always adds the string \'Powered by Esri\'.', () => {});
   test('Always adds the string \'MapLibre\'.', () => {});
   test('Accepts a `customAttribution` parameter and includes the provided string or array in attribution text.', () => {});

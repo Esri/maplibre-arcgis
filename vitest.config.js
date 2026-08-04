@@ -10,14 +10,15 @@ export default defineConfig({
     },
     setupFiles: [
       'dotenv/config',
-      './test/setupUnit.js',
+      './test/setupUnitMocks.ts',
       'vitest-webgl-canvas-mock'
     ],
     include: [
       './test/**/*.test.{ts,js}'
     ],
     exclude: [
-      './test/**/*.live.test.{ts,js}'
+      './test/**/*.live.test.{ts,js}',
+      './test/**/*.browser.test.{ts,js}'
     ],
     coverage: {
       enabled: false,

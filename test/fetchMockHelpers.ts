@@ -1,5 +1,5 @@
-import createFetchMock from 'vitest-fetch-mock';
 import { vi } from 'vitest';
+import type FetchMock from 'vitest-fetch-mock';
 
 type FetchMockLike = {
   enableMocks: () => void;
@@ -9,6 +9,7 @@ type FetchMockLike = {
   mockResponses: (...responses: [BodyInit | null | undefined, ResponseInit?][]) => FetchMockLike;
 };
 
+const fetchMockGlobal = globalThis.fetchMock as FetchMockLike;
 type JsonMockResponse = unknown | [unknown, ResponseInit?];
 
 function toMockBody(data: unknown): BodyInit | null | undefined {
@@ -19,48 +20,14 @@ function toMockBody(data: unknown): BodyInit | null | undefined {
   return JSON.stringify(data);
 }
 
-// Mock browser globals and window
-Object.setPrototypeOf(window, Window.prototype);
-window.URL.createObjectURL = vi.fn();
-
-// Enable fetch mock
-const fetchMocker = createFetchMock(vi);
-fetchMocker.enableMocks();
-const fetchMockGlobal = globalThis.fetchMock as FetchMockLike;
-
-export let IS_MOCK = false;
-
-export function useMock() {
-  vi.mock('@esri/arcgis-rest-feature-service', { spy: true });
-  vi.mock('@esri/arcgis-rest-portal', { spy: true });
-  vi.mock('@esri/arcgis-rest-request', { spy: true });
-  vi.mock('@esri/arcgis-rest-basemap-sessions', { spy: true });
-
-  vi.stubGlobal('ResizeObserver', class MockResizeObserver {
-    observe = vi.fn();
-  });
-
-  vi.stubGlobal('Worker', vi.fn(() => ({
-    postMessage: vi.fn(),
-    onmessage: vi.fn(),
-    terminate: vi.fn(),
-    addEventListener: window.addEventListener,
-    removeEventListener: window.removeEventListener
-  })));
-
-  fetchMockGlobal.enableMocks();
-  fetchMockGlobal.doMock();
-
-  IS_MOCK = true;
-}
-
 export function removeMock() {
+  const fetchMockGlobal = globalThis.fetchMock as FetchMockLike;
   vi.unstubAllGlobals();
   fetchMockGlobal.disableMocks();
-  IS_MOCK = false;
 }
 
 export function mockJsonOnce(data: unknown, init?: ResponseInit): FetchMockLike {
+  const fetchMockGlobal = globalThis.fetchMock as FetchMockLike;
   return fetchMockGlobal.once(toMockBody(data), init);
 }
 
@@ -72,6 +39,7 @@ export function mockJsonResponses(responses: JsonMockResponse[]): FetchMockLike 
 
     return [toMockBody(entry)];
   });
+
 
   return fetchMockGlobal.mockResponses(...normalized);
 }
