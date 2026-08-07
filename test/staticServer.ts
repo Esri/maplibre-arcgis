@@ -1,6 +1,8 @@
 import { createServer } from 'node:http';
-import { createReadStream, existsSync, statSync } from 'node:fs';
-import { extname, join, normalize } from 'node:path';
+import { createReadStream } from 'node:fs';
+import type { Stats } from 'node:fs';
+import { access, stat } from 'node:fs/promises';
+import { extname, join, normalize, sep } from 'node:path';
 
 let staticServer;
 let staticServerPort;
@@ -13,47 +15,89 @@ const contentTypes = {
   '.mjs': 'text/javascript; charset=utf-8'
 };
 
+function isNotFoundError(error: unknown): boolean {
+  return !!error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT';
+}
+
 export async function setupStaticServer() {
   if (staticServer && staticServerPort) {
     return staticServerPort;
   }
 
   const rootDir = process.cwd();
+  const allowedRoots = [
+    join(rootDir, 'node_modules'),
+    join(rootDir, 'dist'),
+    join(rootDir, 'test', 'mock', 'pages')
+  ];
 
   staticServer = createServer((req, res) => {
-    const reqPath = req.url?.split('?')[0] || '/';
-    const relativePath = reqPath === '/' ? '/test/mock/pages/' : reqPath;
-    const normalizedPath = normalize(relativePath).replace(/^\.\.(\/|\\|$)+/, '');
-    const absolutePath = join(rootDir, normalizedPath);
+    void (async () => {
+      const reqPath = req.url?.split('?')[0] || '/';
+      const relativePath = reqPath === '/' ? '/test/mock/pages/' : reqPath;
+      const normalizedPath = normalize(relativePath).replace(/^\.\.(\/|\\|$)+/, '');
+      const absolutePath = join(rootDir, normalizedPath);
 
-    if (!absolutePath.startsWith(rootDir)) {
-      res.writeHead(403);
-      res.end('Forbidden');
-      return;
-    }
+      if (!absolutePath.startsWith(rootDir)) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
+      }
 
-    if (!existsSync(absolutePath)) {
-      res.writeHead(404);
-      res.end('Not Found');
-      return;
-    }
+      const isAllowedPath = allowedRoots.some((allowedRoot) => {
+        return absolutePath === allowedRoot || absolutePath.startsWith(`${allowedRoot}${sep}`);
+      });
+      if (!isAllowedPath) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
+      }
 
-    const fileStat = statSync(absolutePath);
-    if (fileStat.isDirectory()) {
-      res.writeHead(404);
-      res.end('Not Found');
-      return;
-    }
+      try {
+        await access(absolutePath);
+      } catch (error) {
+        if (isNotFoundError(error)) {
+          res.writeHead(404);
+          res.end('Not Found');
+          return;
+        }
 
-    const extension = extname(absolutePath);
-    const contentType = contentTypes[extension] || 'application/octet-stream';
+        res.writeHead(500);
+        res.end('Internal Server Error');
+        return;
+      }
 
-    res.writeHead(200, {
-      'Content-Type': contentType,
-      'Cache-Control': 'no-store'
-    });
+      let fileStat: Stats;
+      try {
+        fileStat = await stat(absolutePath);
+      } catch (error) {
+        if (isNotFoundError(error)) {
+          res.writeHead(404);
+          res.end('Not Found');
+          return;
+        }
 
-    createReadStream(absolutePath).pipe(res);
+        res.writeHead(500);
+        res.end('Internal Server Error');
+        return;
+      }
+
+      if (fileStat.isDirectory()) {
+        res.writeHead(404);
+        res.end('Not Found');
+        return;
+      }
+
+      const extension = extname(absolutePath);
+      const contentType = contentTypes[extension] || 'application/octet-stream';
+
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-store'
+      });
+
+      createReadStream(absolutePath).pipe(res);
+    })();
   });
 
   await new Promise((resolve, reject) => {
