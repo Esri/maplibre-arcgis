@@ -13,26 +13,34 @@
     }
   </style>
   <link href="../../../node_modules/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
-  <script src="../../../node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
-  <script src="../../../dist/umd/maplibre-arcgis.min.js"></script>
 </head>
 
 <body>
+  <script type="importmap">
+    {
+      "imports": {
+        "maplibre-gl": "../../../node_modules/maplibre-gl/dist/maplibre-gl.mjs",
+        "maplibre-arcgis": "../../../dist/esm/maplibre-arcgis.min.js"
+      }
+    }
+  </script>
   <div id="map"></div>
   <script type="module">
+    import { Map } from "maplibre-gl"
+    import { BasemapSession, BasemapStyle } from "maplibre-arcgis"
 
-    const map = new maplibregl.Map({
+    const map = new Map({
       container: "map",
       zoom: 5,
       center: [138.2529, 36.2048]
     });
 
-    const session = await maplibreArcGIS.BasemapSession.start({
+    const session = await BasemapSession.start({
       styleFamily:'arcgis',
       token: window.__ARCGIS_API_KEY__ // Injected by puppeteer
     });
 
-    const basemapStyle = maplibreArcGIS.BasemapStyle.applyStyle(map, {
+    const basemapStyle = BasemapStyle.applyStyle(map, {
       style: 'arcgis/navigation',
       session: session
     });
