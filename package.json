@@ -88,11 +88,12 @@
   "main": "dist/umd/maplibre-arcgis.min.js",
   "module": "dist/esm/maplibre-arcgis.min.js",
   "unpkg": "dist/umd/maplibre-arcgis.min.js",
-  "types": "dist/esm/src/MaplibreArcGIS.d.ts",
+  "types": "dist/esm/types/src/MaplibreArcGIS.d.ts",
   "exports": {
     ".": {
       "import": "./dist/esm/maplibre-arcgis.min.js",
-      "require": "./dist/umd/maplibre-arcgis.min.js"
+      "require": "./dist/umd/maplibre-arcgis.min.js",
+      "types": "./dist/esm/types/src/MaplibreArcGIS.d.ts"
     },
     "./package.json": "./package.json"
   },
