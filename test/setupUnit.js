@@ -23,13 +23,13 @@ export function useMock() {
     observe = vi.fn();
   });
 
-  vi.stubGlobal('Worker', vi.fn(() => ({
-    postMessage: vi.fn(),
-    onmessage: vi.fn(),
-    terminate: vi.fn(),
-    addEventListener: window.addEventListener,
-    removeEventListener: window.removeEventListener,
-  })));
+  vi.stubGlobal('Worker', vi.fn(class MockWorker {
+    postMessage = vi.fn();
+    onmessage = vi.fn();
+    terminate = vi.fn();
+    addEventListener = window.addEventListener;
+    removeEventListener = window.removeEventListener;
+  }));
 
   fetchMock.enableMocks();
   fetchMock.doMock();
