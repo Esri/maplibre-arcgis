@@ -206,7 +206,10 @@ export class FeatureLayerSourceManager {
 
     // Use service bounds
     this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
-    if (this.layerDefinition?.extent) this._setMaxExtentFromLayerExtent(this.layerDefinition.extent);
+    if (this.layerDefinition?.extent) {
+      const maxExtent = this._getMaxExtentFromLayerExtent(this.layerDefinition.extent);
+      if (maxExtent) this._maxExtent = maxExtent;
+    }
     this._bindLoadFeaturesToMoveEndEvent();
     this._clearTiles();
     void this._loadFeaturesOnDemand();
@@ -360,18 +363,23 @@ export class FeatureLayerSourceManager {
     return res;
   }
 
-  // Only 4326 and 3857 are currently handled for service extent.
-  private _setMaxExtentFromLayerExtent(layerExtent: IExtent) {
+  /**
+   * Returns the max extent in WKID 4326 coordinates from the service layer extent.
+   * Supports WKID 3857 by converting it to lng/lat bounds and deriving the corresponding extent.
+   * Returns undefined for unsupported spatial references.
+   */
+  private _getMaxExtentFromLayerExtent(layerExtent: IExtent): BBox | undefined {
     if (layerExtent.spatialReference?.wkid === 4326) {
-      this._maxExtent = [layerExtent.xmin, layerExtent.ymin, layerExtent.xmax, layerExtent.ymax];
+      return [layerExtent.xmin, layerExtent.ymin, layerExtent.xmax, layerExtent.ymax];
     }
-    else if (layerExtent.spatialReference?.wkid === 3857) {
+    if (layerExtent.spatialReference?.wkid === 3857) {
       // Convert 3857 CRS to 4326 lng/lat
       const sw = new MercatorCoordinate(layerExtent.xmin, layerExtent.ymin).toLngLat();
       const ne = new MercatorCoordinate(layerExtent.xmax, layerExtent.ymax).toLngLat();
       const extent = new LngLatBounds(sw, ne);
-      this._maxExtent = [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
+      return [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
     }
+    return undefined;
   }
 
   /**
