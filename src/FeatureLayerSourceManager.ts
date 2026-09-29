@@ -344,6 +344,7 @@ export class FeatureLayerSourceManager {
       url: this.layerUrl,
       ...(this._options.authentication && { authentication: this._options.authentication }),
       ...this._options.queryOptions,
+      suppressWarnings: true,
       f: 'pbf-as-geojson',
       resultType: 'tile',
       inSR: '4326',
