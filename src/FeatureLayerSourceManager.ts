@@ -208,7 +208,7 @@ export class FeatureLayerSourceManager {
     this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
     if (this.layerDefinition?.extent) {
       const maxExtent = this._getMaxExtentFromLayerExtent(this.layerDefinition.extent);
-      if (maxExtent) this._maxExtent = maxExtent;
+      this._maxExtent = maxExtent ?? this._maxExtent;
     }
     this._bindLoadFeaturesToMoveEndEvent();
     this._clearTiles();
