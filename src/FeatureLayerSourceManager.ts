@@ -101,7 +101,40 @@ export class FeatureLayerSourceManager {
   async _snapshotLoad(): Promise<void> {
     this._pendingSnapshot = this._attemptSnapshotLoad();
     await this._pendingSnapshot; // awaiting results here for backwards compatibility
-    return;
+  }
+
+  /**
+   * Called by Maplibre when the source is added to the map.
+   */
+  public onAdd(map: MaplibreMap) {
+    this.map = map;
+    void this.load();
+    if (this._onAddEvent) this.map.off('sourcedataloading', this._onAddEvent);
+  }
+
+  /**
+   * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
+   */
+  public async load() {
+    const loadingMode = this._options.loadingMode;
+    const defaultOrSnapshot = loadingMode === 'default' || loadingMode === 'snapshot';
+    const defaultOrOnDemand = loadingMode === 'default' || loadingMode === 'ondemand';
+
+    if (!this.map) throw new Error('Feature service loading requires a map.');
+
+    // load snapshot mode if specified and under geometry limits
+    if (defaultOrSnapshot) {
+      // If snapshot mode succeeded on initialization, don't need anything else
+      const snapshotSucceeded = await (this._pendingSnapshot !== undefined ? this._pendingSnapshot : this._attemptSnapshotLoad());
+      if (snapshotSucceeded) return;
+    }
+
+    // fall back to on demand loading
+    if (defaultOrOnDemand) {
+      this._startOnDemand();
+      return;
+    }
+    throw new Error('Fatal error: unable to load features.');
   }
 
   private async _attemptSnapshotLoad(): Promise<boolean> {
@@ -135,41 +168,6 @@ export class FeatureLayerSourceManager {
       }
       return false;
     }
-  }
-
-  /**
-   * Called by Maplibre when the source is added to the map.
-   */
-  public onAdd(map: MaplibreMap) {
-    this.map = map;
-    void this.load();
-
-    if (this._onAddEvent) this.map.off('sourcedataloading', this._onAddEvent);
-  }
-
-  /**
-   * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
-   */
-  public async load() {
-    const loadingMode = this._options.loadingMode;
-    const defaultOrSnapshot = loadingMode === 'default' || loadingMode === 'snapshot';
-    const defaultOrOnDemand = loadingMode === 'default' || loadingMode === 'ondemand';
-
-    if (!this.map) throw new Error('Feature service loading requires a map.');
-
-    // load snapshot mode if specified and under geometry limits
-    if (defaultOrSnapshot) {
-      // If snapshot mode succeeded on initialization, don't need anything else
-      const snapshotSucceeded = await (this._pendingSnapshot !== undefined ? this._pendingSnapshot : this._attemptSnapshotLoad());
-      if (snapshotSucceeded) return;
-    }
-
-    // fall back to on demand loading
-    if (defaultOrOnDemand) {
-      this._startOnDemand();
-      return;
-    }
-    throw new Error('Fatal error: unable to load features.');
   }
 
   /**
