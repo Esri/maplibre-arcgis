@@ -83,7 +83,11 @@ export class FeatureLayerSourceManager {
 
     if (options?.map) {
       this.map = options.map;
-      this._onAddEvent = e => this._triggerOnAdd(e, this.geojsonSourceId);
+      this._onAddEvent = (event) => {
+        if (event.sourceId === this.geojsonSourceId) {
+          this.onAdd(this.map);
+        }
+      };
       this.map.on('sourcedataloading', this._onAddEvent);
     }
 
@@ -130,12 +134,6 @@ export class FeatureLayerSourceManager {
         warn(`${msg}\n To enable on-demand loading, pass the MapLibre map in the constructor or use a method such as layer.addSourceTo(map). If you are already doing this, you can ignore this message.`);
       }
       return false;
-    }
-  }
-
-  private _triggerOnAdd(event: MapSourceDataEvent, sourceId: string) {
-    if (event.sourceId === sourceId) {
-      this.onAdd(this.map);
     }
   }
 

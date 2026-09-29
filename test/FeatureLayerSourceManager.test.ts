@@ -110,7 +110,7 @@ describe('Feature layer data source tests', () => {
     expect(mockMap.on).toHaveBeenCalledWith('sourcedataloading', manager._onAddEvent);
 
     // mock trigger event from maplibre map
-    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+    manager._onAddEvent({ sourceId: manager.geojsonSourceId });
 
     expect(onAddSpy).toHaveBeenCalled();
   });
@@ -123,7 +123,7 @@ describe('Feature layer data source tests', () => {
     const loadSpy = vi.spyOn(manager, 'load').mockImplementation(vi.fn());
 
     // mock trigger event from maplibre map
-    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+    manager._onAddEvent({ sourceId: manager.geojsonSourceId });
 
     expect(onAddSpy).toHaveBeenCalled();
 
