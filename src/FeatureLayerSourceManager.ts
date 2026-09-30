@@ -230,7 +230,7 @@ export class FeatureLayerSourceManager {
     const featureIdIndexAtZoomLevel = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
     const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
 
-    const tilesToRequestAtZoomLevel = this._findTilesToRequestAtZoomLevel(mapBounds, zoomLevel);
+    const tilesToRequestAtZoomLevel = this._getTilesInViewAtZoomLevel(mapBounds, zoomLevel);
     this._filterRequestedTiles(tilesToRequestAtZoomLevel, tileIndexAtZoomLevel);
 
     if (tilesToRequestAtZoomLevel.length === 0) {
@@ -441,7 +441,7 @@ export class FeatureLayerSourceManager {
     return this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(map.getZoom());
   }
 
-  private _findTilesToRequestAtZoomLevel(mapBounds: [number, number][], zoomLevel: number) {
+  private _getTilesInViewAtZoomLevel(mapBounds: [number, number][], zoomLevel: number) {
     const primaryTile = bboxToTile([
       mapBounds[0][0],
       mapBounds[0][1],
