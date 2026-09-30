@@ -230,16 +230,16 @@ export class FeatureLayerSourceManager {
     const featureIdIndexAtZoomLevel = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
     const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
 
-    const tilesToRequestAtZoomLevel = this._getTilesInViewAtZoomLevel(mapBounds, zoomLevel);
-    this._filterRequestedTiles(tilesToRequestAtZoomLevel, tileIndexAtZoomLevel);
+    const tilesInViewAtZoomLevel = this._getTilesInViewAtZoomLevel(mapBounds, zoomLevel);
+    this._filterRequestedTiles(tilesInViewAtZoomLevel, tileIndexAtZoomLevel);
 
-    if (tilesToRequestAtZoomLevel.length === 0) {
+    if (tilesInViewAtZoomLevel.length === 0) {
       this._updateSourceData(featureCollectionAtZoomLevel, this.map);
       return;
     }
 
     const tolerance = this._calculateTolerance(zoomLevel);
-    await this._loadTiles(tilesToRequestAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel);
+    await this._loadTiles(tilesInViewAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel);
     this._updateSourceData(featureCollectionAtZoomLevel, this.map);
   }
 
