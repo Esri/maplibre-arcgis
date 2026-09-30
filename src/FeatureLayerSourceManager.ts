@@ -45,6 +45,8 @@ export class FeatureLayerSourceManager {
   private _onAddEvent?: (e: MapSourceDataEvent) => void;
   private _pendingSnapshot?: Promise<boolean>;
   private _onDemandActive?: boolean;
+  private _activeOnDemandRequestController?: AbortController;
+  private _onDemandRequestVersion = 0;
   private _snapshotResultRecordCount: number;
   private _onDemandResultRecordCount: number;
   private _onDemandSettings!: OnDemandSettings;
@@ -220,28 +222,66 @@ export class FeatureLayerSourceManager {
    * Loads features on demand for visible tiles.
    */
   private async _loadFeaturesOnDemand() {
-    const zoomLevel = this._getZoomLevel(this.map);
-    if (!this._isZoomInRange(zoomLevel)) return;
+    const requestVersion = ++this._onDemandRequestVersion;
+    this._activeOnDemandRequestController?.abort();
+    this._activeOnDemandRequestController = new AbortController();
+    const requestController = this._activeOnDemandRequestController;
+    const canCommitRequest = () => {
+      return !requestController.signal.aborted && requestVersion === this._onDemandRequestVersion;
+    };
 
-    const mapBounds = this.map.getBounds().toArray();
-    if (!this._isExtentVisible(mapBounds)) return;
+    try {
+      const zoomLevel = this._getZoomLevel(this.map);
+      if (!this._isZoomInRange(zoomLevel)) return;
 
-    const tileIndexAtZoomLevel = this._getTileIndexAtZoomLevel(zoomLevel);
-    const featureIdIndexAtZoomLevel = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
-    const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
+      const mapBounds = this.map.getBounds().toArray();
+      if (!this._isExtentVisible(mapBounds)) return;
 
-    const tilesInViewAtZoomLevel = this._getTilesInViewAtZoomLevel(mapBounds, zoomLevel);
-    const tilesToRequestAtZoomLevel = this._getTilesToRequest(tilesInViewAtZoomLevel, tileIndexAtZoomLevel);
+      const tileIndexAtZoomLevel = this._getTileIndexAtZoomLevel(zoomLevel);
+      const featureIdIndexAtZoomLevel = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
+      const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
 
-    if (tilesToRequestAtZoomLevel.length === 0) {
+      const tilesInViewAtZoomLevel = this._getTilesInViewAtZoomLevel(mapBounds, zoomLevel);
+      const tilesToRequestAtZoomLevel = this._getTilesToRequest(tilesInViewAtZoomLevel, tileIndexAtZoomLevel);
+
+      if (tilesToRequestAtZoomLevel.length === 0) {
+        if (!canCommitRequest()) return;
+        this._updateSourceData(featureCollectionAtZoomLevel, this.map);
+        this._clearDataCacheOutOfRange(zoomLevel);
+        return;
+      }
+
+      const tolerance = this._calculateTolerance(zoomLevel);
+
+      const tileFeatureCollections = await this._loadTiles(
+        tilesToRequestAtZoomLevel,
+        tolerance,
+        requestController.signal,
+      );
+      if (!canCommitRequest()) return;
+      this._commitTileResultsToCache(
+        tileFeatureCollections,
+        tilesToRequestAtZoomLevel,
+        featureIdIndexAtZoomLevel,
+        featureCollectionAtZoomLevel,
+        tileIndexAtZoomLevel,
+      );
       this._updateSourceData(featureCollectionAtZoomLevel, this.map);
-      return;
+      this._clearDataCacheOutOfRange(zoomLevel);
+      console.info('Tile request completed', requestVersion);
     }
-
-    const tolerance = this._calculateTolerance(zoomLevel);
-
-    await this._loadTiles(tilesToRequestAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel, tileIndexAtZoomLevel);
-    this._updateSourceData(featureCollectionAtZoomLevel, this.map);
+    catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.info('Tile request aborted', requestVersion);
+        return;
+      };
+      throw err;
+    }
+    finally {
+      if (this._activeOnDemandRequestController === requestController) {
+        this._activeOnDemandRequestController = undefined;
+      }
+    }
   }
 
   /**
@@ -250,19 +290,25 @@ export class FeatureLayerSourceManager {
   private async _loadTiles(
     tilesToRequest: Tile[],
     tolerance: number,
+    abortSignal: AbortSignal,
+  ): Promise<FeatureCollection[]> {
+    const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance, abortSignal));
+    return Promise.all(tileRequests);
+  }
+
+  private _commitTileResultsToCache(
+    featureCollections: FeatureCollection[],
+    tilesToRequest: Tile[],
     featureIdIndex: FeatureIdIndexMap,
     fc: FeatureCollection,
     tileIdIndex: TileIndexMap,
-  ): Promise<FeatureCollection> {
-    const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance));
-    const featureCollections = await Promise.all(tileRequests);
+  ) {
     featureCollections.forEach((tileFc, index) => {
       if (tileFc) {
         this._addTileFeaturesToFeatureCollection(tileFc, featureIdIndex, fc);
         tileIdIndex.set(tileToQuadkey(tilesToRequest[index]), true);
       }
     });
-    return fc;
   }
 
   // =====================
@@ -273,6 +319,26 @@ export class FeatureLayerSourceManager {
     this.map.on('moveend', () => {
       void this._loadFeaturesOnDemand();
     });
+  }
+
+  private _clearDataCacheOutOfRange(zoomLevel: number, range: number = 1) {
+    const normalizedRange = Math.max(0, Math.floor(range));
+    const minZoomToKeep = zoomLevel - normalizedRange;
+    const maxZoomToKeep = zoomLevel + normalizedRange;
+
+    const allZoomLevels = new Set<number>([
+      ...this._tileIndices.keys(),
+      ...this._featureIndices.keys(),
+      ...this._featureCollections.keys(),
+    ]);
+
+    for (const z of allZoomLevels) {
+      if (z < minZoomToKeep || z > maxZoomToKeep) {
+        this._tileIndices.delete(z);
+        this._featureIndices.delete(z);
+        this._featureCollections.delete(z);
+      }
+    }
   }
 
   private _clearTiles() {
@@ -331,6 +397,7 @@ export class FeatureLayerSourceManager {
   private async _getTile(
     tile: Tile,
     tolerance: number,
+    abortSignal: AbortSignal,
   ) {
     const tileBounds = tileToBBOX(tile);
     const tileExtent: IExtent = {
@@ -355,6 +422,7 @@ export class FeatureLayerSourceManager {
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
+      signal: abortSignal,
       resultRecordCount: this._onDemandResultRecordCount,
       maxRecordCountFactor: this._maxRecordCountFactor,
       quantizationParameters: JSON.stringify({
