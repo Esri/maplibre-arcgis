@@ -231,15 +231,16 @@ export class FeatureLayerSourceManager {
     const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
 
     const tilesInViewAtZoomLevel = this._getTilesInViewAtZoomLevel(mapBounds, zoomLevel);
-    this._filterRequestedTiles(tilesInViewAtZoomLevel, tileIndexAtZoomLevel);
+    const tilesToRequestAtZoomLevel = this._getTilesToRequest(tilesInViewAtZoomLevel, tileIndexAtZoomLevel);
 
-    if (tilesInViewAtZoomLevel.length === 0) {
+    if (tilesToRequestAtZoomLevel.length === 0) {
       this._updateSourceData(featureCollectionAtZoomLevel, this.map);
       return;
     }
 
     const tolerance = this._calculateTolerance(zoomLevel);
-    await this._loadTiles(tilesInViewAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel);
+
+    await this._loadTiles(tilesToRequestAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel, tileIndexAtZoomLevel);
     this._updateSourceData(featureCollectionAtZoomLevel, this.map);
   }
 
@@ -251,11 +252,15 @@ export class FeatureLayerSourceManager {
     tolerance: number,
     featureIdIndex: FeatureIdIndexMap,
     fc: FeatureCollection,
+    tileIdIndex: TileIndexMap,
   ): Promise<FeatureCollection> {
     const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance));
     const featureCollections = await Promise.all(tileRequests);
-    featureCollections.forEach((tileFc) => {
-      if (tileFc) this._addTileFeaturesToFeatureCollection(tileFc, featureIdIndex, fc);
+    featureCollections.forEach((tileFc, index) => {
+      if (tileFc) {
+        this._addTileFeaturesToFeatureCollection(tileFc, featureIdIndex, fc);
+        tileIdIndex.set(tileToQuadkey(tilesToRequest[index]), true);
+      }
     });
     return fc;
   }
@@ -441,6 +446,10 @@ export class FeatureLayerSourceManager {
     return this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(map.getZoom());
   }
 
+  private _calculateTolerance(zoomLevel: number) {
+    return 360 / 2 ** (zoomLevel + 1) / 1000;
+  }
+
   private _getTilesInViewAtZoomLevel(mapBounds: [number, number][], zoomLevel: number) {
     const primaryTile = bboxToTile([
       mapBounds[0][0],
@@ -468,20 +477,11 @@ export class FeatureLayerSourceManager {
     return tilesToRequest;
   }
 
-  private _filterRequestedTiles(tilesToRequest: Tile[], tileIndex: TileIndexMap) {
-    for (let i = 0; i < tilesToRequest.length; i++) {
-      const quadKey = tileToQuadkey(tilesToRequest[i]);
-      if (tileIndex.has(quadKey)) {
-        tilesToRequest.splice(i, 1);
-        i--;
-      }
-      else {
-        tileIndex.set(quadKey, true);
-      }
-    }
-  }
-
-  private _calculateTolerance(zoomLevel: number) {
-    return 360 / 2 ** (zoomLevel + 1) / 1000;
+  private _getTilesToRequest(tilesInView: Tile[], tilesCachedAtZoom: TileIndexMap): Tile[] {
+    return tilesInView.filter((tile) => {
+      const quadKey = tileToQuadkey(tile);
+      if (tilesCachedAtZoom.has(quadKey)) return false;
+      return true;
+    });
   }
 }
