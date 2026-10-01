@@ -35,6 +35,7 @@ type TileIndexMap = Map<string, boolean>;
 
 // Main Class: FeatureLayerSourceManager
 export class FeatureLayerSourceManager {
+  private static readonly CACHE_HIGH_WATERMARK_FEATURE_COUNT = 200_000;
   geojsonSourceId: string;
   layerUrl: string;
   layerDefinition?: ILayerDefinition;
@@ -226,8 +227,8 @@ export class FeatureLayerSourceManager {
     this._activeOnDemandRequestController?.abort();
     this._activeOnDemandRequestController = new AbortController();
     const requestController = this._activeOnDemandRequestController;
-    const canCommitRequest = () => {
-      return !requestController.signal.aborted && requestVersion === this._onDemandRequestVersion;
+    const requestAbortedOrStale = () => {
+      return requestController.signal.aborted || requestVersion !== this._onDemandRequestVersion;
     };
 
     try {
@@ -237,6 +238,8 @@ export class FeatureLayerSourceManager {
       const mapBounds = this.map.getBounds().toArray();
       if (!this._isExtentVisible(mapBounds)) return;
 
+      this._applyCachePressurePolicy(zoomLevel);
+
       const tileIndexAtZoomLevel = this._getTileIndexAtZoomLevel(zoomLevel);
       const featureIdIndexAtZoomLevel = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
       const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
@@ -245,9 +248,9 @@ export class FeatureLayerSourceManager {
       const tilesToRequestAtZoomLevel = this._getTilesToRequest(tilesInViewAtZoomLevel, tileIndexAtZoomLevel);
 
       if (tilesToRequestAtZoomLevel.length === 0) {
-        if (!canCommitRequest()) return;
+        if (requestAbortedOrStale()) return;
         this._updateSourceData(featureCollectionAtZoomLevel, this.map);
-        this._clearDataCacheOutOfRange(zoomLevel);
+        this._clearDataCacheOutOfZoomRange(zoomLevel);
         return;
       }
 
@@ -258,7 +261,8 @@ export class FeatureLayerSourceManager {
         tolerance,
         requestController.signal,
       );
-      if (!canCommitRequest()) return;
+      // Don't write any results if this request has been aborted or outdated. Only the latest completed request should commit its results.
+      if (requestAbortedOrStale()) return;
       this._commitTileResultsToCache(
         tileFeatureCollections,
         tilesToRequestAtZoomLevel,
@@ -267,14 +271,14 @@ export class FeatureLayerSourceManager {
         tileIndexAtZoomLevel,
       );
       this._updateSourceData(featureCollectionAtZoomLevel, this.map);
-      this._clearDataCacheOutOfRange(zoomLevel);
+      this._clearDataCacheOutOfZoomRange(zoomLevel);
       console.info('Tile request completed', requestVersion);
     }
     catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         console.info('Tile request aborted', requestVersion);
         return;
-      };
+      }
       throw err;
     }
     finally {
@@ -321,7 +325,7 @@ export class FeatureLayerSourceManager {
     });
   }
 
-  private _clearDataCacheOutOfRange(zoomLevel: number, range: number = 1) {
+  private _clearDataCacheOutOfZoomRange(zoomLevel: number, range: number = 1) {
     const normalizedRange = Math.max(0, Math.floor(range));
     const minZoomToKeep = zoomLevel - normalizedRange;
     const maxZoomToKeep = zoomLevel + normalizedRange;
@@ -339,6 +343,35 @@ export class FeatureLayerSourceManager {
         this._featureCollections.delete(z);
       }
     }
+  }
+
+  private _applyCachePressurePolicy(zoomLevel: number) {
+    // If cache is not above the high watermark, no action is needed.
+    if (!this._isCacheAboveHighWatermark()) return;
+    console.info('Cache high watermark exceeded, features: ', this._getTotalCachedFeatureCount());
+
+    // Stage 1: Remove everything except the current zoom cache.
+    this._clearDataCacheOutOfZoomRange(zoomLevel, 0);
+    if (!this._isCacheAboveHighWatermark()) {
+      console.info('Cache high watermark reached; pruned to current zoom level.');
+      return;
+    }
+
+    // Stage 2: If still too high, clear everything, the new load will display only current viewport features.
+    this._clearTiles();
+    console.info('Cache high watermark still exceeded; cleared all cached zoom levels.');
+  }
+
+  private _isCacheAboveHighWatermark() {
+    return this._getTotalCachedFeatureCount() >= FeatureLayerSourceManager.CACHE_HIGH_WATERMARK_FEATURE_COUNT;
+  }
+
+  private _getTotalCachedFeatureCount() {
+    let count = 0;
+    for (const fc of this._featureCollections.values()) {
+      count += fc.features.length;
+    }
+    return count;
   }
 
   private _clearTiles() {
