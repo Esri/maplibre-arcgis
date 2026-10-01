@@ -35,6 +35,7 @@ type TileIndexMap = Map<string, boolean>;
 
 // Main Class: FeatureLayerSourceManager
 export class FeatureLayerSourceManager {
+  private static readonly CACHE_HIGH_WATERMARK_FEATURE_COUNT = 200_000;
   geojsonSourceId: string;
   layerUrl: string;
   layerDefinition?: ILayerDefinition;
@@ -45,6 +46,8 @@ export class FeatureLayerSourceManager {
   private _onAddEvent?: (e: MapSourceDataEvent) => void;
   private _pendingSnapshot?: Promise<boolean>;
   private _onDemandActive?: boolean;
+  private _activeOnDemandRequestController?: AbortController;
+  private _onDemandRequestVersion = 0;
   private _snapshotResultRecordCount: number;
   private _onDemandResultRecordCount: number;
   private _onDemandSettings!: OnDemandSettings;
@@ -83,7 +86,11 @@ export class FeatureLayerSourceManager {
 
     if (options?.map) {
       this.map = options.map;
-      this._onAddEvent = e => this._triggerOnAdd(e, this.geojsonSourceId);
+      this._onAddEvent = (event) => {
+        if (event.sourceId === this.geojsonSourceId) {
+          this.onAdd(this.map);
+        }
+      };
       this.map.on('sourcedataloading', this._onAddEvent);
     }
 
@@ -97,7 +104,40 @@ export class FeatureLayerSourceManager {
   async _snapshotLoad(): Promise<void> {
     this._pendingSnapshot = this._attemptSnapshotLoad();
     await this._pendingSnapshot; // awaiting results here for backwards compatibility
-    return;
+  }
+
+  /**
+   * Called by Maplibre when the source is added to the map.
+   */
+  public onAdd(map: MaplibreMap) {
+    this.map = map;
+    void this.load();
+    if (this._onAddEvent) this.map.off('sourcedataloading', this._onAddEvent);
+  }
+
+  /**
+   * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
+   */
+  public async load() {
+    const loadingMode = this._options.loadingMode;
+    const defaultOrSnapshot = loadingMode === 'default' || loadingMode === 'snapshot';
+    const defaultOrOnDemand = loadingMode === 'default' || loadingMode === 'ondemand';
+
+    if (!this.map) throw new Error('Feature service loading requires a map.');
+
+    // load snapshot mode if specified and under geometry limits
+    if (defaultOrSnapshot) {
+      // If snapshot mode succeeded on initialization, don't need anything else
+      const snapshotSucceeded = await (this._pendingSnapshot !== undefined ? this._pendingSnapshot : this._attemptSnapshotLoad());
+      if (snapshotSucceeded) return;
+    }
+
+    // fall back to on demand loading
+    if (defaultOrOnDemand) {
+      this._startOnDemand();
+      return;
+    }
+    throw new Error('Fatal error: unable to load features.');
   }
 
   private async _attemptSnapshotLoad(): Promise<boolean> {
@@ -131,47 +171,6 @@ export class FeatureLayerSourceManager {
       }
       return false;
     }
-  }
-
-  private _triggerOnAdd(event: MapSourceDataEvent, sourceId: string) {
-    if (event.sourceId === sourceId) {
-      this.onAdd(this.map);
-    }
-  }
-
-  /**
-   * Called by Maplibre when the source is added to the map.
-   */
-  public onAdd(map: MaplibreMap) {
-    this.map = map;
-    void this.load();
-
-    if (this._onAddEvent) this.map.off('sourcedataloading', this._onAddEvent);
-  }
-
-  /**
-   * Loads the layer definition and features, using snapshot or on-demand mode as appropriate.
-   */
-  public async load() {
-    const loadingMode = this._options.loadingMode;
-    const defaultOrSnapshot = loadingMode === 'default' || loadingMode === 'snapshot';
-    const defaultOrOnDemand = loadingMode === 'default' || loadingMode === 'ondemand';
-
-    if (!this.map) throw new Error('Feature service loading requires a map.');
-
-    // load snapshot mode if specified and under geometry limits
-    if (defaultOrSnapshot) {
-      // If snapshot mode succeeded on initialization, don't need anything else
-      const snapshotSucceeded = await (this._pendingSnapshot !== undefined ? this._pendingSnapshot : this._attemptSnapshotLoad());
-      if (snapshotSucceeded) return;
-    }
-
-    // fall back to on demand loading
-    if (defaultOrOnDemand) {
-      this._startOnDemand();
-      return;
-    }
-    throw new Error('Fatal error: unable to load features.');
   }
 
   /**
@@ -210,7 +209,10 @@ export class FeatureLayerSourceManager {
 
     // Use service bounds
     this._maxExtent = [-Infinity, Infinity, -Infinity, Infinity];
-    if (this.layerDefinition?.extent) this._setMaxExtentFromLayerExtent(this.layerDefinition.extent);
+    if (this.layerDefinition?.extent) {
+      const maxExtent = this._getMaxExtentFromLayerExtent(this.layerDefinition.extent);
+      this._maxExtent = maxExtent ?? this._maxExtent;
+    }
     this._bindLoadFeaturesToMoveEndEvent();
     this._clearTiles();
     void this._loadFeaturesOnDemand();
@@ -221,27 +223,69 @@ export class FeatureLayerSourceManager {
    * Loads features on demand for visible tiles.
    */
   private async _loadFeaturesOnDemand() {
-    const zoomLevel = this._getZoomLevel(this.map);
-    if (!this._isZoomInRange(zoomLevel)) return;
+    const requestVersion = ++this._onDemandRequestVersion;
+    this._activeOnDemandRequestController?.abort();
+    this._activeOnDemandRequestController = new AbortController();
+    const requestController = this._activeOnDemandRequestController;
+    const requestAbortedOrStale = () => {
+      return requestController.signal.aborted || requestVersion !== this._onDemandRequestVersion;
+    };
 
-    const mapBounds = this.map.getBounds().toArray();
-    if (!this._isExtentVisible(mapBounds)) return;
+    try {
+      const zoomLevel = this._getZoomLevel(this.map);
+      if (!this._isZoomInRange(zoomLevel)) return;
 
-    const tileIndexAtZoomLevel = this._getTileIndexAtZoomLevel(zoomLevel);
-    const featureIdIndexAtZoomLevel = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
-    const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
+      const mapBounds = this.map.getBounds().toArray();
+      if (!this._isExtentVisible(mapBounds)) return;
 
-    const tilesToRequestAtZoomLevel = this._findTilesToRequestAtZoomLevel(mapBounds, zoomLevel);
-    this._filterRequestedTiles(tilesToRequestAtZoomLevel, tileIndexAtZoomLevel);
+      this._applyCachePressurePolicy(zoomLevel);
 
-    if (tilesToRequestAtZoomLevel.length === 0) {
+      const tileIndexAtZoomLevel = this._getTileIndexAtZoomLevel(zoomLevel);
+      const featureIdIndexAtZoomLevel = this._getFeatureIdIndexAtZoomLevel(zoomLevel);
+      const featureCollectionAtZoomLevel = this._getFeatureCollectionAtZoomLevel(zoomLevel);
+
+      const tilesInViewAtZoomLevel = this._getTilesInViewAtZoomLevel(mapBounds, zoomLevel);
+      const tilesToRequestAtZoomLevel = this._getTilesToRequest(tilesInViewAtZoomLevel, tileIndexAtZoomLevel);
+
+      if (tilesToRequestAtZoomLevel.length === 0) {
+        if (requestAbortedOrStale()) return;
+        this._updateSourceData(featureCollectionAtZoomLevel, this.map);
+        this._clearDataCacheOutOfZoomRange(zoomLevel);
+        return;
+      }
+
+      const tolerance = this._calculateTolerance(zoomLevel);
+
+      const tileFeatureCollections = await this._loadTiles(
+        tilesToRequestAtZoomLevel,
+        tolerance,
+        requestController.signal,
+      );
+      // Don't write any results if this request has been aborted or outdated. Only the latest completed request should commit its results.
+      if (requestAbortedOrStale()) return;
+      this._commitTileResultsToCache(
+        tileFeatureCollections,
+        tilesToRequestAtZoomLevel,
+        featureIdIndexAtZoomLevel,
+        featureCollectionAtZoomLevel,
+        tileIndexAtZoomLevel,
+      );
       this._updateSourceData(featureCollectionAtZoomLevel, this.map);
-      return;
+      this._clearDataCacheOutOfZoomRange(zoomLevel);
+      console.info('Tile request completed', requestVersion);
     }
-
-    const tolerance = this._calculateTolerance(zoomLevel);
-    await this._loadTiles(tilesToRequestAtZoomLevel, tolerance, featureIdIndexAtZoomLevel, featureCollectionAtZoomLevel);
-    this._updateSourceData(featureCollectionAtZoomLevel, this.map);
+    catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.info('Tile request aborted', requestVersion);
+        return;
+      }
+      throw err;
+    }
+    finally {
+      if (this._activeOnDemandRequestController === requestController) {
+        this._activeOnDemandRequestController = undefined;
+      }
+    }
   }
 
   /**
@@ -250,15 +294,25 @@ export class FeatureLayerSourceManager {
   private async _loadTiles(
     tilesToRequest: Tile[],
     tolerance: number,
+    abortSignal: AbortSignal,
+  ): Promise<FeatureCollection[]> {
+    const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance, abortSignal));
+    return Promise.all(tileRequests);
+  }
+
+  private _commitTileResultsToCache(
+    featureCollections: FeatureCollection[],
+    tilesToRequest: Tile[],
     featureIdIndex: FeatureIdIndexMap,
     fc: FeatureCollection,
-  ): Promise<FeatureCollection> {
-    const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance));
-    const featureCollections = await Promise.all(tileRequests);
-    featureCollections.forEach((tileFc) => {
-      if (tileFc) this._addTileFeaturesToFeatureCollection(tileFc, featureIdIndex, fc);
+    tileIdIndex: TileIndexMap,
+  ) {
+    featureCollections.forEach((tileFc, index) => {
+      if (tileFc) {
+        this._addTileFeaturesToFeatureCollection(tileFc, featureIdIndex, fc);
+        tileIdIndex.set(tileToQuadkey(tilesToRequest[index]), true);
+      }
     });
-    return fc;
   }
 
   // =====================
@@ -269,6 +323,52 @@ export class FeatureLayerSourceManager {
     this.map.on('moveend', () => {
       void this._loadFeaturesOnDemand();
     });
+  }
+
+  private _clearDataCacheOutOfZoomRange(zoomLevel: number, range: number = 1) {
+    const normalizedRange = Math.max(0, Math.floor(range));
+    const minZoomToKeep = zoomLevel - normalizedRange;
+    const maxZoomToKeep = zoomLevel + normalizedRange;
+
+    const allZoomLevels = new Set<number>([
+      ...this._tileIndices.keys(),
+      ...this._featureIndices.keys(),
+      ...this._featureCollections.keys(),
+    ]);
+
+    for (const z of allZoomLevels) {
+      if (z < minZoomToKeep || z > maxZoomToKeep) {
+        this._tileIndices.delete(z);
+        this._featureIndices.delete(z);
+        this._featureCollections.delete(z);
+      }
+    }
+  }
+
+  private _applyCachePressurePolicy(zoomLevel: number) {
+    // If cache is not above the high watermark, no action is needed.
+    if (!this._isCacheAboveHighWatermark()) return;
+
+    // Stage 1: Remove everything except the current zoom cache.
+    this._clearDataCacheOutOfZoomRange(zoomLevel, 0);
+    if (!this._isCacheAboveHighWatermark()) {
+      return;
+    }
+
+    // Stage 2: If still too high, clear everything, the new load will display only current viewport features.
+    this._clearTiles();
+  }
+
+  private _isCacheAboveHighWatermark() {
+    return this._getTotalCachedFeatureCount() >= FeatureLayerSourceManager.CACHE_HIGH_WATERMARK_FEATURE_COUNT;
+  }
+
+  private _getTotalCachedFeatureCount() {
+    let count = 0;
+    for (const fc of this._featureCollections.values()) {
+      count += fc.features.length;
+    }
+    return count;
   }
 
   private _clearTiles() {
@@ -327,6 +427,7 @@ export class FeatureLayerSourceManager {
   private async _getTile(
     tile: Tile,
     tolerance: number,
+    abortSignal: AbortSignal,
   ) {
     const tileBounds = tileToBBOX(tile);
     const tileExtent: IExtent = {
@@ -344,12 +445,14 @@ export class FeatureLayerSourceManager {
       url: this.layerUrl,
       ...(this._options.authentication && { authentication: this._options.authentication }),
       ...this._options.queryOptions,
+      suppressWarnings: true,
       f: 'pbf-as-geojson',
       resultType: 'tile',
       inSR: '4326',
       spatialRel: 'esriSpatialRelIntersects',
       geometryType: 'esriGeometryEnvelope',
       geometry: tileExtent,
+      signal: abortSignal,
       resultRecordCount: this._onDemandResultRecordCount,
       maxRecordCountFactor: this._maxRecordCountFactor,
       quantizationParameters: JSON.stringify({
@@ -363,18 +466,32 @@ export class FeatureLayerSourceManager {
     return res;
   }
 
-  // Only 4326 and 3857 are currently handled for service extent.
-  private _setMaxExtentFromLayerExtent(layerExtent: IExtent) {
+  /**
+   * Returns the max extent in WKID 4326 coordinates from the service layer extent.
+   * Supports WKID 3857 by converting it to lng/lat bounds and deriving the corresponding extent.
+   * Returns undefined for unsupported spatial references.
+   */
+  private _getMaxExtentFromLayerExtent(layerExtent: IExtent): BBox | undefined {
     if (layerExtent.spatialReference?.wkid === 4326) {
-      this._maxExtent = [layerExtent.xmin, layerExtent.ymin, layerExtent.xmax, layerExtent.ymax];
+      return [layerExtent.xmin, layerExtent.ymin, layerExtent.xmax, layerExtent.ymax];
     }
-    else if (layerExtent.spatialReference?.wkid === 3857) {
-      // Convert 3857 CRS to 4326 lng/lat
-      const sw = new MercatorCoordinate(layerExtent.xmin, layerExtent.ymin).toLngLat();
-      const ne = new MercatorCoordinate(layerExtent.xmax, layerExtent.ymax).toLngLat();
+    const wkid = layerExtent.spatialReference?.wkid;
+    const latestWkid = layerExtent.spatialReference?.latestWkid;
+    const isWebMercator = wkid === 3857 || wkid === 102100 || latestWkid === 3857 || latestWkid === 102100;
+
+    if (isWebMercator) {
+      // MercatorCoordinate expects normalized world units [0..1], not 3857 meter values.
+      const originShift = 20037508.342789244;
+      const worldSize = originShift * 2;
+      const xToWorld = (xMeters: number) => (xMeters + originShift) / worldSize;
+      const yToWorld = (yMeters: number) => (originShift - yMeters) / worldSize;
+
+      const sw = new MercatorCoordinate(xToWorld(layerExtent.xmin), yToWorld(layerExtent.ymin)).toLngLat();
+      const ne = new MercatorCoordinate(xToWorld(layerExtent.xmax), yToWorld(layerExtent.ymax)).toLngLat();
       const extent = new LngLatBounds(sw, ne);
-      this._maxExtent = [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
+      return [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
     }
+    return undefined;
   }
 
   /**
@@ -436,7 +553,11 @@ export class FeatureLayerSourceManager {
     return this._options.useStaticZoomLevel ? this._onDemandSettings.staticZoomLevel : Math.round(map.getZoom());
   }
 
-  private _findTilesToRequestAtZoomLevel(mapBounds: [number, number][], zoomLevel: number) {
+  private _calculateTolerance(zoomLevel: number) {
+    return 360 / 2 ** (zoomLevel + 1) / 1000;
+  }
+
+  private _getTilesInViewAtZoomLevel(mapBounds: [number, number][], zoomLevel: number) {
     const primaryTile = bboxToTile([
       mapBounds[0][0],
       mapBounds[0][1],
@@ -463,20 +584,11 @@ export class FeatureLayerSourceManager {
     return tilesToRequest;
   }
 
-  private _filterRequestedTiles(tilesToRequest: Tile[], tileIndex: TileIndexMap) {
-    for (let i = 0; i < tilesToRequest.length; i++) {
-      const quadKey = tileToQuadkey(tilesToRequest[i]);
-      if (tileIndex.has(quadKey)) {
-        tilesToRequest.splice(i, 1);
-        i--;
-      }
-      else {
-        tileIndex.set(quadKey, true);
-      }
-    }
-  }
-
-  private _calculateTolerance(zoomLevel: number) {
-    return 360 / 2 ** (zoomLevel + 1) / 1000;
+  private _getTilesToRequest(tilesInView: Tile[], tilesCachedAtZoom: TileIndexMap): Tile[] {
+    return tilesInView.filter((tile) => {
+      const quadKey = tileToQuadkey(tile);
+      if (tilesCachedAtZoom.has(quadKey)) return false;
+      return true;
+    });
   }
 }

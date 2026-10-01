@@ -50,10 +50,10 @@
     "maplibre-gl": "~5.24.0 || ~6.3.0"
   },
   "dependencies": {
-    "@esri/arcgis-rest-basemap-sessions": "^4.10.1",
-    "@esri/arcgis-rest-feature-service": "^4.10.1",
-    "@esri/arcgis-rest-portal": "^4.10.1",
-    "@esri/arcgis-rest-request": "^4.10.1",
+    "@esri/arcgis-rest-basemap-sessions": "^4.11.0",
+    "@esri/arcgis-rest-feature-service": "^4.11.0",
+    "@esri/arcgis-rest-portal": "^4.11.0",
+    "@esri/arcgis-rest-request": "^4.11.0",
     "@mapbox/tilebelt": "^2.0.3",
     "mitt": "3.0.1"
   },
