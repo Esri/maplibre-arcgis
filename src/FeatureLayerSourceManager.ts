@@ -348,18 +348,15 @@ export class FeatureLayerSourceManager {
   private _applyCachePressurePolicy(zoomLevel: number) {
     // If cache is not above the high watermark, no action is needed.
     if (!this._isCacheAboveHighWatermark()) return;
-    console.info('Cache high watermark exceeded, features: ', this._getTotalCachedFeatureCount());
 
     // Stage 1: Remove everything except the current zoom cache.
     this._clearDataCacheOutOfZoomRange(zoomLevel, 0);
     if (!this._isCacheAboveHighWatermark()) {
-      console.info('Cache high watermark reached; pruned to current zoom level.');
       return;
     }
 
     // Stage 2: If still too high, clear everything, the new load will display only current viewport features.
     this._clearTiles();
-    console.info('Cache high watermark still exceeded; cleared all cached zoom levels.');
   }
 
   private _isCacheAboveHighWatermark() {
