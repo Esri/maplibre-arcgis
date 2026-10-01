@@ -475,10 +475,19 @@ export class FeatureLayerSourceManager {
     if (layerExtent.spatialReference?.wkid === 4326) {
       return [layerExtent.xmin, layerExtent.ymin, layerExtent.xmax, layerExtent.ymax];
     }
-    if (layerExtent.spatialReference?.wkid === 3857) {
-      // Convert 3857 CRS to 4326 lng/lat
-      const sw = new MercatorCoordinate(layerExtent.xmin, layerExtent.ymin).toLngLat();
-      const ne = new MercatorCoordinate(layerExtent.xmax, layerExtent.ymax).toLngLat();
+    const wkid = layerExtent.spatialReference?.wkid;
+    const latestWkid = layerExtent.spatialReference?.latestWkid;
+    const isWebMercator = wkid === 3857 || wkid === 102100 || latestWkid === 3857 || latestWkid === 102100;
+
+    if (isWebMercator) {
+      // MercatorCoordinate expects normalized world units [0..1], not 3857 meter values.
+      const originShift = 20037508.342789244;
+      const worldSize = originShift * 2;
+      const xToWorld = (xMeters: number) => (xMeters + originShift) / worldSize;
+      const yToWorld = (yMeters: number) => (originShift - yMeters) / worldSize;
+
+      const sw = new MercatorCoordinate(xToWorld(layerExtent.xmin), yToWorld(layerExtent.ymin)).toLngLat();
+      const ne = new MercatorCoordinate(xToWorld(layerExtent.xmax), yToWorld(layerExtent.ymax)).toLngLat();
       const extent = new LngLatBounds(sw, ne);
       return [extent.getWest(), extent.getSouth(), extent.getEast(), extent.getNorth()];
     }
