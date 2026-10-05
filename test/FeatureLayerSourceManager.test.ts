@@ -198,13 +198,13 @@ describe('Feature layer data source tests', () => {
     });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
-    const setMaxExtentFromLayerExtentSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
+    const getMaxExtentFromLayerExtentSpy = vi.spyOn(manager, '_getMaxExtentFromLayerExtent').mockImplementation(() => null);
     const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
 
     await manager.load();
-    expect(setMaxExtentFromLayerExtentSpy).toHaveBeenCalled();
+    expect(getMaxExtentFromLayerExtentSpy).toHaveBeenCalled();
     expect(bindLoadFeaturesToMoveEndEventSpy).toHaveBeenCalled();
     expect(clearTilesSpy).toHaveBeenCalled();
     expect(loadFeaturesOnDemandSpy).toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe('Feature layer data source tests', () => {
     });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
-    const useServiceBoundsSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
+    const useServiceBoundsSpy = vi.spyOn(manager, '_getMaxExtentFromLayerExtent').mockImplementation(() => null);
     const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
@@ -372,7 +372,7 @@ describe('Feature layer data source tests', () => {
       });
       // where clause is accessed from global object and parsed in _getTile, so we check for accessibility and parsing.
       expect(manager._options.queryOptions.where).toBe(whereClause);
-      await manager._getTile({}, 1);
+      await manager._getTile({}, 1, new AbortController().signal);
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({ where: whereClause }));
     });
 
@@ -398,7 +398,7 @@ describe('Feature layer data source tests', () => {
       };
       const tolerance = manager._calculateTolerance(6);
 
-      manager._getTile(tile, tolerance);
+      manager._getTile(tile, tolerance, new AbortController().signal);
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({
         quantizationParameters: JSON.stringify({
           extent: tileExtent,
