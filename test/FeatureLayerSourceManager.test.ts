@@ -110,7 +110,7 @@ describe('Feature layer data source tests', () => {
     expect(mockMap.on).toHaveBeenCalledWith('sourcedataloading', manager._onAddEvent);
 
     // mock trigger event from maplibre map
-    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+    manager._onAddEvent({ sourceId: manager.geojsonSourceId });
 
     expect(onAddSpy).toHaveBeenCalled();
   });
@@ -123,7 +123,7 @@ describe('Feature layer data source tests', () => {
     const loadSpy = vi.spyOn(manager, 'load').mockImplementation(vi.fn());
 
     // mock trigger event from maplibre map
-    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+    manager._onAddEvent({ sourceId: manager.geojsonSourceId });
 
     expect(onAddSpy).toHaveBeenCalled();
 
@@ -198,13 +198,13 @@ describe('Feature layer data source tests', () => {
     });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
-    const setMaxExtentFromLayerExtentSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
+    const getMaxExtentFromLayerExtentSpy = vi.spyOn(manager, '_getMaxExtentFromLayerExtent').mockImplementation(() => null);
     const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
 
     await manager.load();
-    expect(setMaxExtentFromLayerExtentSpy).toHaveBeenCalled();
+    expect(getMaxExtentFromLayerExtentSpy).toHaveBeenCalled();
     expect(bindLoadFeaturesToMoveEndEventSpy).toHaveBeenCalled();
     expect(clearTilesSpy).toHaveBeenCalled();
     expect(loadFeaturesOnDemandSpy).toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe('Feature layer data source tests', () => {
     });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
-    const useServiceBoundsSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
+    const useServiceBoundsSpy = vi.spyOn(manager, '_getMaxExtentFromLayerExtent').mockImplementation(() => null);
     const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
@@ -372,7 +372,7 @@ describe('Feature layer data source tests', () => {
       });
       // where clause is accessed from global object and parsed in _getTile, so we check for accessibility and parsing.
       expect(manager._options.queryOptions.where).toBe(whereClause);
-      await manager._getTile({}, 1);
+      await manager._getTile({}, 1, new AbortController().signal);
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({ where: whereClause }));
     });
 
@@ -398,7 +398,7 @@ describe('Feature layer data source tests', () => {
       };
       const tolerance = manager._calculateTolerance(6);
 
-      manager._getTile(tile, tolerance);
+      manager._getTile(tile, tolerance, new AbortController().signal);
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({
         quantizationParameters: JSON.stringify({
           extent: tileExtent,
@@ -406,6 +406,114 @@ describe('Feature layer data source tests', () => {
           tolerance: tolerance
         })
       }));
+    });
+
+    test('Passes abort signal and suppressWarnings to on-demand tile requests.', async () => {
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+
+      const signal = new AbortController().signal;
+      await manager._getTile([0, 6, 6], manager._calculateTolerance(6), signal);
+
+      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({
+        signal,
+        suppressWarnings: true
+      }));
+    });
+
+    test('Ignores stale tile responses and only commits the latest on-demand request.', async ({ mockMap }) => {
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand',
+        map: mockMap,
+      });
+
+      manager._onDemandSettings = {
+        maxTolerance: 156543,
+        staticZoomLevel: 7,
+        minZoom: 0,
+        maxZoom: 23,
+      };
+
+      mockMap.getBounds = vi.fn(() => ({
+        toArray: () => [[0, 0], [1, 1]],
+      }));
+      mockMap.getZoom = vi.fn(() => 6);
+
+      const tile = [0, 6, 6];
+      const fc = getBlankFc();
+      const updateSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => undefined);
+      vi.spyOn(manager, '_getTilesInViewAtZoomLevel').mockReturnValue([tile]);
+      vi.spyOn(manager, '_getTilesToRequest').mockReturnValue([tile]);
+
+      const commitSpy = vi.spyOn(manager, '_commitTileResultsToCache');
+
+      let resolveFirst;
+      let resolveSecond;
+      let requestCount = 0;
+      vi.spyOn(manager, '_loadTiles').mockImplementation(() => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return new Promise((resolve) => {
+            resolveFirst = resolve;
+          });
+        }
+        return new Promise((resolve) => {
+          resolveSecond = resolve;
+        });
+      });
+
+      const firstRequest = manager._loadFeaturesOnDemand();
+      const secondRequest = manager._loadFeaturesOnDemand();
+
+      resolveSecond([fc]);
+      await secondRequest;
+
+      resolveFirst([fc]);
+      await firstRequest;
+
+      expect(commitSpy).toHaveBeenCalledTimes(1);
+      expect(updateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('Returns undefined for unsupported layer extent spatial references.', () => {
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+
+      const extent = manager._getMaxExtentFromLayerExtent({
+        xmin: 0,
+        ymin: 0,
+        xmax: 1,
+        ymax: 1,
+        spatialReference: {
+          wkid: 9999,
+        },
+      });
+
+      expect(extent).toBeUndefined();
+    });
+
+    test('Supports 102100 extent conversion to WGS84 bounds.', () => {
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+
+      const extent = manager._getMaxExtentFromLayerExtent({
+        xmin: -20037508.342789244,
+        ymin: -20037508.342789244,
+        xmax: 20037508.342789244,
+        ymax: 20037508.342789244,
+        spatialReference: {
+          wkid: 102100,
+        },
+      });
+
+      expect(extent[0]).toBeCloseTo(-180, 5);
+      expect(extent[2]).toBeCloseTo(180, 5);
+      expect(extent[1]).toBeCloseTo(-85.0511, 3);
+      expect(extent[3]).toBeCloseTo(85.0511, 3);
     });
 
     test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', async () => {
