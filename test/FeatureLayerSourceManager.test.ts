@@ -408,6 +408,114 @@ describe('Feature layer data source tests', () => {
       }));
     });
 
+    test('Passes abort signal and suppressWarnings to on-demand tile requests.', async () => {
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+
+      const signal = new AbortController().signal;
+      await manager._getTile([0, 6, 6], manager._calculateTolerance(6), signal);
+
+      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({
+        signal,
+        suppressWarnings: true
+      }));
+    });
+
+    test('Ignores stale tile responses and only commits the latest on-demand request.', async ({ mockMap }) => {
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand',
+        map: mockMap,
+      });
+
+      manager._onDemandSettings = {
+        maxTolerance: 156543,
+        staticZoomLevel: 7,
+        minZoom: 0,
+        maxZoom: 23,
+      };
+
+      mockMap.getBounds = vi.fn(() => ({
+        toArray: () => [[0, 0], [1, 1]],
+      }));
+      mockMap.getZoom = vi.fn(() => 6);
+
+      const tile = [0, 6, 6];
+      const fc = getBlankFc();
+      const updateSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => undefined);
+      vi.spyOn(manager, '_getTilesInViewAtZoomLevel').mockReturnValue([tile]);
+      vi.spyOn(manager, '_getTilesToRequest').mockReturnValue([tile]);
+
+      const commitSpy = vi.spyOn(manager, '_commitTileResultsToCache');
+
+      let resolveFirst;
+      let resolveSecond;
+      let requestCount = 0;
+      vi.spyOn(manager, '_loadTiles').mockImplementation(() => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return new Promise((resolve) => {
+            resolveFirst = resolve;
+          });
+        }
+        return new Promise((resolve) => {
+          resolveSecond = resolve;
+        });
+      });
+
+      const firstRequest = manager._loadFeaturesOnDemand();
+      const secondRequest = manager._loadFeaturesOnDemand();
+
+      resolveSecond([fc]);
+      await secondRequest;
+
+      resolveFirst([fc]);
+      await firstRequest;
+
+      expect(commitSpy).toHaveBeenCalledTimes(1);
+      expect(updateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('Returns undefined for unsupported layer extent spatial references.', () => {
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+
+      const extent = manager._getMaxExtentFromLayerExtent({
+        xmin: 0,
+        ymin: 0,
+        xmax: 1,
+        ymax: 1,
+        spatialReference: {
+          wkid: 9999,
+        },
+      });
+
+      expect(extent).toBeUndefined();
+    });
+
+    test('Supports 102100 extent conversion to WGS84 bounds.', () => {
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+
+      const extent = manager._getMaxExtentFromLayerExtent({
+        xmin: -20037508.342789244,
+        ymin: -20037508.342789244,
+        xmax: 20037508.342789244,
+        ymax: 20037508.342789244,
+        spatialReference: {
+          wkid: 102100,
+        },
+      });
+
+      expect(extent[0]).toBeCloseTo(-180, 5);
+      expect(extent[2]).toBeCloseTo(180, 5);
+      expect(extent[1]).toBeCloseTo(-85.0511, 3);
+      expect(extent[3]).toBeCloseTo(85.0511, 3);
+    });
+
     test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', async () => {
       const zoomLevel9 = 9;
       const zoomLevel6 = 6;
