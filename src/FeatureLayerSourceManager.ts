@@ -36,6 +36,8 @@ type TileIndexMap = Map<string, boolean>;
 // Main Class: FeatureLayerSourceManager
 export class FeatureLayerSourceManager {
   private static readonly CACHE_HIGH_WATERMARK_FEATURE_COUNT = 200_000;
+  private static readonly TOTAL_HIGH_WATERMARK_DETAILED_FEATURE_COUNT = 200_001;
+  private static readonly TOTAL_HIGH_WATERMARK_UNDETAILED_POINT_FEATURE_COUNT = 200_001;
   geojsonSourceId: string;
   layerUrl: string;
   layerDefinition?: ILayerDefinition;
@@ -424,7 +426,7 @@ export class FeatureLayerSourceManager {
     });
   }
 
-  private async _getTile(
+  private _getTile(
     tile: Tile,
     tolerance: number,
     abortSignal: AbortSignal,
@@ -462,8 +464,7 @@ export class FeatureLayerSourceManager {
       }),
     };
 
-    const res = await queryAllFeatures(queryParams) as unknown as FeatureCollection;
-    return res;
+    return queryAllFeatures(queryParams) as unknown as Promise<FeatureCollection>;
   }
 
   /**
