@@ -48,7 +48,7 @@ class FeatureCountLimitExceededError extends Error {
 // Main Class: FeatureLayerSourceManager
 export class FeatureLayerSourceManager {
   private static readonly CACHE_HIGH_WATERMARK_FEATURE_COUNT = 200_000;
-  private static readonly TOTAL_HIGH_WATERMARK_DETAILED_FEATURE_COUNT = 420_000;
+  private static readonly TOTAL_HIGH_WATERMARK_DETAILED_FEATURE_COUNT = 400_000;
   geojsonSourceId: string;
   layerUrl: string;
   layerDefinition?: ILayerDefinition;
