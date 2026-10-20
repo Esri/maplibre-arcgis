@@ -33,11 +33,22 @@ export interface FeatureLayerSourceManagerOptions {
 type FeatureIdIndexMap = Map<string | number, boolean>;
 type TileIndexMap = Map<string, boolean>;
 
+class FeatureCountLimitExceededError extends Error {
+  maxFeatureCount: number;
+  attemptedFeatureCount: number;
+
+  constructor(maxFeatureCount: number, attemptedFeatureCount: number) {
+    super(`Max feature count exceeded: ${attemptedFeatureCount} > ${maxFeatureCount}`);
+    this.name = 'FeatureCountLimitExceededError';
+    this.maxFeatureCount = maxFeatureCount;
+    this.attemptedFeatureCount = attemptedFeatureCount;
+  }
+}
+
 // Main Class: FeatureLayerSourceManager
 export class FeatureLayerSourceManager {
   private static readonly CACHE_HIGH_WATERMARK_FEATURE_COUNT = 200_000;
-  private static readonly TOTAL_HIGH_WATERMARK_DETAILED_FEATURE_COUNT = 200_001;
-  private static readonly TOTAL_HIGH_WATERMARK_UNDETAILED_POINT_FEATURE_COUNT = 200_001;
+  private static readonly TOTAL_HIGH_WATERMARK_DETAILED_FEATURE_COUNT = 420_000;
   geojsonSourceId: string;
   layerUrl: string;
   layerDefinition?: ILayerDefinition;
@@ -277,6 +288,13 @@ export class FeatureLayerSourceManager {
       console.info('Tile request completed', requestVersion);
     }
     catch (err) {
+      if (err instanceof FeatureCountLimitExceededError) {
+        console.info('Tile request aborted: feature limit exceeded', requestVersion, {
+          maxFeatureCount: err.maxFeatureCount,
+          attemptedFeatureCount: err.attemptedFeatureCount,
+        });
+        return;
+      }
       if (err instanceof Error && err.name === 'AbortError') {
         console.info('Tile request aborted', requestVersion);
         return;
@@ -298,8 +316,21 @@ export class FeatureLayerSourceManager {
     tolerance: number,
     abortSignal: AbortSignal,
   ): Promise<FeatureCollection[]> {
-    const tileRequests = tilesToRequest.map(tile => this._getTile(tile, tolerance, abortSignal));
-    return Promise.all(tileRequests);
+    const maxFeatureCount = FeatureLayerSourceManager.TOTAL_HIGH_WATERMARK_DETAILED_FEATURE_COUNT;
+    const tileRequests = tilesToRequest.map((tile) => {
+      return this._getTile(tile, tolerance, abortSignal);
+    });
+    const featureCollections = await Promise.all(tileRequests);
+
+    const featureCount = featureCollections.reduce((count, featureCollection) => {
+      return count + featureCollection.features.length;
+    }, 0);
+
+    if (featureCount > maxFeatureCount) {
+      throw new FeatureCountLimitExceededError(maxFeatureCount, featureCount);
+    }
+
+    return featureCollections;
   }
 
   private _commitTileResultsToCache(
@@ -528,11 +559,11 @@ export class FeatureLayerSourceManager {
     if (map) {
       const source: GeoJSONSource | undefined = this.map.getSource(this.geojsonSourceId);
       if (source) {
-        source.setData(fc);
+        void source.setData(fc);
       }
     }
     if (this._setDataCallback) {
-      this._setDataCallback(fc);
+      void this._setDataCallback(fc);
     }
   }
 
