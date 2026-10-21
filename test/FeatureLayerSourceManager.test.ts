@@ -632,43 +632,85 @@ describe('Feature layer data source tests', () => {
       });
     });
 
-    test('Returns undefined for unsupported layer extent spatial references.', () => {
-      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
-        loadingMode: 'ondemand'
+    describe('_getMaxExtentFromLayerExtent', () => {
+      test('returns original bounds when extent is already in WKID 4326.', () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+
+        const extent = manager._getMaxExtentFromLayerExtent({
+          xmin: -10,
+          ymin: -5,
+          xmax: 20,
+          ymax: 15,
+          spatialReference: {
+            wkid: 4326,
+          },
+        });
+
+        expect(extent).toEqual([-10, -5, 20, 15]);
       });
 
-      const extent = manager._getMaxExtentFromLayerExtent({
-        xmin: 0,
-        ymin: 0,
-        xmax: 1,
-        ymax: 1,
-        spatialReference: {
-          wkid: 9999,
-        },
+      test('supports WKID 102100 extent conversion to WGS84 bounds.', () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+
+        const extent = manager._getMaxExtentFromLayerExtent({
+          xmin: -20037508.342789244,
+          ymin: -20037508.342789244,
+          xmax: 20037508.342789244,
+          ymax: 20037508.342789244,
+          spatialReference: {
+            wkid: 102100,
+          },
+        });
+
+        expect(extent[0]).toBeCloseTo(-180, 5);
+        expect(extent[2]).toBeCloseTo(180, 5);
+        expect(extent[1]).toBeCloseTo(-85.0511, 3);
+        expect(extent[3]).toBeCloseTo(85.0511, 3);
       });
 
-      expect(extent).toBeUndefined();
-    });
+      test('supports Web Mercator conversion when latestWkid is 3857.', () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
 
-    test('Supports 102100 extent conversion to WGS84 bounds.', () => {
-      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
-        loadingMode: 'ondemand'
+        const extent = manager._getMaxExtentFromLayerExtent({
+          xmin: -20037508.342789244,
+          ymin: -20037508.342789244,
+          xmax: 20037508.342789244,
+          ymax: 20037508.342789244,
+          spatialReference: {
+            wkid: 9999,
+            latestWkid: 3857,
+          },
+        });
+
+        expect(extent[0]).toBeCloseTo(-180, 5);
+        expect(extent[2]).toBeCloseTo(180, 5);
+        expect(extent[1]).toBeCloseTo(-85.0511, 3);
+        expect(extent[3]).toBeCloseTo(85.0511, 3);
       });
 
-      const extent = manager._getMaxExtentFromLayerExtent({
-        xmin: -20037508.342789244,
-        ymin: -20037508.342789244,
-        xmax: 20037508.342789244,
-        ymax: 20037508.342789244,
-        spatialReference: {
-          wkid: 102100,
-        },
-      });
+      test('returns undefined for unsupported spatial references.', () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
 
-      expect(extent[0]).toBeCloseTo(-180, 5);
-      expect(extent[2]).toBeCloseTo(180, 5);
-      expect(extent[1]).toBeCloseTo(-85.0511, 3);
-      expect(extent[3]).toBeCloseTo(85.0511, 3);
+        const extent = manager._getMaxExtentFromLayerExtent({
+          xmin: 0,
+          ymin: 0,
+          xmax: 1,
+          ymax: 1,
+          spatialReference: {
+            wkid: 9999,
+          },
+        });
+
+        expect(extent).toBeUndefined();
+      });
     });
 
     test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', async () => {
