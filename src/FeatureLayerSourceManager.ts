@@ -285,18 +285,16 @@ export class FeatureLayerSourceManager {
       );
       this._updateSourceData(featureCollectionAtZoomLevel, this.map);
       this._clearDataCacheOutOfZoomRange(zoomLevel);
-      console.info('Tile request completed', requestVersion);
     }
     catch (err) {
       if (err instanceof FeatureCountLimitExceededError) {
-        console.info('Tile request aborted: feature limit exceeded', requestVersion, {
+        console.warn('Max feature limit exceeded in extent. Tile request canceled to avoid out of memory exception.', requestVersion, {
           maxFeatureCount: err.maxFeatureCount,
           attemptedFeatureCount: err.attemptedFeatureCount,
         });
         return;
       }
       if (err instanceof Error && err.name === 'AbortError') {
-        console.info('Tile request aborted', requestVersion);
         return;
       }
       throw err;
