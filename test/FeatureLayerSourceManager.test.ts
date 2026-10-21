@@ -110,7 +110,7 @@ describe('Feature layer data source tests', () => {
     expect(mockMap.on).toHaveBeenCalledWith('sourcedataloading', manager._onAddEvent);
 
     // mock trigger event from maplibre map
-    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+    manager._onAddEvent({ sourceId: manager.geojsonSourceId });
 
     expect(onAddSpy).toHaveBeenCalled();
   });
@@ -123,7 +123,7 @@ describe('Feature layer data source tests', () => {
     const loadSpy = vi.spyOn(manager, 'load').mockImplementation(vi.fn());
 
     // mock trigger event from maplibre map
-    manager._triggerOnAdd({sourceId:manager.geojsonSourceId}, manager.geojsonSourceId);
+    manager._onAddEvent({ sourceId: manager.geojsonSourceId });
 
     expect(onAddSpy).toHaveBeenCalled();
 
@@ -198,13 +198,13 @@ describe('Feature layer data source tests', () => {
     });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
-    const setMaxExtentFromLayerExtentSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
+    const getMaxExtentFromLayerExtentSpy = vi.spyOn(manager, '_getMaxExtentFromLayerExtent').mockImplementation(() => null);
     const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
 
     await manager.load();
-    expect(setMaxExtentFromLayerExtentSpy).toHaveBeenCalled();
+    expect(getMaxExtentFromLayerExtentSpy).toHaveBeenCalled();
     expect(bindLoadFeaturesToMoveEndEventSpy).toHaveBeenCalled();
     expect(clearTilesSpy).toHaveBeenCalled();
     expect(loadFeaturesOnDemandSpy).toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe('Feature layer data source tests', () => {
     });
 
     const exceedsLimitSpy = vi.spyOn(manager, '_checkIfExceedsLimit').mockImplementation(() => true);
-    const useServiceBoundsSpy = vi.spyOn(manager, '_setMaxExtentFromLayerExtent').mockImplementation(() => null);
+    const useServiceBoundsSpy = vi.spyOn(manager, '_getMaxExtentFromLayerExtent').mockImplementation(() => null);
     const bindLoadFeaturesToMoveEndEventSpy = vi.spyOn(manager, '_bindLoadFeaturesToMoveEndEvent').mockImplementation(() => null);
     const clearTilesSpy = vi.spyOn(manager, '_clearTiles').mockImplementation(() => null);
     const loadFeaturesOnDemandSpy = vi.spyOn(manager, '_loadFeaturesOnDemand').mockImplementation(() => Promise.resolve(null));
@@ -372,7 +372,7 @@ describe('Feature layer data source tests', () => {
       });
       // where clause is accessed from global object and parsed in _getTile, so we check for accessibility and parsing.
       expect(manager._options.queryOptions.where).toBe(whereClause);
-      await manager._getTile({}, 1);
+      await manager._getTile({}, 1, new AbortController().signal);
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({ where: whereClause }));
     });
 
@@ -398,7 +398,7 @@ describe('Feature layer data source tests', () => {
       };
       const tolerance = manager._calculateTolerance(6);
 
-      manager._getTile(tile, tolerance);
+      manager._getTile(tile, tolerance, new AbortController().signal);
       expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({
         quantizationParameters: JSON.stringify({
           extent: tileExtent,
@@ -406,6 +406,311 @@ describe('Feature layer data source tests', () => {
           tolerance: tolerance
         })
       }));
+    });
+
+    test('Passes abort signal and suppressWarnings to on-demand tile requests.', async () => {
+      queryAllFeatures = vi.fn().mockResolvedValue(trailsMock.geoJSONSmallRaw);
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand'
+      });
+
+      const signal = new AbortController().signal;
+      await manager._getTile([0, 6, 6], manager._calculateTolerance(6), signal);
+
+      expect(queryAllFeatures).toHaveBeenCalledWith(expect.objectContaining({
+        signal,
+        suppressWarnings: true
+      }));
+    });
+
+    test('Ignores stale tile responses and only commits the latest on-demand request.', async ({ mockMap }) => {
+      const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+        loadingMode: 'ondemand',
+        map: mockMap,
+      });
+
+      manager._onDemandSettings = {
+        maxTolerance: 156543,
+        staticZoomLevel: 7,
+        minZoom: 0,
+        maxZoom: 23,
+      };
+
+      mockMap.getBounds = vi.fn(() => ({
+        toArray: () => [[0, 0], [1, 1]],
+      }));
+      mockMap.getZoom = vi.fn(() => 6);
+
+      const tile = [0, 6, 6];
+      const fc = getBlankFc();
+      const updateSpy = vi.spyOn(manager, '_updateSourceData').mockImplementation(() => undefined);
+      vi.spyOn(manager, '_getTilesInViewAtZoomLevel').mockReturnValue([tile]);
+      vi.spyOn(manager, '_getTilesToRequest').mockReturnValue([tile]);
+
+      const commitSpy = vi.spyOn(manager, '_commitTileResultsToCache');
+
+      let resolveFirst;
+      let resolveSecond;
+      let requestCount = 0;
+      vi.spyOn(manager, '_loadTiles').mockImplementation(() => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return new Promise((resolve) => {
+            resolveFirst = resolve;
+          });
+        }
+        return new Promise((resolve) => {
+          resolveSecond = resolve;
+        });
+      });
+
+      const firstRequest = manager._loadFeaturesOnDemand();
+      const secondRequest = manager._loadFeaturesOnDemand();
+
+      resolveSecond([fc]);
+      await secondRequest;
+
+      resolveFirst([fc]);
+      await firstRequest;
+
+      expect(commitSpy).toHaveBeenCalledTimes(1);
+      expect(updateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    describe('_loadFeaturesOnDemand error handling', () => {
+      test('catches feature limit exceeded errors and logs an abort message.', async ({ mockMap }) => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand',
+          map: mockMap,
+        });
+
+        manager._onDemandSettings = {
+          maxTolerance: 156543,
+          staticZoomLevel: 7,
+          minZoom: 0,
+          maxZoom: 23,
+        };
+
+        mockMap.getBounds = vi.fn(() => ({
+          toArray: () => [[0, 0], [1, 1]],
+        }));
+        mockMap.getZoom = vi.fn(() => 6);
+
+        const tiles = [[0, 6, 6], [1, 6, 6]];
+        const overLimitFeatureCount = 200001;
+        const fcA = { type: 'FeatureCollection', features: new Array(overLimitFeatureCount) };
+        const fcB = { type: 'FeatureCollection', features: new Array(overLimitFeatureCount) };
+
+        vi.spyOn(manager, '_getTilesInViewAtZoomLevel').mockReturnValue(tiles);
+        vi.spyOn(manager, '_getTilesToRequest').mockReturnValue(tiles);
+        vi.spyOn(manager, '_getTile')
+          .mockResolvedValueOnce(fcA)
+          .mockResolvedValueOnce(fcB);
+
+        const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+        await expect(manager._loadFeaturesOnDemand()).resolves.toBeUndefined();
+
+        expect(consoleSpy).toHaveBeenCalledWith(
+          'Tile request aborted: feature limit exceeded',
+          1,
+          {
+            maxFeatureCount: 400000,
+            attemptedFeatureCount: 400002,
+          }
+        );
+      });
+
+      test('catches AbortError and logs message.', async ({ mockMap }) => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand',
+          map: mockMap,
+        });
+
+        manager._onDemandSettings = {
+          maxTolerance: 156543,
+          staticZoomLevel: 7,
+          minZoom: 0,
+          maxZoom: 23,
+        };
+
+        mockMap.getBounds = vi.fn(() => ({
+          toArray: () => [[0, 0], [1, 1]],
+        }));
+        mockMap.getZoom = vi.fn(() => 6);
+
+        const tile = [0, 6, 6];
+        vi.spyOn(manager, '_getTilesInViewAtZoomLevel').mockReturnValue([tile]);
+        vi.spyOn(manager, '_getTilesToRequest').mockReturnValue([tile]);
+
+        const abortError = new Error('Request aborted');
+        abortError.name = 'AbortError';
+        vi.spyOn(manager, '_loadTiles').mockRejectedValue(abortError);
+
+        const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+        await expect(manager._loadFeaturesOnDemand()).resolves.toBeUndefined();
+
+        expect(consoleSpy).toHaveBeenCalledWith('Tile request aborted', 1);
+      });
+
+      test('rethrows unexpected errors.', async ({ mockMap }) => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand',
+          map: mockMap,
+        });
+
+        manager._onDemandSettings = {
+          maxTolerance: 156543,
+          staticZoomLevel: 7,
+          minZoom: 0,
+          maxZoom: 23,
+        };
+
+        mockMap.getBounds = vi.fn(() => ({
+          toArray: () => [[0, 0], [1, 1]],
+        }));
+        mockMap.getZoom = vi.fn(() => 6);
+
+        const tile = [0, 6, 6];
+        vi.spyOn(manager, '_getTilesInViewAtZoomLevel').mockReturnValue([tile]);
+        vi.spyOn(manager, '_getTilesToRequest').mockReturnValue([tile]);
+
+        const unexpectedError = new Error('Unexpected request failure');
+        vi.spyOn(manager, '_loadTiles').mockRejectedValue(unexpectedError);
+
+        await expect(manager._loadFeaturesOnDemand()).rejects.toThrow('Unexpected request failure');
+      });
+    });
+
+    describe('_loadTiles', () => {
+      test('requests each tile and returns all feature collections.', async () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+
+        const abortSignal = new AbortController().signal;
+        const tolerance = 0.5;
+        const tiles = [[0, 6, 6], [1, 6, 6]];
+        const fcA = { type: 'FeatureCollection', features: [{ id: 1 }] };
+        const fcB = { type: 'FeatureCollection', features: [{ id: 2 }, { id: 3 }] };
+
+        const getTileSpy = vi.spyOn(manager, '_getTile')
+          .mockResolvedValueOnce(fcA)
+          .mockResolvedValueOnce(fcB);
+
+        const result = await manager._loadTiles(tiles, tolerance, abortSignal);
+
+        expect(getTileSpy).toHaveBeenCalledTimes(2);
+        expect(getTileSpy).toHaveBeenNthCalledWith(1, tiles[0], tolerance, abortSignal);
+        expect(getTileSpy).toHaveBeenNthCalledWith(2, tiles[1], tolerance, abortSignal);
+        expect(result).toEqual([fcA, fcB]);
+      });
+
+      test('throws when aggregated feature count exceeds the total memory limit.', async () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+
+        const abortSignal = new AbortController().signal;
+        const tolerance = 0.5;
+        const tiles = [[0, 6, 6], [1, 6, 6]];
+        const overLimitFeatureCount = 200001;
+        // init two feature collections that will exceed the high watermark when combined
+        const fcA = { type: 'FeatureCollection', features: new Array(overLimitFeatureCount) };
+        const fcB = { type: 'FeatureCollection', features: new Array(overLimitFeatureCount) };
+
+        vi.spyOn(manager, '_getTile')
+          .mockResolvedValueOnce(fcA)
+          .mockResolvedValueOnce(fcB);
+
+        await expect(manager._loadTiles(tiles, tolerance, abortSignal)).rejects.toMatchObject({
+          name: 'FeatureCountLimitExceededError',
+          maxFeatureCount: 400000,
+          attemptedFeatureCount: 400002,
+        });
+      });
+    });
+
+    describe('_getMaxExtentFromLayerExtent', () => {
+      test('returns original bounds when extent is already in WKID 4326.', () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+
+        const extent = manager._getMaxExtentFromLayerExtent({
+          xmin: -10,
+          ymin: -5,
+          xmax: 20,
+          ymax: 15,
+          spatialReference: {
+            wkid: 4326,
+          },
+        });
+
+        expect(extent).toEqual([-10, -5, 20, 15]);
+      });
+
+      test('supports WKID 102100 extent conversion to WGS84 bounds.', () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+
+        const extent = manager._getMaxExtentFromLayerExtent({
+          xmin: -20037508.342789244,
+          ymin: -20037508.342789244,
+          xmax: 20037508.342789244,
+          ymax: 20037508.342789244,
+          spatialReference: {
+            wkid: 102100,
+          },
+        });
+
+        expect(extent[0]).toBeCloseTo(-180, 5);
+        expect(extent[2]).toBeCloseTo(180, 5);
+        expect(extent[1]).toBeCloseTo(-85.0511, 3);
+        expect(extent[3]).toBeCloseTo(85.0511, 3);
+      });
+
+      test('supports Web Mercator conversion when latestWkid is 3857.', () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+
+        const extent = manager._getMaxExtentFromLayerExtent({
+          xmin: -20037508.342789244,
+          ymin: -20037508.342789244,
+          xmax: 20037508.342789244,
+          ymax: 20037508.342789244,
+          spatialReference: {
+            wkid: 9999,
+            latestWkid: 3857,
+          },
+        });
+
+        expect(extent[0]).toBeCloseTo(-180, 5);
+        expect(extent[2]).toBeCloseTo(180, 5);
+        expect(extent[1]).toBeCloseTo(-85.0511, 3);
+        expect(extent[3]).toBeCloseTo(85.0511, 3);
+      });
+
+      test('returns undefined for unsupported spatial references.', () => {
+        const manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+
+        const extent = manager._getMaxExtentFromLayerExtent({
+          xmin: 0,
+          ymin: 0,
+          xmax: 1,
+          ymax: 1,
+          spatialReference: {
+            wkid: 9999,
+          },
+        });
+
+        expect(extent).toBeUndefined();
+      });
     });
 
     test('Sets the tolerance quantization parameter in units of degrees based on the current zoom level.', async () => {
@@ -424,6 +729,107 @@ describe('Feature layer data source tests', () => {
       expect(manager._calculateTolerance(zoomLevel6)).toBe(expectedToleranceZoom6);
       expect(manager._calculateTolerance(zoomLevel2)).toBe(expectedToleranceZoom2);
     });
+
+    describe('cache pressure policy', () => {
+      let manager;
+
+      beforeEach(() => {
+        manager = new FeatureLayerSourceManager(sourceId, trailsMock.layerUrl, trailsMock.layerDefinitionRaw, {
+          loadingMode: 'ondemand'
+        });
+      });
+
+      describe('_applyCachePressurePolicy', () => {
+        test('does nothing when cache is below watermark.', () => {
+          const isAboveWatermarkSpy = vi.spyOn(manager, '_isCacheAboveHighWatermark').mockReturnValue(false);
+          const clearOutOfRangeSpy = vi.spyOn(manager, '_clearDataCacheOutOfZoomRange');
+          const clearTilesSpy = vi.spyOn(manager, '_clearTiles');
+
+          manager._applyCachePressurePolicy(6);
+
+          expect(isAboveWatermarkSpy).toHaveBeenCalledTimes(1);
+          expect(clearOutOfRangeSpy).not.toHaveBeenCalled();
+          expect(clearTilesSpy).not.toHaveBeenCalled();
+        });
+
+        test('keeps current zoom cache only when stage 1 drops below watermark.', () => {
+          const isAboveWatermarkSpy = vi.spyOn(manager, '_isCacheAboveHighWatermark')
+            .mockReturnValueOnce(true)
+            .mockReturnValueOnce(false);
+          const clearOutOfRangeSpy = vi.spyOn(manager, '_clearDataCacheOutOfZoomRange');
+          const clearTilesSpy = vi.spyOn(manager, '_clearTiles');
+
+          manager._applyCachePressurePolicy(6);
+
+          expect(isAboveWatermarkSpy).toHaveBeenCalledTimes(2);
+          expect(clearOutOfRangeSpy).toHaveBeenCalledTimes(1);
+          expect(clearOutOfRangeSpy).toHaveBeenCalledWith(6, 0);
+          expect(clearTilesSpy).not.toHaveBeenCalled();
+        });
+
+        test('clears all cache when still above watermark after stage 1.', () => {
+          const isAboveWatermarkSpy = vi.spyOn(manager, '_isCacheAboveHighWatermark').mockReturnValue(true);
+          const clearOutOfRangeSpy = vi.spyOn(manager, '_clearDataCacheOutOfZoomRange');
+          const clearTilesSpy = vi.spyOn(manager, '_clearTiles');
+
+          manager._applyCachePressurePolicy(6);
+
+          expect(isAboveWatermarkSpy).toHaveBeenCalledTimes(2);
+          expect(clearOutOfRangeSpy).toHaveBeenCalledTimes(1);
+          expect(clearOutOfRangeSpy).toHaveBeenCalledWith(6, 0);
+          expect(clearTilesSpy).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('_clearDataCacheOutOfZoomRange', () => {
+        // Helper function to seed the cache with specific zoom levels.
+        const seedCacheAtZoomLevels = (zoomLevels) => {
+          manager._tileIndices = new globalThis.Map(
+            zoomLevels.map((z) => [z, new globalThis.Map([[`ti-${z}`, true]])])
+          );
+          manager._featureIndices = new globalThis.Map(
+            zoomLevels.map((z) => [z, new globalThis.Map([[`fi-${z}`, true]])])
+          );
+          manager._featureCollections = new globalThis.Map(
+            zoomLevels.map((z) => [z, { type: 'FeatureCollection', features: [] }])
+          );
+        };
+
+        test('default cache clears data beyond the default range of +-1.', () => {
+          seedCacheAtZoomLevels([4, 5, 6, 7, 8]);
+
+          manager._clearDataCacheOutOfZoomRange(6);
+
+          expect(Array.from(manager._tileIndices.keys())).toEqual([5, 6, 7]);
+          expect(Array.from(manager._featureIndices.keys())).toEqual([5, 6, 7]);
+          expect(Array.from(manager._featureCollections.keys())).toEqual([5, 6, 7]);
+        });
+
+        // bad input: negative range will normalize to 0
+        test('normalizes invalid number and caches only current zoom', () => {
+          seedCacheAtZoomLevels([5, 6, 7]);
+
+          manager._clearDataCacheOutOfZoomRange(6, -2);
+
+          expect(Array.from(manager._tileIndices.keys())).toEqual([6]);
+          expect(Array.from(manager._featureIndices.keys())).toEqual([6]);
+          expect(Array.from(manager._featureCollections.keys())).toEqual([6]);
+        });
+
+        // bad input: decimal range values truncate to integer
+        test('floors decimal range values before trimming.', () => {
+          seedCacheAtZoomLevels([3, 4, 5, 6, 7, 8, 9]);
+
+          manager._clearDataCacheOutOfZoomRange(6, 2.9);
+
+          expect(Array.from(manager._tileIndices.keys())).toEqual([4, 5, 6, 7, 8]);
+          expect(Array.from(manager._featureIndices.keys())).toEqual([4, 5, 6, 7, 8]);
+          expect(Array.from(manager._featureCollections.keys())).toEqual([4, 5, 6, 7, 8]);
+        });
+      });
+    });
+
+
 
     // --- out of scope for rn
     // test('On-demand loading is triggered when the maplibre \'moveend\' event fires', () => {
