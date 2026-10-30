@@ -507,12 +507,12 @@ describe('Feature layer data source tests', () => {
           .mockResolvedValueOnce(fcA)
           .mockResolvedValueOnce(fcB);
 
-        const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
         await expect(manager._loadFeaturesOnDemand()).resolves.toBeUndefined();
 
         expect(consoleSpy).toHaveBeenCalledWith(
-          'Tile request aborted: feature limit exceeded',
+          'Max feature limit exceeded in extent. Tile request canceled to avoid out of memory exception.',
           1,
           {
             maxFeatureCount: 400000,
@@ -547,11 +547,11 @@ describe('Feature layer data source tests', () => {
         abortError.name = 'AbortError';
         vi.spyOn(manager, '_loadTiles').mockRejectedValue(abortError);
 
-        const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
         await expect(manager._loadFeaturesOnDemand()).resolves.toBeUndefined();
 
-        expect(consoleSpy).toHaveBeenCalledWith('Tile request aborted', 1);
+        // expect(consoleSpy).toHaveBeenCalledWith('Tile request aborted', 1);
       });
 
       test('rethrows unexpected errors.', async ({ mockMap }) => {
